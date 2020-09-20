@@ -1,1 +1,3 @@
 humanize
+bs4
+requests

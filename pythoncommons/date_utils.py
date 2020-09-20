@@ -6,6 +6,14 @@ LOG = logging.getLogger(__name__)
 class DateUtils:
     WIN_EPOCH = datetime.datetime(1601, 1, 1)
 
+    @staticmethod
+    def get_current_datetime(fmt="%Y%m%d_%H%M%S"):
+        return DateUtils.now_formatted(fmt)
+
+    @classmethod
+    def now_formatted(cls, fmt):
+        return DateUtils.now().strftime(fmt)
+
     @classmethod
     def from_iso_format(cls):
         return datetime.date.fromisoformat
@@ -13,10 +21,6 @@ class DateUtils:
     @classmethod
     def now(cls):
         return datetime.datetime.now()
-
-    @classmethod
-    def now_formatted(cls, fmt):
-        return DateUtils.now().strftime(fmt)
 
     @classmethod
     def add_microseconds_to_win_epoch(cls, microseconds):
