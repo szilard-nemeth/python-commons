@@ -1,11 +1,17 @@
 import logging
+import os
 
 LOG = logging.getLogger(__name__)
 
 
 class GitUtils:
-    def __init__(self):
-        pass
+
+    @classmethod
+    def does_git_repo_dir_exist(cls, project):
+        path = os.path.join(project.target_dir, ".git")
+        if os.path.exists(path):
+            return True
+        return False
 
     @classmethod
     def convert_remote_branch_name_to_local(cls, remote_branch):

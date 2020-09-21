@@ -3,6 +3,8 @@ import logging
 import os
 import re
 import shutil
+import tempfile
+
 import humanize
 
 from pythoncommons.string_utils import RegexUtils
@@ -11,11 +13,20 @@ LOG = logging.getLogger(__name__)
 
 
 class FileUtils:
+    previous_cwd = None
+
     @classmethod
     def write_to_file(cls, file_path, data):
         f = open(file_path, 'w')
         f.write(data)
         f.close()
+
+    @classmethod
+    def write_to_tempfile(cls, contents):
+        tmp = tempfile.NamedTemporaryFile(delete=False)
+        with open(tmp.name, 'w') as f:
+            f.write(contents)
+        return tmp.name
 
     @classmethod
     def save_to_file(cls, file_path, contents):
@@ -205,3 +216,30 @@ class FileUtils:
             else:
                 result[f] = None
         return result
+
+    @classmethod
+    def get_home_path(cls, path):
+        return os.path.expanduser(path)
+
+    @classmethod
+    def copy_file(cls, src, dest):
+        shutil.copyfile(src, dest)
+
+    @classmethod
+    def change_cwd(cls, dir):
+        cls.previous_cwd = os.getcwd()
+        cls._change_cwd(dir)
+
+    @classmethod
+    def reset_cwd(cls):
+        if not cls.previous_cwd:
+            LOG.warning("Can't reset CWD as there's no previous CWD saved!")
+        cls._change_cwd(cls.previous_cwd)
+
+    @classmethod
+    def _change_cwd(cls, dir):
+        try:
+            os.chdir(dir)
+            LOG.info("Changed current working directory: %s", dir)
+        except OSError:
+            LOG.error("Can't change the Current Working Directory to %s", dir)
