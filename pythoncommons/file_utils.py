@@ -498,6 +498,13 @@ class FileUtils:
                 raise ValueError("Path does not exist: %s", d)
         return os.path.isdir(d)
 
+    @classmethod
+    def get_unique_filepath(cls, dest_file):
+        while FileUtils.does_path_exist(dest_file):
+            file_path, ext = os.path.splitext(dest_file)
+            dest_file = file_path + '_1' + ext
+        return dest_file
+
 
 class JsonFileUtils:
     @classmethod
