@@ -188,12 +188,12 @@ class FileUtils:
             for f in os.listdir(dir):
                 file_path = os.path.join(dir, f)
                 if os.path.isfile(file_path) and \
-                        FileUtils._does_filename_match(f, pattern, FileMatchType.fnmatch):
+                        FileUtils.does_filename_match(f, pattern, FileMatchType.fnmatch):
                     result.append(file_path)
         return result
 
     @classmethod
-    def _does_filename_match(cls, filename, pattern, pattern_match_type):
+    def does_filename_match(cls, filename, pattern, pattern_match_type):
         if pattern_match_type == FileMatchType.fnmatch and fnmatch.fnmatch(filename, pattern):
             return True
         elif pattern_match_type == FileMatchType.regex and re.search(pattern, filename, re.DOTALL):
