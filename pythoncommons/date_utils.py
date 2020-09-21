@@ -1,6 +1,58 @@
 import datetime
 import logging
+import time
+
 LOG = logging.getLogger(__name__)
+
+
+# https://medium.com/pythonhive/python-decorator-to-measure-the-execution-time-of-methods-fa04cb6bb36d
+def timeit(method):
+    def timed(*args, **kw):
+        def print_time(method_name, time_value):
+            pretty_time = TimeUtilities.prettify_time(time_value)
+            LOG.info('Method runtime: {}: {}', method_name, pretty_time)
+
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+        if 'log_time' in kw:
+            name = kw.get('log_name', method.__name__.upper())
+            kw['log_time'][name] = int((te - ts) * 1000)
+        else:
+            print_time(method.__name__, (te - ts))
+        return result
+    return timed
+
+
+class TimeUtilities:
+    SECONDS = "seconds"
+    MINUTES = "minutes"
+    HOURS = "hours"
+    DAYS = "days"
+
+    @classmethod
+    def prettify_time(cls, seconds):
+        # Credits: https://gist.github.com/thatalextaylor/7408395
+        seconds = int(seconds)
+        days, seconds = divmod(seconds, 86400)
+        hours, seconds = divmod(seconds, 3600)
+        minutes, seconds = divmod(seconds, 60)
+
+        # TODO generate pairs of curly braces with range()
+        if days > 0:
+            return '{} {}, {} {}, {} {}, {} {}'.format(days, cls.DAYS,
+                                                       hours, cls.HOURS,
+                                                       minutes, cls.MINUTES,
+                                                       seconds, cls.SECONDS)
+        elif hours > 0:
+            return '{} {}, {} {}, {} {}'.format(hours, cls.HOURS,
+                                                minutes, cls.MINUTES,
+                                                seconds, cls.SECONDS)
+        elif minutes > 0:
+            return '{} {}, {} {}'.format(minutes, cls.MINUTES,
+                                         seconds, cls.SECONDS)
+        else:
+            return '{} {}'.format(seconds, cls.SECONDS)
 
 
 class DateUtils:

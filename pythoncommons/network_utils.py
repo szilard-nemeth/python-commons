@@ -1,5 +1,8 @@
+import logging
 import random
-import urllib
+import urllib.request as request
+import urllib.error as url_error
+LOG = logging.getLogger(__name__)
 
 
 class NetworkUtils:
@@ -22,7 +25,7 @@ class NetworkUtils:
                 # ping google
                 if counter > 0:
                     LOG.info('Waiting for internet connection, try count: %s', counter)
-                response = urllib.request.urlopen('http://google.com', timeout=1)
+                response = request.urlopen('http://google.com', timeout=1)
                 return
-            except urllib.URLError:
+            except url_error.URLError:
                 pass
