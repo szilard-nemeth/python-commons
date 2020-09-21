@@ -36,7 +36,7 @@ from pythoncommons.file_utils import FileUtils
 ### Commit into this project
 Source project: google-chrome-toolkit
 ```
-git ci -m Add date_utils and string_utils from google-chrome-toolkit
+git ci -m "Add date_utils and string_utils from google-chrome-toolkit"
 ```
 
 ### Commit into project that depend on python-commons
