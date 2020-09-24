@@ -35,5 +35,9 @@ class UrlUtils:
 
     @staticmethod
     def url_ok(url):
-        r = requests.head(url)
+        try:
+            r = requests.head(url)
+        except requests.exceptions.RequestException as e:
+            LOG.exception("Failed to connect to URL: {}".format(url), e)
+            return False
         return r.status_code == 200
