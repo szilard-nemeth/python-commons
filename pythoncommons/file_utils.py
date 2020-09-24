@@ -176,13 +176,13 @@ class FileUtils:
         orig_path = os.path.realpath(current_script)
         path = orig_path
         visited = [path]
-        while path != os.sep and not path.endswith(root_dir):
+        while path != os.sep and not path.endswith(root_dir_name):
             path = FileUtils.get_parent_dir_name(path)
             visited.append(path)
         if path == os.sep:
             raise ValueError(
                 "Failed to find directory '{}' starting from path '{}'. "
-                "Visited: {}".format(root_dir, orig_path, visited))
+                "Visited: {}".format(root_dir_name, orig_path, visited))
         return path
 
     @classmethod
