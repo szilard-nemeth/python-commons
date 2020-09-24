@@ -38,6 +38,6 @@ class UrlUtils:
         try:
             r = requests.head(url)
         except requests.exceptions.RequestException as e:
-            LOG.exception("Failed to connect to URL: {}".format(url), e)
+            LOG.exception("Failed to connect to URL: {}".format(url))
             return False
         return r.status_code == 200
