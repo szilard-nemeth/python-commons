@@ -172,8 +172,8 @@ class FileUtils:
         return result
 
     @staticmethod
-    def find_repo_root_dir(root_dir):
-        orig_path = os.path.realpath(__file__)
+    def find_repo_root_dir(current_script, root_dir_name):
+        orig_path = os.path.realpath(current_script)
         path = orig_path
         visited = [path]
         while path != os.sep and not path.endswith(root_dir):
