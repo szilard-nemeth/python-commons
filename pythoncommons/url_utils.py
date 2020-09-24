@@ -1,5 +1,8 @@
 import logging
 from urllib.parse import urlparse
+
+import requests
+
 LOG = logging.getLogger(__name__)
 
 
@@ -29,3 +32,8 @@ class UrlUtils:
             "netloc": parsed_uri.netloc,
             "scheme": parsed_uri.scheme,
         }
+
+    @staticmethod
+    def url_ok(url):
+        r = requests.head(url)
+        return r.status_code == 200
