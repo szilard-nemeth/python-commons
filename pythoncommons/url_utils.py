@@ -34,10 +34,12 @@ class UrlUtils:
         }
 
     @staticmethod
-    def url_ok(url):
+    def url_ok(url, silent=False):
+        print_exc_info = not silent
         try:
             r = requests.head(url)
         except requests.exceptions.RequestException as e:
-            LOG.exception("Failed to connect to URL: {}".format(url))
+
+            LOG.exception("Failed to connect to URL: {}".format(url), exc_info=print_exc_info)
             return False
         return r.status_code == 200
