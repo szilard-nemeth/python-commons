@@ -162,6 +162,29 @@ class FileUtils:
                     result.append(os.path.join(dp, f))
         return result
 
+    @staticmethod
+    def search_dir(basedir, dirname):
+        result = []
+        for root, dirs, files in os.walk(basedir):
+            for d in dirs:
+                if d == dirname:
+                    return os.path.join(root, d)
+        return result
+
+    @staticmethod
+    def find_repo_root_dir(root_dir):
+        orig_path = os.path.realpath(__file__)
+        path = orig_path
+        visited = [path]
+        while path != os.sep and not path.endswith(root_dir):
+            path = FileUtils.get_parent_dir_name(path)
+            visited.append(path)
+        if path == os.sep:
+            raise ValueError(
+                "Failed to find directory '{}' starting from path '{}'. "
+                "Visited: {}".format(root_dir, orig_path, visited))
+        return path
+
     @classmethod
     def find_files(cls, basedir, regex=None, single_level=False, full_path_result=False):
         regex = re.compile(regex)
@@ -374,8 +397,8 @@ class FileUtils:
     def make_path(cls, basedir, dirs):
         if not isinstance(dirs, list):
             LOG.warning("%s was called with wrong argument type for 'dirs', "
-                          "list is expected. Value of parameter: %s. "
-                          "Converting parameter to a list!", FileUtils.make_path, dirs)
+                        "list is expected. Value of parameter: %s. "
+                        "Converting parameter to a list!", FileUtils.make_path, dirs)
             dirs = [dirs]
         return os.path.join(basedir, *dirs)
 
