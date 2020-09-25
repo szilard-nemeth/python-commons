@@ -528,6 +528,10 @@ class FileUtils:
             dest_file = file_path + '_1' + ext
         return dest_file
 
+    @classmethod
+    def read_file(cls, f):
+        return open(f, 'r').read()
+
 
 class JsonFileUtils:
     @classmethod
