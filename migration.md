@@ -17,9 +17,16 @@ find /usr/local/lib/python3.8 | grep commons
 find /Library/Frameworks/Python.framework/Versions/3.8/lib/python3.8/site-packages | grep commons
 ```
 
-## Add this as a dependency to projects, into requirements.txt file
+## Add as a dependency to projects, into requirements.txt file
+
+SSH:
 ```
 git+ssh://git@github.com/szilard-nemeth/python-commons.git
+```
+
+HTTPS:
+```
+git+https://github.com/szilard-nemeth/python-commons.git
 ```
 
 
