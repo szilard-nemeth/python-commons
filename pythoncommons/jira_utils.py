@@ -39,7 +39,9 @@ class JiraUtils:
         for link in soup.find_all("a", attrs={"class": "issue-link"}):
             jira_id = link.attrs["data-issue-key"]
             jira_title = link.contents[0]
-            result_dict[jira_id] = jira_title
+            # There are 2 anchors with class: 'issue-link' per row. Only store the one with valid title.
+            if len(jira_title.strip()) > 0:
+                result_dict[jira_id] = jira_title
 
         if filter_ids:
             LOG.info("Filtering ids from result list: %s", filter_ids)
