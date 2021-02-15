@@ -37,6 +37,10 @@ class StringUtils:
         return "\n".join(list)
 
     @staticmethod
+    def dict_to_multiline_string(dict):
+        return "\n".join([f"{k}: {v}" for k, v in dict.items()])
+
+    @staticmethod
     def get_first_line_of_multiline_str(multi_line_str):
         return StringUtils.get_line_of_multi_line_str(multi_line_str, 0)
 
