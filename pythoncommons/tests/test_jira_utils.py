@@ -10,7 +10,7 @@ DEST_DIR_PREFIX = "test"
 
 class JiraUtilsTests(unittest.TestCase):
 
-    def test_YARN_10169(self):
+    def test_YARN_10496(self):
         project_out_root = FileUtils.join_path(expanduser("~"), PROJECT_NAME, DEST_DIR_PREFIX)
         result_basedir = FileUtils.join_path(project_out_root, "jira-data")
         FileUtils.ensure_dir_created(result_basedir)
@@ -32,9 +32,10 @@ class JiraUtilsTests(unittest.TestCase):
                              'YARN-10583', 'YARN-10584', 'YARN-10587', 'YARN-10590', 'YARN-10592', 'YARN-10596',
                              'YARN-10598', 'YARN-10599', 'YARN-10600', 'YARN-10604', 'YARN-10605', 'YARN-10609',
                              'YARN-10614', 'YARN-10615', 'YARN-10620', 'YARN-10622', 'YARN-10624']
-        all_list_items_found = all(id1 in expected_jira_ids for id1 in jira_ids_and_titles.keys())
+        all_list_items_found = all(id1 in jira_ids_and_titles.keys() for id1 in expected_jira_ids)
         self.assertTrue(all_list_items_found)
 
         expected_mappings = {'YARN-10624': 'Support max queues limit configuration in new auto created queue, consistent with old auto created.'}
         self.assertEqual(expected_mappings['YARN-10624'], jira_ids_and_titles['YARN-10624'])
+        self.assertTrue(isinstance(jira_ids_and_titles['YARN-10624'], str))
 
