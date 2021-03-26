@@ -76,7 +76,7 @@ class EmailService:
     def _create_attachment(file_path):
         email_msg = MIMEMultipart()
         msg = MIMEBase('application', 'zip')
-        file = open(file_path, "r")
+        file = open(file_path, "rb")
         msg.set_payload(file.read())
         encoders.encode_base64(msg)
         msg.add_header('Content-Disposition', 'attachment',
