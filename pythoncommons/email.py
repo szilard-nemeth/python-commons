@@ -19,8 +19,8 @@ class EmailAccount:
 
 
 class EmailConfig:
-    def __init__(self, smpt_server: str, smtp_port: int, email_account: EmailAccount):
-        self.smtp = smpt_server
+    def __init__(self, smtp_server: str, smtp_port: int, email_account: EmailAccount):
+        self.smtp_server = smtp_server
         self.smtp_port = smtp_port
         self.email_account = email_account
 
@@ -65,7 +65,7 @@ class EmailService:
             raise ValueError(f"Wrong email server config. Password must be set!")
 
     def _connect_to_server_and_send(self, email_msg, recipients, recipients_comma_separated, sender):
-        server = smtplib.SMTP_SSL(self.conf.smtp, self.conf.smtp_port)
+        server = smtplib.SMTP_SSL(self.conf.smtp_server, self.conf.smtp_port)
         LOG.info('Sending mail to recipients: %s', recipients_comma_separated)
         server.ehlo()
         server.login(self.conf.email_account.user, self.conf.email_account.password)
