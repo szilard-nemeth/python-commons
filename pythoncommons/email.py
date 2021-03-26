@@ -57,7 +57,7 @@ class EmailService:
             return
         if not self.conf:
             raise ValueError("Email config is not set!")
-        if not all(attr is None for attr in vars(self.conf)):
+        if not all(attr is not None for attr in vars(self.conf)):
             raise ValueError(f"Some attribute of EmailConfig is not set. Config object: {self.conf}")
         if not self.conf.email_account.user:
             raise ValueError(f"Wrong email server config. Username must be set!")
