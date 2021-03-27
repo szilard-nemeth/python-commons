@@ -38,7 +38,8 @@ class EmailService:
             # https://stackoverflow.com/a/169406/1106893
             email_msg = MIMEMultipart()
             email_msg.attach(MIMEText(str(body), "plain"))
-            self._create_attachment(attachment_file)
+            attachment = self._create_attachment(attachment_file)
+            email_msg.attach(attachment)
         else:
             email_msg = MIMEText(str(body))
 
@@ -74,11 +75,10 @@ class EmailService:
 
     @staticmethod
     def _create_attachment(file_path):
-        email_msg = MIMEMultipart()
         msg = MIMEBase('application', 'zip')
         file = open(file_path, "rb")
         msg.set_payload(file.read())
         encoders.encode_base64(msg)
         msg.add_header('Content-Disposition', 'attachment',
                        filename=FileUtils.basename(file_path) + '.zip')
-        email_msg.attach(msg)
+        return msg
