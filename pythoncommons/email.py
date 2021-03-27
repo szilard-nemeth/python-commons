@@ -42,15 +42,16 @@ class EmailService:
             email_msg.attach(attachment)
         else:
             email_msg = MIMEText(str(body))
+        recipients_comma_separated = self._add_common_email_data(email_msg, recipients, sender, subject)
+        self._connect_to_server_and_send(email_msg, recipients, recipients_comma_separated, sender)
 
+    def _add_common_email_data(self, email_msg, recipients, sender, subject):
         recipients_comma_separated = ', '.join(recipients)
-        email_msg = MIMEText(str(body))
         email_msg['From'] = sender
         email_msg['To'] = recipients_comma_separated
         email_msg['Subject'] = subject
         email_msg.preamble = 'I am not using a MIME-aware mail reader.\n'
-
-        self._connect_to_server_and_send(email_msg, recipients, recipients_comma_separated, sender)
+        return recipients_comma_separated
 
     def _validate_config(self, recipients):
         if not recipients:
@@ -80,5 +81,5 @@ class EmailService:
         msg.set_payload(file.read())
         encoders.encode_base64(msg)
         msg.add_header('Content-Disposition', 'attachment',
-                       filename=FileUtils.basename(file_path) + '.zip')
+                       filename=FileUtils.basename(file_path))
         return msg
