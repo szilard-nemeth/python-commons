@@ -6,21 +6,24 @@ from typing import List
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
+from pythoncommons.google.common import ServiceType
+
 
 class GoogleApiAuthorizer:
     CREDENTIALS_FILENAME = 'credentials.json'
     TOKEN_FILENAME = 'token.pickle'
     # If modifying these scopes, delete the file token.pickle.
-    DEFAULT_SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly']
     DEFAULT_WEBSERVER_PORT = 49555
 
     def __init__(self,
+                 service_type: ServiceType,
                  scopes: List[str] = None,
                  server_port: int = DEFAULT_WEBSERVER_PORT,
                  token_filename: str = TOKEN_FILENAME,
                  credentials_filename: str = CREDENTIALS_FILENAME):
+        self.service_type = service_type
         if scopes is None:
-            self.scopes = GoogleApiAuthorizer.DEFAULT_SCOPES
+            self.scopes = self.service_type.scopes
         self.server_port = server_port
         self.token_filename = token_filename
         self.creds_filename = credentials_filename

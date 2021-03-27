@@ -2,6 +2,8 @@ import logging
 from typing import List
 
 from googleapiclient.discovery import build
+
+from pythoncommons.google.common import ServiceType
 from pythoncommons.google.google_auth import GoogleApiAuthorizer
 from pythoncommons.string_utils import StringUtils, auto_str
 
@@ -115,15 +117,13 @@ class DriveApiFile(dict):
 
 class DriveApiWrapper:
     DEFAULT_API_VERSION = 'v3'
-    DRIVE_SERVICE_NAME = 'drive'
     DEFAULT_ORDER_BY = "sharedWithMeTime desc"
     QUERY_SHARED_WITH_ME = "sharedWithMe"
     DEFAULT_PAGE_SIZE = 100
 
-    def __init__(self, authorizer: GoogleApiAuthorizer, api_version: str = DEFAULT_API_VERSION):
-        self.api_version = api_version
+    def __init__(self, authorizer: GoogleApiAuthorizer, api_version: str = ServiceType.DRIVE.default_api_version):
         self.creds = authorizer.authorize()
-        self.service = build(self.DRIVE_SERVICE_NAME, self.api_version, credentials=self.creds)
+        self.service = build(authorizer.service_type, api_version, credentials=self.creds)
         self.files_service = self.service.files()
 
     def print_shared_files(self, page_size=DEFAULT_PAGE_SIZE, fields=None, order_by=DEFAULT_ORDER_BY):
