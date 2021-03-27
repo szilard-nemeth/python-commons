@@ -157,6 +157,14 @@ class DriveApiWrapper:
         return result_files
 
     @classmethod
+    def _convert_mime_type(cls, mime_type):
+        if mime_type in DriveApiMimeTypes.MIME_MAPPINGS:
+            return DriveApiMimeTypes.MIME_MAPPINGS[mime_type]
+        else:
+            LOG.warning("MIME type not found among possible values: %s. Using MIME type value as is", mime_type)
+            return mime_type
+
+    @classmethod
     def _convert_to_drive_file_object(cls, item) -> DriveApiFile:
         list_of_owners_dicts = item['owners']
         owners = [DriveApiUser(owner_dict) for owner_dict in list_of_owners_dicts]
