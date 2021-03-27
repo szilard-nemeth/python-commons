@@ -6,6 +6,6 @@ class ServiceType(Enum):
     GMAIL = ('gmail', ['https://www.googleapis.com/auth/gmail.readonly'], "v1")
 
     def __init__(self, name, scopes, api_version):
-        self.name = name
+        self.service_name = name
         self.default_scopes = scopes
         self.default_api_version = api_version
