@@ -23,7 +23,7 @@ class GoogleApiAuthorizer:
                  credentials_filename: str = CREDENTIALS_FILENAME):
         self.service_type = service_type
         if scopes is None:
-            self.scopes = self.service_type.scopes
+            self.scopes = self.service_type.default_scopes
         self.server_port = server_port
         self.token_filename = token_filename
         self.creds_filename = credentials_filename
