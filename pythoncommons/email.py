@@ -1,5 +1,4 @@
 import logging
-import zipfile
 from email.mime.text import MIMEText
 import smtplib
 from email import encoders
