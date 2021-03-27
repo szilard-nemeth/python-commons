@@ -75,25 +75,6 @@ class GenericApiField:
 
 
 @auto_str
-class DriveApiFile(dict):
-    def __init__(self, id, name, link, created_date, modified_date, shared_with_me_date, mime_type, owners,
-                 sharing_user):
-        super(DriveApiFile, self).__init__()
-        self.id = id
-        self.name = StringUtils.replace_special_chars(name)
-        self.link = link
-        self.created_date = created_date
-        self.modified_date = modified_date
-        self.shared_with_me_date = shared_with_me_date
-        self.mime_type = mime_type
-        self.owners = owners
-        self.sharing_user = StringUtils.replace_special_chars(sharing_user)
-
-    def __repr__(self):
-        return self.__str__()
-
-
-@auto_str
 class DriveApiUser(dict):
     def __init__(self, owner_dict):
         super(DriveApiUser, self).__init__()
@@ -106,6 +87,27 @@ class DriveApiUser(dict):
         name = owner_dict[display_name_field] if display_name_field in owner_dict else unknown_user
         self.email = email
         self.name = StringUtils.replace_special_chars(name)
+
+    def __repr__(self):
+        return self.__str__()
+
+
+@auto_str
+class DriveApiFile(dict):
+    def __init__(self, id, name, link, created_date, modified_date, shared_with_me_date, mime_type, owners,
+                 sharing_user: DriveApiUser):
+        super(DriveApiFile, self).__init__()
+        self.id = id
+        self.name = StringUtils.replace_special_chars(name)
+        self.link = link
+        self.created_date = created_date
+        self.modified_date = modified_date
+        self.shared_with_me_date = shared_with_me_date
+        self.mime_type = mime_type
+        self.owners = owners
+
+        sharing_user.name = StringUtils.replace_special_chars(sharing_user.name)
+        self.sharing_user = sharing_user
 
     def __repr__(self):
         return self.__str__()
