@@ -157,7 +157,7 @@ class DriveApiWrapper:
         return result_files
 
     @classmethod
-    def _convert_mime_type(cls, mime_type):
+    def convert_mime_type(cls, mime_type):
         if mime_type in DriveApiMimeTypes.MIME_MAPPINGS:
             return DriveApiMimeTypes.MIME_MAPPINGS[mime_type]
         else:
