@@ -121,8 +121,10 @@ class DriveApiWrapper:
     QUERY_SHARED_WITH_ME = "sharedWithMe"
     DEFAULT_PAGE_SIZE = 100
 
-    def __init__(self, authorizer: GoogleApiAuthorizer, api_version: str = ServiceType.DRIVE.default_api_version):
+    def __init__(self, authorizer: GoogleApiAuthorizer, api_version: str = None):
         self.creds = authorizer.authorize()
+        if not api_version:
+            api_version = authorizer.service_type.default_api_version
         self.service = build(authorizer.service_type.service_name, api_version, credentials=self.creds)
         self.files_service = self.service.files()
 
