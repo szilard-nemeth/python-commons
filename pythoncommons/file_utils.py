@@ -8,6 +8,7 @@ import shutil
 import tempfile
 from enum import Enum
 from pathlib import Path
+from typing import List
 
 import humanize
 
@@ -185,18 +186,56 @@ class FileUtils:
                 "Visited: {}".format(root_dir_name, orig_path, visited))
         return path
 
+    # TODO rename method
     @classmethod
-    def find_files(cls, basedir, regex=None, single_level=False, full_path_result=False):
-        regex = re.compile(regex)
+    def find_files(cls, basedir, regex: str = None, single_level=False, full_path_result=False,
+                   extension=None, debug=False, exclude_dirs: List[str] = None):
+        saved_args = locals()
+        if debug:
+            LOG.info(f"[FINDING FILES] Received args: {saved_args}")
+        if not exclude_dirs:
+            exclude_dirs = []
+        # Preprocess
+        if extension:
+            if extension.startswith("."):
+                extension = extension.split(".")[-1]
+            LOG.info(f"[FINDING FILES] Filtering files with extension: {extension}")
 
-        res_files = []
-        for root, dirs, files in os.walk(basedir):
+        if debug:
+            LOG.info(f"[FINDING FILES] Modified args: {locals()}")
+
+        kwargs = {}
+        if exclude_dirs:
+            kwargs["topdown"] = True
+
+        regex_pattern = re.compile(regex) if regex else None
+        res_files: List[str] = []
+        for root, dirs, files in os.walk(basedir, **kwargs):
+            if debug:
+                LOG.debug(f"[FINDING FILES] Processing root: {root}, dirs: {dirs}")
+            if exclude_dirs:
+                # Not enough to check against basename(root) as all other dirs underneath will be walked on the next
+                # invocation of the walk generator with the loop statement
+                orig_dirs = dirs.copy()
+                dirs[:] = [d for d in dirs if d not in exclude_dirs]
+                if len(orig_dirs) != len(dirs):
+                    if debug:
+                        LOG.debug(f"[FINDING FILES] Excluded dirs: {list(set(orig_dirs) - set(dirs))}")
+
             for file in files:
-                if regex.match(file):
-                    if full_path_result:
-                        res_files.append(FileUtils.join_path(root, file))
-                    else:
-                        res_files.append(file)
+                if debug:
+                    LOG.debug(f"[FINDING FILES] Processing file: {file}")
+                if extension and file.endswith("." + extension):
+                    matched = True if not regex_pattern else False
+                    if regex_pattern and regex_pattern.match(file):
+                        matched = True
+                        if debug:
+                            LOG.debug(f"[FINDING FILES] File matched: {file}")
+                    if matched:
+                        if full_path_result:
+                            res_files.append(FileUtils.join_path(root, file))
+                        else:
+                            res_files.append(file)
             if single_level:
                 return res_files
         return res_files
