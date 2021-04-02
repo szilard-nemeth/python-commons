@@ -6,3 +6,4 @@ gspread
 humanize
 bs4
 requests
+gitpython

@@ -1,0 +1,6 @@
+HEAD = "HEAD"
+ORIGIN = "origin"
+FETCH_HEAD = "FETCH_HEAD"
+REVERT = "Revert"
+SHORT_SHA_LENGTH = 7  # https://stackoverflow.com/a/18134919/1106893
+COMMIT_FIELD_SEPARATOR = " "
