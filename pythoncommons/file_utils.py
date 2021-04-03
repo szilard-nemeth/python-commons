@@ -192,17 +192,17 @@ class FileUtils:
                    extension=None, debug=False, exclude_dirs: List[str] = None):
         saved_args = locals()
         if debug:
-            LOG.info(f"[FINDING FILES] Received args: {saved_args}")
+            LOG.debug(f"[FINDING FILES] Received args: {saved_args}")
         if not exclude_dirs:
             exclude_dirs = []
         # Preprocess
         if extension:
             if extension.startswith("."):
                 extension = extension.split(".")[-1]
-            LOG.info(f"[FINDING FILES] Filtering files with extension: {extension}")
+            LOG.debug(f"[FINDING FILES] Filtering files with extension: {extension}")
 
         if debug:
-            LOG.info(f"[FINDING FILES] Modified args: {locals()}")
+            LOG.debug(f"[FINDING FILES] Modified args: {locals()}")
 
         kwargs = {}
         if exclude_dirs:
