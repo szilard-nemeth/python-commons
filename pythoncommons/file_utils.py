@@ -197,7 +197,7 @@ class FileUtils:
             exclude_dirs = []
         # Preprocess
         if extension:
-            if extension.startswith("."):
+            if extension.startswith(".") or extension.startswith("*."):
                 extension = extension.split(".")[-1]
             LOG.debug(f"[FINDING FILES] Filtering files with extension: {extension}")
 
