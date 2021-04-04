@@ -3,8 +3,8 @@ import os
 from typing import List
 
 from git import Repo, RemoteProgress, GitCommandError, Commit
-from git_constants import ORIGIN
-from git_constants import HEAD, COMMIT_FIELD_SEPARATOR
+from pythoncommons.git_constants import ORIGIN
+from pythoncommons.git_constants import HEAD, COMMIT_FIELD_SEPARATOR
 
 FORMAT_CODE_HASH = "%H"
 FORMAT_CODE_COMMIT_MSG = "%s"
