@@ -20,6 +20,13 @@ setup(
     author_email='szilard.nemeth88@gmail.com',
     url='',
     license=license,
-    packages=find_packages(exclude=('tests', 'docs'))
+    packages=find_packages(exclude=('tests', 'docs')),
+    install_requires=[
+       'humanize',
+       'gspread',
+        'bs4',
+        'requests',
+        'gitpython'
+    ]
 )
 
