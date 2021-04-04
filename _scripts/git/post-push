@@ -1,0 +1,11 @@
+#!/bin/zsh
+
+if [[ -d "$HOME/.linuxenv" ]]; then
+  helper_script=$(find $HOME/.linuxenv -iname "myrepos-helpers.sh")
+  if [[ -f $helper_script ]]; then
+    source $helper_script
+    alias
+    myrepos-reset-pythoncommons
+  fi
+fi
+
