@@ -225,17 +225,17 @@ class FileUtils:
             for file in files:
                 if debug:
                     LOG.debug(f"[FINDING FILES] Processing file: {file}")
-                if extension and file.endswith("." + extension):
-                    matched = True if not regex_pattern else False
-                    if regex_pattern and regex_pattern.match(file):
-                        matched = True
-                        if debug:
-                            LOG.debug(f"[FINDING FILES] File matched: {file}")
-                    if matched:
-                        if full_path_result:
-                            res_files.append(FileUtils.join_path(root, file))
-                        else:
-                            res_files.append(file)
+                matched = True
+                if (extension and not file.endswith("." + extension)) or \
+                        (regex_pattern and not regex_pattern.match(file)):
+                    matched = False
+                if matched:
+                    if debug:
+                        LOG.debug(f"[FINDING FILES] File matched: {file}")
+                    if full_path_result:
+                        res_files.append(FileUtils.join_path(root, file))
+                    else:
+                        res_files.append(file)
             if single_level:
                 return res_files
         return res_files
