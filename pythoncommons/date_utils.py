@@ -79,6 +79,22 @@ class DateUtils:
         return DateUtils.WIN_EPOCH + datetime.timedelta(microseconds=microseconds)
 
     @classmethod
+    def get_current_time_minus(cls, seconds=None, minutes=None, hours=None, days=None):
+        now = datetime.datetime.now()
+        kwargs = {}
+        if seconds:
+            kwargs['seconds'] = seconds
+        if minutes:
+            kwargs['minutes'] = minutes
+        if hours:
+            kwargs['hours'] = hours
+        if days:
+            kwargs['days'] = days
+
+        now - datetime.timedelta()
+        return now - datetime.timedelta(**kwargs)
+
+    @classmethod
     def convert_to_datetime(cls, date_string, fmt):
         return datetime.datetime.strptime(date_string, fmt)
 
