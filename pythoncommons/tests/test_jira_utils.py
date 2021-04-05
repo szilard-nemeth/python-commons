@@ -4,14 +4,14 @@ from os.path import expanduser
 
 from pythoncommons.file_utils import FileUtils
 from pythoncommons.jira_utils import JiraUtils
+from pythoncommons.project_utils import ProjectUtils
+
 PROJECT_NAME = "pythoncommons"
-DEST_DIR_PREFIX = "test"
 
 
 class JiraUtilsTests(unittest.TestCase):
-
     def test_YARN_10496(self):
-        project_out_root = FileUtils.join_path(expanduser("~"), PROJECT_NAME, DEST_DIR_PREFIX)
+        project_out_root = ProjectUtils.get_test_output_basedir(PROJECT_NAME)
         result_basedir = FileUtils.join_path(project_out_root, "jira-data")
         FileUtils.ensure_dir_created(result_basedir)
         jira_id = "YARN-10496"
