@@ -76,7 +76,7 @@ class ProjectUtils:
         return new_child_dir
 
     @classmethod
-    def get_test_output_child_dir(cls, dir_name: str, ensure_created=True):
+    def get_test_output_child_dir(cls, dir_name: str, ensure_created=True, special_parent_dir=None):
         if not dir_name:
             raise ValueError("Dir name should be specified!")
         project_name = cls._validate_project_for_child_dir_creation()
@@ -86,8 +86,17 @@ class ProjectUtils:
             LOG.debug(f"Found already stored child test dir for project '{project_name}': {stored_dir}")
             return stored_dir
 
-        proj_basedir = cls.PROJECT_BASEDIR_DICT[project_name]
-        new_child_dir = FileUtils.join_path(proj_basedir, TEST_OUTPUT_DIR_NAME, dir_name)
+        if special_parent_dir:
+            if not FileUtils.does_path_exist(special_parent_dir):
+                raise ValueError(f"Specified parent dir does not exist: {special_parent_dir}")
+            LOG.debug(f"Parent dir of new child directory will be: {special_parent_dir}")
+            parent_dir = special_parent_dir
+            new_child_dir = FileUtils.join_path(parent_dir, dir_name)
+        else:
+            # Default parent dir: Basedir of project
+            # New child dir: basedir/test/<new child dir name>
+            parent_dir = cls.PROJECT_BASEDIR_DICT[project_name]
+            new_child_dir = FileUtils.join_path(parent_dir, TEST_OUTPUT_DIR_NAME, dir_name)
         if project_name not in cls.CHILD_DIR_TEST_DICT:
             cls.CHILD_DIR_TEST_DICT[project_name] = {}
         cls.CHILD_DIR_TEST_DICT[project_name][dir_name] = new_child_dir
