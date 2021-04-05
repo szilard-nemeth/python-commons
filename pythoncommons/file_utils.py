@@ -6,9 +6,12 @@ import os
 import re
 import shutil
 import tempfile
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import List
+from stat import ST_SIZE
+from stat import ST_MTIME
 
 import humanize
 
@@ -336,15 +339,42 @@ class FileUtils:
         return dest_file_path
 
     @classmethod
-    def get_file_sizes_in_dir(cls, db_copies_dir):
-        files = os.listdir(db_copies_dir)
+    def get_formatted_file_sizes_in_dir(cls, db_copies_dir, since: datetime = None):
         result = ""
+        file_data = cls.get_file_sizes_with_mod_dates_in_dir(db_copies_dir)
+        for fd in file_data:
+            include = True
+            if since:
+                mod_date_of_file = datetime.fromtimestamp(float(fd[2]))
+                if mod_date_of_file < since:
+                    include = False
+                    LOG.debug(f"Mod date of file < since, dropping it. File was: {fd[0]}")
+
+            if include:
+                human_readable_size = humanize.naturalsize(fd[1], gnu=True)
+                result += "{size}    {file}\n".format(size=human_readable_size, file=fd[0])
+        return result
+
+    @classmethod
+    def get_file_sizes_in_dir(cls, db_copies_dir):
+        return cls._get_files_with_attrs_in_dir(db_copies_dir, [ST_SIZE])
+
+    @classmethod
+    def _get_files_with_attrs_in_dir(cls, db_copies_dir: str, stat_attrs_idx: List[int]):
+        files = os.listdir(db_copies_dir)
+        result = []
         for f in files:
             file_path = os.path.join(db_copies_dir, f)
-            size = os.stat(file_path).st_size
-            human_readable_size = humanize.naturalsize(size, gnu=True)
-            result += "{size}    {file}\n".format(size=human_readable_size, file=file_path)
+            tup = (file_path,)
+            for attr_idx in stat_attrs_idx:
+                file_stats = os.stat(file_path)
+                tup = tup + (file_stats[attr_idx],)
+            result.append(tup)
         return result
+
+    @classmethod
+    def get_file_sizes_with_mod_dates_in_dir(cls, dir):
+        return cls._get_files_with_attrs_in_dir(dir, [ST_SIZE, ST_MTIME])
 
     @classmethod
     def get_file_extension(cls, filename):
