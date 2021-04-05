@@ -1,6 +1,5 @@
 import logging
 import os
-from dataclasses import dataclass
 from os.path import expanduser
 import inspect
 from pythoncommons.file_utils import FileUtils
@@ -15,6 +14,8 @@ TEST_OUTPUT_DIR_NAME = "test"
 
 class ProjectUtils:
     PROJECT_BASEDIR_DICT = {}
+    CHILD_DIR_DICT = {}
+    CHILD_DIR_TEST_DICT = {}
 
     @classmethod
     def get_output_basedir(cls, basedir_name: str, ensure_created=True):
@@ -54,8 +55,18 @@ class ProjectUtils:
         if not dir_name:
             raise ValueError("Dir name should be specified!")
         project_name = cls._validate_project_for_child_dir_creation()
+
+        if project_name in cls.CHILD_DIR_DICT and dir_name in cls.CHILD_DIR_DICT[project_name]:
+            stored_dir = cls.CHILD_DIR_DICT[project_name][dir_name]
+            LOG.debug(f"Found already stored child dir for project '{project_name}': {stored_dir}")
+            return stored_dir
+
         proj_basedir = cls.PROJECT_BASEDIR_DICT[project_name]
         new_child_dir = FileUtils.join_path(proj_basedir, dir_name)
+        if project_name not in cls.CHILD_DIR_DICT:
+            cls.CHILD_DIR_DICT[project_name] = {}
+        cls.CHILD_DIR_DICT[dir_name] = new_child_dir
+
         if ensure_created:
             FileUtils.ensure_dir_created(new_child_dir)
         return new_child_dir
@@ -65,8 +76,18 @@ class ProjectUtils:
         if not dir_name:
             raise ValueError("Dir name should be specified!")
         project_name = cls._validate_project_for_child_dir_creation()
+
+        if project_name in cls.CHILD_DIR_TEST_DICT and dir_name in cls.CHILD_DIR_TEST_DICT[project_name]:
+            stored_dir = cls.CHILD_DIR_TEST_DICT[project_name][dir_name]
+            LOG.debug(f"Found already stored child test dir for project '{project_name}': {stored_dir}")
+            return stored_dir
+
         proj_basedir = cls.PROJECT_BASEDIR_DICT[project_name]
         new_child_dir = FileUtils.join_path(proj_basedir, TEST_OUTPUT_DIR_NAME, dir_name)
+        if project_name not in cls.CHILD_DIR_TEST_DICT:
+            cls.CHILD_DIR_TEST_DICT[project_name] = {}
+        cls.CHILD_DIR_TEST_DICT[dir_name] = new_child_dir
+
         if ensure_created:
             FileUtils.ensure_dir_created(new_child_dir)
         return new_child_dir
@@ -98,7 +119,6 @@ class ProjectUtils:
             raise ValueError(
                 f"Unexpected project repos directory. The repos '{REPOS_DIR}' is not in caller file path: '{file_of_caller}'")
         return file_of_caller
-
 
     @classmethod
     def _parse_project_from_caller_filename(cls, file_of_caller):
