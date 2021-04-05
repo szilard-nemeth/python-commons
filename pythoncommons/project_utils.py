@@ -2,6 +2,8 @@ import logging
 import os
 from os.path import expanduser
 import inspect
+
+from pythoncommons.date_utils import DateUtils
 from pythoncommons.file_utils import FileUtils
 
 LOG = logging.getLogger(__name__)
@@ -10,6 +12,7 @@ REPOS_DIR = FileUtils.join_path(expanduser("~"), "development", "my-repos")
 PROJECTS_BASEDIR = FileUtils.join_path(expanduser("~"), PROJECTS_BASEDIR_NAME)
 LOGS_DIR_NAME = "logs"
 TEST_OUTPUT_DIR_NAME = "test"
+TEST_LOG_FILE_POSTFIX = "TEST"
 
 
 class ProjectUtils:
@@ -109,8 +112,24 @@ class ProjectUtils:
         return cls.get_output_child_dir(LOGS_DIR_NAME)
 
     @classmethod
+    def get_default_log_file(cls, project_name: str, postfix: str = None):
+        if not postfix:
+            postfix = ""
+        filename = f"{project_name}-{postfix}-{DateUtils.get_current_datetime()}"
+        log_dir = cls.get_logs_dir()
+        return FileUtils.join_path(log_dir, filename)
+
+    @classmethod
     def get_test_logs_dir(cls):
         return cls.get_test_output_child_dir(LOGS_DIR_NAME)
+
+    @classmethod
+    def get_default_test_log_file(cls, project_name: str, postfix: str = None):
+        if not postfix:
+            postfix = ""
+        filename = f"{project_name}-{TEST_LOG_FILE_POSTFIX}-{postfix}-{DateUtils.get_current_datetime()}"
+        log_dir = cls.get_test_logs_dir()
+        return FileUtils.join_path(log_dir, filename)
 
     @classmethod
     def verify_caller_filename_valid(cls):
