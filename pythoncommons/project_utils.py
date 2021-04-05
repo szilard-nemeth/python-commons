@@ -113,8 +113,10 @@ class ProjectUtils:
 
     @classmethod
     def get_default_log_file(cls, project_name: str, postfix: str = None):
-        if not postfix:
+        if postfix:
             postfix += "-"
+        else:
+            postfix = ""
 
         filename = f"{project_name}-{postfix}{DateUtils.get_current_datetime()}"
         log_dir = cls.get_logs_dir()
