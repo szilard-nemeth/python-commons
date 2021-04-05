@@ -27,11 +27,12 @@ class ProjectUtils:
         proj_basedir = FileUtils.join_path(PROJECTS_BASEDIR, basedir_name)
         if project_name in cls.PROJECT_BASEDIR_DICT:
             old_basedir = cls.PROJECT_BASEDIR_DICT[project_name]
-            raise ValueError("Project is already registered with a different output basedir. Details: \n"
-                             f"Old basedir name: {old_basedir.split(os.sep)[-1]}\n"
-                             f"Project basedir's old full path: {old_basedir}\n"
-                             f"New basedir name would be: {basedir_name}\n"
-                             f"Project basedir's new full path would be: {proj_basedir}\n")
+            if old_basedir != proj_basedir:
+                raise ValueError("Project is already registered with a different output basedir. Details: \n"
+                                 f"Old basedir name: {old_basedir.split(os.sep)[-1]}\n"
+                                 f"Project basedir's old full path: {old_basedir}\n"
+                                 f"New basedir name would be: {basedir_name}\n"
+                                 f"Project basedir's new full path would be: {proj_basedir}\n")
         cls.PROJECT_BASEDIR_DICT[project_name] = proj_basedir
 
         if ensure_created:
