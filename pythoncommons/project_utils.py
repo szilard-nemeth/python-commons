@@ -69,7 +69,7 @@ class ProjectUtils:
         new_child_dir = FileUtils.join_path(proj_basedir, dir_name)
         if project_name not in cls.CHILD_DIR_DICT:
             cls.CHILD_DIR_DICT[project_name] = {}
-        cls.CHILD_DIR_DICT[dir_name] = new_child_dir
+        cls.CHILD_DIR_DICT[project_name][dir_name] = new_child_dir
 
         if ensure_created:
             FileUtils.ensure_dir_created(new_child_dir)
@@ -90,7 +90,7 @@ class ProjectUtils:
         new_child_dir = FileUtils.join_path(proj_basedir, TEST_OUTPUT_DIR_NAME, dir_name)
         if project_name not in cls.CHILD_DIR_TEST_DICT:
             cls.CHILD_DIR_TEST_DICT[project_name] = {}
-        cls.CHILD_DIR_TEST_DICT[dir_name] = new_child_dir
+        cls.CHILD_DIR_TEST_DICT[project_name][dir_name] = new_child_dir
 
         if ensure_created:
             FileUtils.ensure_dir_created(new_child_dir)
