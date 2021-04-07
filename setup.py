@@ -22,11 +22,12 @@ setup(
     license=license,
     packages=find_packages(exclude=('tests', 'docs')),
     install_requires=[
-       'humanize',
-       'gspread',
+        'humanize',
+        'gspread',
         'bs4',
         'requests',
-        'gitpython'
+        'gitpython',
+        'tabulate'
     ]
 )
 

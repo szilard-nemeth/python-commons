@@ -3,6 +3,10 @@ import math
 import string
 import re
 import unicodedata
+from typing import List
+
+from tabulate import tabulate
+
 LOG = logging.getLogger(__name__)
 
 
@@ -136,3 +140,15 @@ class RegexUtils:
                 match,
             )
         return match.group(group)
+
+
+class ResultPrinter:
+    def __init__(self, data: List[List[str]], headers: List[str]):
+        self.data = data
+        self.headers = headers
+
+    def print_table(self):
+        LOG.info("Printing result table: %s", tabulate(self.data, self.headers, tablefmt="fancy_grid"))
+
+    def print_table_html(self):
+        LOG.info("Printing result table: %s", tabulate(self.data, self.headers, tablefmt="html"))

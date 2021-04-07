@@ -7,3 +7,4 @@ humanize
 bs4
 requests
 gitpython
+tabulate
