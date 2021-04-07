@@ -19,8 +19,10 @@ TEST_LOG_FILE_POSTFIX = "TEST"
 def determine_project_and_parent_dir(project_name_and_file, stack):
     if REPOS_DIR in project_name_and_file:
         filename = project_name_and_file[len(REPOS_DIR):]
-        LOG.info(f"Determined path: {REPOS_DIR}, filename: {filename}")
-        return REPOS_DIR, filename
+        # We should return the first dir name of the path
+        project = filename.split(os.sep)[0]
+        LOG.info(f"Determined path: {REPOS_DIR}, project: {project}")
+        return REPOS_DIR, project
 
     for path in sys.path:
         if project_name_and_file.startswith(path):
