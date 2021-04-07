@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from os.path import expanduser
 import inspect
 
@@ -8,11 +9,31 @@ from pythoncommons.file_utils import FileUtils
 
 LOG = logging.getLogger(__name__)
 PROJECTS_BASEDIR_NAME = "snemeth-dev-projects"
-REPOS_DIR = FileUtils.join_path(expanduser("~"), "development", "my-repos")
 PROJECTS_BASEDIR = FileUtils.join_path(expanduser("~"), PROJECTS_BASEDIR_NAME)
 LOGS_DIR_NAME = "logs"
 TEST_OUTPUT_DIR_NAME = "test"
 TEST_LOG_FILE_POSTFIX = "TEST"
+
+
+def determine_project_and_parent_dir(project_name_and_file, stack):
+    for path in sys.path:
+        if project_name_and_file.startswith(path):
+            parts = project_name_and_file.split(path)
+
+            # Cut leading slashes
+            if parts[1].startswith(os.sep):
+                project_name_and_file = parts[1][1:]
+                LOG.info(f"Determined path: {parts[0]}, filename: {project_name_and_file}")
+            return path, project_name_and_file
+
+    stack_str = "\n".join([str(f.frame) for f in stack])
+    sys_path_str = "\n".join(sys.path)
+    raise ValueError(
+        f"Unexpected project execution directory. \n"
+        f"Filename of caller: '{project_name_and_file}'\n"
+        f"Printing diagnostic info including call stack + sys.path...\n"
+        f"\nCall stack: \n{stack_str}\n"
+        f"\nsys.path: \n{sys_path_str}")
 
 
 class ProjectUtils:
@@ -25,8 +46,7 @@ class ProjectUtils:
         if not basedir_name:
             raise ValueError("Basedir name should be specified!")
 
-        file_of_caller = cls.verify_caller_filename_valid()
-        project_name = cls._parse_project_from_caller_filename(file_of_caller)
+        project_name = cls.verify_caller_filename_valid()
         proj_basedir = FileUtils.join_path(PROJECTS_BASEDIR, basedir_name)
         if project_name in cls.PROJECT_BASEDIR_DICT:
             old_basedir = cls.PROJECT_BASEDIR_DICT[project_name]
@@ -44,8 +64,7 @@ class ProjectUtils:
 
     @classmethod
     def get_test_output_basedir(cls, basedir_name: str):
-        file_of_caller = cls.verify_caller_filename_valid()
-        project_name = cls._parse_project_from_caller_filename(file_of_caller)
+        project_name = cls.verify_caller_filename_valid()
         if project_name not in cls.PROJECT_BASEDIR_DICT:
             # Creating project dir for the first time
             proj_basedir = cls.get_output_basedir(basedir_name)
@@ -107,8 +126,7 @@ class ProjectUtils:
 
     @classmethod
     def _validate_project_for_child_dir_creation(cls):
-        file_of_caller = cls.verify_caller_filename_valid()
-        project_name = cls._parse_project_from_caller_filename(file_of_caller)
+        project_name = cls.verify_caller_filename_valid()
         if project_name not in cls.PROJECT_BASEDIR_DICT:
             raise ValueError(f"Project '{project_name}' is unknown. "
                              f"Known projects are: {list(cls.PROJECT_BASEDIR_DICT.keys())}\n"
@@ -145,22 +163,24 @@ class ProjectUtils:
 
     @classmethod
     def verify_caller_filename_valid(cls):
-        file_of_caller = inspect.stack()[1].filename
+        stack = inspect.stack()
+        stack_frame = cls._find_first_non_pythoncommons_stackframe(stack)
+        file_of_caller = stack_frame.filename
         LOG.debug("Filename of caller: " + file_of_caller)
-        if REPOS_DIR not in file_of_caller:
-            raise ValueError(
-                f"Unexpected project repos directory. The repos '{REPOS_DIR}' is not in caller file path: '{file_of_caller}'")
-        return file_of_caller
+        return determine_project_and_parent_dir(file_of_caller, stack)
 
     @classmethod
-    def _parse_project_from_caller_filename(cls, file_of_caller):
-        import os
-        # Cut repos dir path from the beginning
-        file_of_caller = file_of_caller[len(REPOS_DIR):]
-
-        # Cut leading slashes
-        if file_of_caller.startswith(os.sep):
-            file_of_caller = file_of_caller[1:]
-
-        # We should return the first dir name of the path
-        return file_of_caller.split(os.sep)[0]
+    def _find_first_non_pythoncommons_stackframe(cls, stack):
+        idx = 1
+        while idx < len(stack):
+            fname = stack[idx].filename
+            if "pythoncommons" not in fname:
+                break
+            idx += 1
+        if idx == len(stack):
+            # Walked up the stack and haven't found any frame that is not pythoncommons
+            stack_str = "\n".join([str(f.frame) for f in stack])
+            raise ValueError("Walked up the stack but haven't found any frame that does not belong to python-commons. \n"
+                             "Printing the stack: \n"
+                             f"{stack_str}")
+        return stack[idx]
