@@ -461,6 +461,10 @@ class FileUtils:
 
     @classmethod
     def join_path(cls, *components):
+        if components and components[0] and not components[0].startswith(os.sep):
+            lst = list(components)
+            lst[0] = os.sep + components[0]
+            components = tuple(lst)
         return os.path.join(*components)
 
     @classmethod
