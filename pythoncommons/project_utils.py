@@ -169,7 +169,8 @@ class ProjectUtils:
         stack_frame = cls._find_first_non_pythoncommons_stackframe(stack)
         file_of_caller = stack_frame.filename
         LOG.debug("Filename of caller: " + file_of_caller)
-        return determine_project_and_parent_dir(file_of_caller, stack)
+        path, project = determine_project_and_parent_dir(file_of_caller, stack)
+        return project
 
     @classmethod
     def _find_first_non_pythoncommons_stackframe(cls, stack):
