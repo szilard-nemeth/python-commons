@@ -10,12 +10,18 @@ from pythoncommons.file_utils import FileUtils
 LOG = logging.getLogger(__name__)
 PROJECTS_BASEDIR_NAME = "snemeth-dev-projects"
 PROJECTS_BASEDIR = FileUtils.join_path(expanduser("~"), PROJECTS_BASEDIR_NAME)
+REPOS_DIR = FileUtils.join_path(expanduser("~"), "development", "my-repos")
 LOGS_DIR_NAME = "logs"
 TEST_OUTPUT_DIR_NAME = "test"
 TEST_LOG_FILE_POSTFIX = "TEST"
 
 
 def determine_project_and_parent_dir(project_name_and_file, stack):
+    if REPOS_DIR in project_name_and_file:
+        filename = project_name_and_file[len(REPOS_DIR):]
+        LOG.info(f"Determined path: {REPOS_DIR}, filename: {filename}")
+        return REPOS_DIR, filename
+
     for path in sys.path:
         if project_name_and_file.startswith(path):
             parts = project_name_and_file.split(path)
