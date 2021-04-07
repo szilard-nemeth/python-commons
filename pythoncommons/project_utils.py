@@ -137,6 +137,21 @@ class ProjectUtils:
         return new_child_dir
 
     @classmethod
+    def save_to_test_file(cls, dir_name: str, filename: str, file_contents: str):
+        if not dir_name:
+            raise ValueError("Dir name should be specified!")
+        if not filename:
+            raise ValueError("Filename should be specified!")
+
+        project_name = cls._validate_project_for_child_dir_creation()
+        if dir_name not in cls.CHILD_DIR_TEST_DICT[project_name]:
+            raise ValueError(f"Unknown test child dir with name '{dir_name}' for project '{project_name}'.")
+
+        dir_path = cls.CHILD_DIR_TEST_DICT[project_name][dir_name]
+        FileUtils.save_to_file(
+            FileUtils.join_path(dir_path, filename), file_contents)
+
+    @classmethod
     def _validate_project_for_child_dir_creation(cls):
         project_name = cls.verify_caller_filename_valid()
         if project_name not in cls.PROJECT_BASEDIR_DICT:
