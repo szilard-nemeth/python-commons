@@ -82,6 +82,7 @@ class ProjectUtils:
         if project_name in cls.CHILD_DIR_DICT and dir_name in cls.CHILD_DIR_DICT[project_name]:
             stored_dir = cls.CHILD_DIR_DICT[project_name][dir_name]
             LOG.debug(f"Found already stored child dir for project '{project_name}': {stored_dir}")
+            FileUtils.ensure_dir_created(stored_dir)
             return stored_dir
 
         proj_basedir = cls.PROJECT_BASEDIR_DICT[project_name]
@@ -103,6 +104,7 @@ class ProjectUtils:
         if project_name in cls.CHILD_DIR_TEST_DICT and dir_name in cls.CHILD_DIR_TEST_DICT[project_name]:
             stored_dir = cls.CHILD_DIR_TEST_DICT[project_name][dir_name]
             LOG.debug(f"Found already stored child test dir for project '{project_name}': {stored_dir}")
+            FileUtils.ensure_dir_created(stored_dir)
             return stored_dir
 
         if special_parent_dir:
