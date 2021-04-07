@@ -164,12 +164,7 @@ class ProjectUtils:
         FileUtils.remove_files(dir_path, ".*")
         LOG.info(f"Recreating dir: {dir_path}")
         new_dir = FileUtils.ensure_dir_created(dir_path)
-
-        stack = inspect.stack()
-        stack_frame = cls._find_first_non_pythoncommons_stackframe(stack)
-        file_of_caller = stack_frame.filename
         LOG.info("Basedir of %s is: %s", clazz.__name__, new_dir)
-
         return new_dir
 
     @classmethod
