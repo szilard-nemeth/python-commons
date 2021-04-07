@@ -20,6 +20,9 @@ def determine_project_and_parent_dir(project_name_and_file, stack):
     if REPOS_DIR in project_name_and_file:
         filename = project_name_and_file[len(REPOS_DIR):]
         # We should return the first dir name of the path
+        # Cut leading slashes, if any as split would return empty string for 0th component
+        if filename.startswith(os.sep):
+            filename = filename[1:]
         project = filename.split(os.sep)[0]
         LOG.info(f"Determined path: {REPOS_DIR}, project: {project}")
         return REPOS_DIR, project
@@ -27,7 +30,6 @@ def determine_project_and_parent_dir(project_name_and_file, stack):
     for path in sys.path:
         if project_name_and_file.startswith(path):
             parts = project_name_and_file.split(path)
-
             # Cut leading slashes
             if parts[1].startswith(os.sep):
                 project_name_and_file = parts[1][1:]
