@@ -144,12 +144,33 @@ class ProjectUtils:
             raise ValueError("Filename should be specified!")
 
         project_name = cls._validate_project_for_child_dir_creation()
-        if dir_name not in cls.CHILD_DIR_TEST_DICT[project_name]:
-            raise ValueError(f"Unknown test child dir with name '{dir_name}' for project '{project_name}'.")
-
+        cls.validate_test_child_dir(dir_name, project_name)
         dir_path = cls.CHILD_DIR_TEST_DICT[project_name][dir_name]
         FileUtils.save_to_file(
             FileUtils.join_path(dir_path, filename), file_contents)
+
+    @classmethod
+    def validate_test_child_dir(cls, dir_name, project_name):
+        if dir_name not in cls.CHILD_DIR_TEST_DICT[project_name]:
+            raise ValueError(f"Unknown test child dir with name '{dir_name}' for project '{project_name}'.")
+
+    @classmethod
+    def remove_test_files_and_recreate_dir(cls, dir_name: str, clazz):
+        project_name = cls._validate_project_for_child_dir_creation()
+        cls.validate_test_child_dir(dir_name, project_name)
+        dir_path = cls.CHILD_DIR_TEST_DICT[project_name][dir_name]
+
+        LOG.info(f"Removing dir: {dir_path}")
+        FileUtils.remove_files(dir_path, ".*")
+        LOG.info(f"Recreating dir: {dir_path}")
+        new_dir = FileUtils.ensure_dir_created(dir_path)
+
+        stack = inspect.stack()
+        stack_frame = cls._find_first_non_pythoncommons_stackframe(stack)
+        file_of_caller = stack_frame.filename
+        LOG.info("Basedir of %s is: %s", clazz.__name__, new_dir)
+
+        return new_dir
 
     @classmethod
     def _validate_project_for_child_dir_creation(cls):
