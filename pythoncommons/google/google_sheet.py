@@ -39,7 +39,7 @@ class GSheetWrapper:
         self.creds = ServiceAccountCredentials.from_json_keyfile_name(options.client_secret, SCOPE)
         self.client = gspread.authorize(self.creds)
 
-    def write_data(self, header, data):
+    def write_data(self, header, data, clear_range=True):
         # TODO add new column: Last updated date
         try:
             sheet = self.client.open(self.options.spreadsheet)
@@ -54,16 +54,26 @@ class GSheetWrapper:
 
         sheet_title = sheet.title
         worksheet_title = worksheet.title
-        range_to_clear = self.DEFAULT_RANGE_TO_CLEAR
-        LOG.info("Clearing all values from sheet '%s', worksheet: '%s', range: '%s'", sheet_title, worksheet_title, range_to_clear)
-        sheet.values_clear(range_to_clear)
+        if clear_range:
+            self.clear_range(sheet, sheet_title, worksheet_title)
 
         col_letter = chr(ord('a') + len(header) - 1).upper()
         rows = len(all_values)
         range_to_update = "{}:{}{}".format(self.A1, col_letter, rows)
         LOG.info("Adding values to sheet '%s', worksheet: '%s', range: '%s'", sheet_title, worksheet_title, range_to_update)
         sheet.values_update(
-            '{}!{}'.format(self.options.worksheet, self.A1),
+            '{}!{}'.format(self.options.worksheet, range_to_update),
             params={'valueInputOption': 'RAW'},
             body={'values': all_values}
         )
+
+    def clear_range(self, sheet, sheet_title, worksheet_title):
+        range_to_clear = self.DEFAULT_RANGE_TO_CLEAR
+        LOG.info("Clearing all values from sheet '%s', worksheet: '%s', range: '%s'", sheet_title, worksheet_title,
+                 range_to_clear)
+        sheet.values_clear(range_to_clear)
+
+        # It seems somehow gspread "memorizes" the cleared range and will add the new rows after the range, regardless
+        # of what range have been provided with the range parameter to 'values_update'
+        # HACK: Clear range A1:A1
+        sheet.values_clear("A1:A1")
