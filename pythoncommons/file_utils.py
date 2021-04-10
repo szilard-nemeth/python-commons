@@ -608,6 +608,18 @@ class FileUtils:
     def read_file(cls, f):
         return open(f, 'r').read()
 
+    @classmethod
+    def create_symlink(cls, link_src, link_dest):
+        LOG.info("Creating symlink: %s -> %s", link_dest, link_src)
+        # os.symlink(src, dest)
+        # src: Already existing path to create the link pointing to
+        # dest: Link name
+        try:
+            os.symlink(link_src, link_dest)
+        except OSError as e:
+            if e.errno == errno.EEXIST:
+                LOG.warning("Symlink does exist, ignoring. Details: %s", str(e))
+
 
 class JsonFileUtils:
     @classmethod
