@@ -1,7 +1,7 @@
 import logging
 import os
 from enum import Enum
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 import docker
 from docker import APIClient
@@ -117,10 +117,15 @@ class DockerDiagnosticCommand:
 
 
 class DockerTestSetup:
-    def __init__(self, image_name, create_image=False, dockerfile_location=None):
+    def __init__(self, image_name, create_image=False, dockerfile_location=None, logger=None):
         self.image_name = image_name
         if create_image:
             self.create_image(dockerfile_location=dockerfile_location)
+
+        if logger:
+            self.CMD_LOG = logger
+        else:
+            self.CMD_LOG = LOG
 
         # Assigned later
         self._reinit()
@@ -236,15 +241,45 @@ class DockerTestSetup:
             # Use this as a workaround
             self.exec_cmd_in_container(['sh', '-c', cmd])
 
-    def exec_cmd_in_container(self, cmd, charset="utf-8", strip=False, fail_on_error=True, stdin=False, tty=False):
-        LOG.info("Running command '%s' in container: '%s'", cmd, self.container)
-        exit_code, output = self.container.exec_run(cmd, stdin=stdin, tty=tty)
-        decoded_stdout = output.decode(charset)
+    def exec_cmd_in_container(self, cmd, charset="utf-8", strip=True, fail_on_error=True,
+                               stdin=False,
+                               tty=False,
+                               env: Dict[str, str] = None,
+                               detach=False,
+                               callback=None, stream=True):
+        if not env:
+            env = {}
 
-        if strip:
-            decoded_stdout = decoded_stdout.strip()
-        LOG.info("%s: %s", cmd, decoded_stdout)
+        # https://stackoverflow.com/questions/29663459/python-app-does-not-print-anything-when-running-detached-in-docker
+        env["PYTHONUNBUFFERED"] = "1"
+        LOG.info(f"Running command '{cmd}' in container: '{self.container}'")
+        exec_handler = DockerWrapper.client.exec_create(self.container.id, cmd, environment=env, stdin=stdin, tty=tty)
+        ret = DockerWrapper.client.exec_start(exec_handler, stream=stream, detach=detach)
 
+        if not stream:
+            if ret:
+                return ret.decode(charset)
+            else:
+                LOG.warning("Return value was None")
+                return None
+
+        if detach:
+            return None
+
+        LOG.info(f"Listing stdout of cmd: {cmd}...")
+        short_cmd = os.path.basename(cmd).rstrip()
+        for output in ret:
+            try:
+                decoded_stdout = output.decode(charset)
+                if strip:
+                    decoded_stdout = decoded_stdout.strip()
+                self.CMD_LOG.info(f"[{short_cmd}] {decoded_stdout}")
+                if callback:
+                    callback(cmd, decoded_stdout, self)
+            except UnicodeDecodeError:
+                LOG.error(f"Error while decoding string: {output.decode('cp437')}")
+
+        exit_code = DockerWrapper.client.exec_inspect(exec_handler['Id']).get('ExitCode')
         if fail_on_error and exit_code != 0:
-            raise ValueError(f"Command '{cmd}' returned with non-zero exit code: {exit_code}. Stdout: {decoded_stdout}")
-        return exit_code, decoded_stdout
+            raise ValueError(f"Command '{cmd}' returned with non-zero exit code: {exit_code}. See logs above for more details.")
+        return exit_code
