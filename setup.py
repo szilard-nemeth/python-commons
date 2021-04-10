@@ -27,7 +27,8 @@ setup(
         'bs4',
         'requests',
         'gitpython',
-        'tabulate'
+        'tabulate',
+        'docker'
     ]
 )
 
