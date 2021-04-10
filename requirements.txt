@@ -9,3 +9,4 @@ requests
 gitpython
 tabulate
 docker
+sh~=1.14.1

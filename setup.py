@@ -28,7 +28,8 @@ setup(
         'requests',
         'gitpython',
         'tabulate',
-        'docker'
+        'docker',
+        'sh'
     ]
 )
 
