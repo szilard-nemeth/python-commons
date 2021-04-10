@@ -138,7 +138,7 @@ class SubprocessCommandRunner:
             time.sleep(wait_after)
 
     @classmethod
-    def run_and_follow_stdout_stderr(cls, cmd, log_file,
+    def run_and_follow_stdout_stderr(cls, cmd, log_file='test.log',
                                      stdout_logger=None,
                                      exit_on_nonzero_exitcode=False):
         if not stdout_logger:
