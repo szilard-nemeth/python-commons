@@ -6,7 +6,6 @@ from typing import List, Tuple, Dict
 import docker
 from docker import APIClient
 import json
-
 from pythoncommons.file_utils import FileUtils
 from pythoncommons.string_utils import auto_str
 
@@ -21,26 +20,36 @@ class DockerWrapper:
         pass
 
     @classmethod
-    def create_image(cls, dockerfile_dir_path, tag=None, build_args=None):
+    def create_image_from_dir(cls, dockerfile_dir_path, tag=None, build_args=None):
+        dockerfile_path = FileUtils.join_path(dockerfile_dir_path, "Dockerfile")
+        cls._build_image_internal(dockerfile_dir_path, dockerfile_path, tag=tag, build_args=build_args)
+
+    @classmethod
+    def create_image_from_dockerfile(cls, docker_file, tag=None, build_args=None):
+        parent_dir = os.path.dirname(docker_file)
+        cls._build_image_internal(parent_dir, docker_file, tag=tag, build_args=build_args)
+
+    @classmethod
+    def _build_image_internal(cls, dockerfile_dir_path, dockerfile_path, tag=None, build_args=None):
         if not build_args:
             build_args = {}
-        dockerfile_path = dockerfile_dir_path + "/Dockerfile"
-        LOG.info("Starting to build Docker image from Dockerfile: %s", dockerfile_path)
+        LOG.info(f"Starting to build Docker image from Dockerfile: {dockerfile_path}, based on parent dir path.")
+        cls._fix_path_for_macos()
+        response = [line for line in cls.client.build(
+            path=dockerfile_dir_path, rm=True, tag=tag, buildargs=build_args, network_mode='host')]
+        errors = cls.log_response(response)
+        if errors:
+            raise ValueError(f"Failed to build Docker image from Dockerfile: {dockerfile_path}. "
+                             f"Error messages: {errors}")
 
-        # Can't combine path and fileobj together.
-        # The only way to replace env vars in Dockerfile is to replace + copy Dockerfile back into repo root
-        # to avoid issues with Dockerfile like it cannot find files to add to image from build directory
-
+    @classmethod
+    def _fix_path_for_macos(cls):
         # NOTE: To avoid docker.credentials.errors.InitializationError: docker-credential-osxkeychain
         # not installed or not available in PATH.
         # --> Must add /usr/local/bin/ to PATH on macosx platform
         current_path = os.environ["PATH"]
         if "/usr/local/bin" not in current_path:
-            os.environ["PATH"] = current_path + ":" + "/usr/local/bin"
-        response = [line for line in cls.client.build(path=dockerfile_dir_path, rm=True, tag=tag, buildargs=build_args, network_mode='host')]
-        errors = cls.log_response(response)
-        if errors:
-            raise ValueError("Failed to build Docker image from Dockerfile: {}. Error messages: {}".format(dockerfile_path, errors))
+            os.environ["PATH"] = current_path + ":/usr/local/bin"
 
     @classmethod
     def run_container(cls, image, volumes, sleep=300):
@@ -147,7 +156,7 @@ class DockerTestSetup:
             location = os.getcwd()
             LOG.warning(f"Dockerfile location was not specified. "
                         f"Trying to create image from current working directory: {location}")
-        DockerWrapper.create_image(location, tag=self.image_name)
+        DockerWrapper.create_image_from_dir(location, tag=self.image_name)
 
     def mount_dir(self, host_dir, container_dir, mode=MOUNT_MODE_RW):
         self.mounts.append(DockerMount(host_dir, container_dir, mode=mode))
