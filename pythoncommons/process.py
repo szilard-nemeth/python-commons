@@ -141,7 +141,7 @@ class SubprocessCommandRunner:
     def run_and_follow_stdout_stderr(cls, cmd, log_file,
                                      stdout_logger=None,
                                      exit_on_nonzero_exitcode=False):
-        if stdout_logger:
+        if not stdout_logger:
             stdout_logger = LOG
         args = shlex.split(cmd)
         LOG.info(f"Running command: {cmd}")
