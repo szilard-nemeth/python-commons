@@ -3,6 +3,7 @@ import math
 import string
 import re
 import unicodedata
+from enum import Enum
 from typing import List
 
 from tabulate import tabulate
@@ -36,6 +37,10 @@ def auto_repr(cls):
 
 
 class StringUtils:
+    class StripMode(Enum):
+        BEGINNING = 0
+        END = 1
+
     @staticmethod
     def list_to_multiline_string(list):
         return "\n".join(list)
@@ -43,6 +48,10 @@ class StringUtils:
     @staticmethod
     def dict_to_multiline_string(dict):
         return "\n".join([f"{k}: {v}" for k, v in dict.items()])
+
+    @staticmethod
+    def make_piped_string(strings: List[str]):
+        return "|".join(strings)
 
     @staticmethod
     def get_first_line_of_multiline_str(multi_line_str):
@@ -112,6 +121,21 @@ class StringUtils:
         result += string
         result += filler
         return result
+
+    @staticmethod
+    def strip_strings(filename, strip_strs):
+        for str, mode in strip_strs:
+            if not isinstance(mode, StringUtils.StripMode):
+                raise ValueError(f"Mode of operation is invalid. "
+                                 f"It should be an instance of: {StringUtils.StripMode.__name__}")
+            if mode == StringUtils.StripMode.BEGINNING:
+                if filename.startswith(str):
+                    filename = filename.split(str)[1]
+            elif mode == StringUtils.StripMode.END:
+                if filename.endswith(str):
+                    filename = filename.split(str)[0]
+        LOG.debug("Stripped string: " + filename)
+        return filename
 
 
 class RegexUtils:
