@@ -1,4 +1,4 @@
-
+import io
 from typing import Callable
 from subprocess import Popen
 import sh
@@ -136,6 +136,34 @@ class SubprocessCommandRunner:
         if wait_after > 0:
             LOG.info("Waiting for %d seconds %s", wait_message)
             time.sleep(wait_after)
+
+    @classmethod
+    def run_and_follow_stdout_stderr(cls, cmd, log_file,
+                                     stdout_logger=None,
+                                     exit_on_nonzero_exitcode=False):
+        if stdout_logger:
+            stdout_logger = LOG
+        args = shlex.split(cmd)
+        LOG.info(f"Running command: {cmd}")
+        LOG.info(f"Command args: {args}")
+
+        with open(log_file, 'w') as f:
+            # Redirect stderr to stdout
+            process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            LOG.info(f"Returned process: {process}")
+            for line in io.TextIOWrapper(process.stdout, encoding="utf-8"):
+                line = line.strip()
+                stdout_logger.info(line)
+                f.write(line + os.linesep)
+            while process.poll() is None:
+                LOG.info("Waiting for process to terminate...")
+                time.sleep(2)
+            LOG.info(f"Exit code of command '{cmd}' was: {process.returncode}")
+
+            if exit_on_nonzero_exitcode and process.returncode != 0:
+                LOG.error(f"Error while running command: {cmd}. Please check logs above.")
+                sys.exit(process.returncode)
+            return process
 
 
 #TODO Warning: untested
