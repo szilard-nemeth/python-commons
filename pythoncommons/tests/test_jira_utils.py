@@ -1,6 +1,4 @@
-import os
 import unittest
-from os.path import expanduser
 
 from pythoncommons.file_utils import FileUtils
 from pythoncommons.jira_utils import JiraUtils

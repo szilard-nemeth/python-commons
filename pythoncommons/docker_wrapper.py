@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from enum import Enum
 from typing import List, Tuple, Dict
 
@@ -7,6 +8,7 @@ import docker
 from docker import APIClient
 import json
 from pythoncommons.file_utils import FileUtils
+from pythoncommons.process import SubprocessCommandRunner
 from pythoncommons.string_utils import auto_str
 
 MOUNT_MODE_RW = "rw"
@@ -292,3 +294,73 @@ class DockerTestSetup:
         if fail_on_error and exit_code != 0:
             raise ValueError(f"Command '{cmd}' returned with non-zero exit code: {exit_code}. See logs above for more details.")
         return exit_code
+
+
+class DockerFileReplacer:
+    vars_to_replace = {}
+
+    # https://stackoverflow.com/a/30777398/1106893
+    @classmethod
+    def replace_all_vars(cls, input, vars_to_replace, default=None, skip_escaped=False):
+        """Expand environment variables of form $var and ${var}.
+           If parameter 'skip_escaped' is True, all escaped variable references
+           (i.e. preceded by backslashes) are skipped.
+           Unknown variables are set to 'default'. If 'default' is None,
+           they are left unchanged.
+        """
+        cls.vars_to_replace = vars_to_replace
+
+        def replace_var(m):
+            # m.group(0) -> '${VAR}'
+            # m.group(1) -> '{VAR}'
+            # m.group(2) -> 'VAR'
+            varname = m.group(2) or m.group(1)
+            replaced_name = DockerFileReplacer.vars_to_replace[
+                varname] if varname in DockerFileReplacer.vars_to_replace else None
+            if not replaced_name:
+                if default:
+                    replaced_name = default
+                else:
+                    replaced_name = m.group(0)
+
+            return replaced_name
+
+        pattern = (r'(?<!\\)' if skip_escaped else '') + r'\$(\w+|\{([^}]*)\})'
+        result = re.sub(pattern, replace_var, input)
+        cls.vars_to_replace = {}
+
+        # TODO print all remainder lines matching pattern -> Unresolved variables (LOG warning)
+        # e.g. ${PYTHONPATH}
+        return result
+
+    @classmethod
+    def add_env_var_declaration(cls, dockerfile_contents, var_name):
+        lines = dockerfile_contents.split("\n")
+        mod_lines = []
+        for line in lines:
+            if line.startswith("FROM"):
+                mod_lines.append(line)
+                mod_lines.append("ARG {var}".format(var=var_name))
+                mod_lines.append("RUN echo \"{var} = ${var}\"".format(var=var_name))
+            else:
+                mod_lines.append(line)
+
+        return "\n".join(mod_lines)
+
+
+class DockerCompose:
+    COMPOSE_FILE_TEMPLATE = "docker-compose{profile}.yml"
+
+    @staticmethod
+    def up(working_dir, profile="", wait=0):
+        if profile:
+            profile = "-" + profile
+        compose_file = DockerCompose.COMPOSE_FILE_TEMPLATE.format(profile=profile)
+        command = "docker-compose -f {cfile} up -d".format(cfile=compose_file)
+        SubprocessCommandRunner.run(command, working_dir=working_dir, log_command_result=True, fail_on_error=True,
+                          wait_after=10, wait_message="for docker compose command")
+
+    @staticmethod
+    def logs(working_dir):
+        command = "docker-compose logs"
+        SubprocessCommandRunner.run(command, working_dir=working_dir, log_stdout=True)
