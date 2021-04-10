@@ -79,6 +79,9 @@ class EmailService:
         file = open(file_path, "rb")
         msg.set_payload(file.read())
         encoders.encode_base64(msg)
+        attachment_fname_header = FileUtils.basename(file_path)
+        if not attachment_fname_header.endswith(".zip"):
+            attachment_fname_header += ".zip"
         msg.add_header('Content-Disposition', 'attachment',
-                       filename=FileUtils.basename(file_path))
+                       filename=attachment_fname_header)
         return msg
