@@ -16,43 +16,52 @@ TEST_OUTPUT_DIR_NAME = "test"
 TEST_LOG_FILE_POSTFIX = "TEST"
 
 
-def determine_project_and_parent_dir(project_name_and_file, stack):
-    args = (project_name_and_file, ProjectUtils.get_stack_human_readable(stack))
-    LOG.debug(f"Determining project name. Received args: {args}")
-    if REPOS_DIR in project_name_and_file:
-        filename = project_name_and_file[len(REPOS_DIR):]
-        # We should return the first dir name of the path
-        # Cut leading slashes, if any as split would return empty string for 0th component
-        if filename.startswith(os.sep):
-            filename = filename[1:]
-        project = filename.split(os.sep)[0]
-        LOG.info(f"Determined path: {REPOS_DIR}, project: {project}")
-        return REPOS_DIR, project
-
-    LOG.debug("Execution environment is not local, trying to determine project name with other method.")
-    for path in sys.path:
-        if project_name_and_file.startswith(path):
-            LOG.debug(f"Found parent path of caller file: {path}")
-            parts = project_name_and_file.split(path)
-            LOG.debug(f"Parts of path: {parts}")
-            # Cut leading slashes
-            if parts[1].startswith(os.sep):
-                project_name_and_file = parts[1][1:]
-                LOG.info(f"Determined path: {parts[0]}, filename: {project_name_and_file}")
-            return path, project_name_and_file
-
-    raise ValueError(
-        f"Unexpected project execution directory. \n"
-        f"Filename of caller: '{project_name_and_file}'\n"
-        f"Printing diagnostic info including call stack + sys.path...\n"
-        f"\nCall stack: \n{ProjectUtils.get_stack_human_readable(stack)}\n"
-        f"\nsys.path: \n{ProjectUtils.get_sys_path_human_readable()}")
-
-
 class ProjectUtils:
     PROJECT_BASEDIR_DICT = {}
     CHILD_DIR_DICT = {}
     CHILD_DIR_TEST_DICT = {}
+
+    # TODO idea: Store all known python file paths for a project, so they are cached
+    # TODO idea2: Find setup.py / requirements.txt as always there directories so we know the base dir
+    @classmethod
+    def determine_project_and_parent_dir(cls, file_of_caller, stack):
+        received_args = locals()
+        received_args['stack'] = ProjectUtils.get_stack_human_readable(stack)
+        args = (file_of_caller, ProjectUtils.get_stack_human_readable(stack))
+        LOG.debug(f"Determining project name. Received args: {args}."
+                  f"{cls._get_known_projects_str()}\n")
+
+        if REPOS_DIR in file_of_caller:
+            filename = file_of_caller[len(REPOS_DIR):]
+            # We should return the first dir name of the path
+            # Cut leading slashes, if any as split would return empty string for 0th component
+            if filename.startswith(os.sep):
+                filename = filename[1:]
+            project = filename.split(os.sep)[0]
+            LOG.info(f"Determined path: {REPOS_DIR}, project: {project}")
+            return REPOS_DIR, project
+
+        LOG.debug("Execution environment is not local, trying to determine project name with sys.path method. "
+                  f"Current sys.path: \n{ProjectUtils.get_sys_path_human_readable()}")
+        for path in sys.path:
+            if file_of_caller.startswith(path):
+                LOG.debug(f"Found parent path of caller file: {path}")
+                parts = file_of_caller.split(path)
+                LOG.debug(f"Parts of path after split: {parts}")
+                # Cut leading slashes
+                if parts[1].startswith(os.sep):
+                    project = parts[1][1:]
+                else:
+                    project = parts[1]
+                LOG.info(f"Determined path: {path}, project: {project}")
+                return path, project
+
+        raise ValueError(
+            f"Unexpected project execution directory. \n"
+            f"Filename of caller: '{file_of_caller}'\n"
+            f"Printing diagnostic info including call stack + sys.path...\n"
+            f"\nCall stack: \n{ProjectUtils.get_stack_human_readable(stack)}\n"
+            f"\nsys.path: \n{ProjectUtils.get_sys_path_human_readable()}")
 
     @classmethod
     def get_output_basedir(cls, basedir_name: str, ensure_created=True):
@@ -175,7 +184,7 @@ class ProjectUtils:
         project_name = cls.verify_caller_filename_valid()
         if project_name not in cls.PROJECT_BASEDIR_DICT:
             raise ValueError(f"Project '{project_name}' is unknown. "
-                             f"Known projects are: {list(cls.PROJECT_BASEDIR_DICT.keys())}\n"
+                             f"{cls._get_known_projects_str()}\n"
                              f"Please call {ProjectUtils.__name__}.{ProjectUtils.get_output_basedir.__name__} "
                              f"first in order to set the basedir for the project!")
         return project_name
@@ -213,7 +222,7 @@ class ProjectUtils:
         stack_frame = cls._find_first_non_pythoncommons_stackframe(stack)
         file_of_caller = stack_frame.filename
         LOG.debug("Filename of caller: " + file_of_caller)
-        path, project = determine_project_and_parent_dir(file_of_caller, stack)
+        path, project = cls.determine_project_and_parent_dir(file_of_caller, stack)
         return project
 
     @classmethod
@@ -226,10 +235,9 @@ class ProjectUtils:
             idx += 1
         if idx == len(stack):
             # Walked up the stack and haven't found any frame that is not pythoncommons
-            stack_str = ProjectUtils.get_stack_human_readable(stack)
             raise ValueError("Walked up the stack but haven't found any frame that does not belong to python-commons. \n"
                              "Printing the stack: \n"
-                             f"{stack_str}")
+                             f"{ProjectUtils.get_stack_human_readable(stack)}")
         return stack[idx]
 
     @classmethod
@@ -239,3 +247,7 @@ class ProjectUtils:
     @staticmethod
     def get_sys_path_human_readable():
         return "\n".join(sys.path)
+
+    @classmethod
+    def _get_known_projects_str(cls):
+        return f"Known projects are: {list(cls.PROJECT_BASEDIR_DICT.keys())}"
