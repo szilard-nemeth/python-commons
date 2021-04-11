@@ -38,7 +38,7 @@ class ProjectUtils:
         if file_of_caller in cls.FILES_TO_PROJECT:
             project = cls.FILES_TO_PROJECT[file_of_caller]
             LOG.debug(f"Found cached project name '{project}', file was already a caller: {file_of_caller}")
-            return project
+            return file_of_caller, project
 
         def _determine_project_by_repos_dir(file_of_caller):
             filename = file_of_caller[len(REPOS_DIR):]
