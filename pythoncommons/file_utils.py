@@ -195,7 +195,9 @@ class FileUtils:
         def _does_files_exist_in_dir(d):
             if not FileUtils.is_dir(d):
                 return False
-            return all(FileUtils.is_file(FileUtils.join_path(d, f)) and f in files_to_search for f in os.listdir(d))
+            files = os.listdir(d)
+            LOG.debug(f"Listing files in dir '{d}': {files}")
+            return all(FileUtils.is_file(FileUtils.join_path(d, f)) and f in files_to_search for f in files)
 
         if not files_to_search:
             files_to_search = ["setup.py", "requirements.txt"]
