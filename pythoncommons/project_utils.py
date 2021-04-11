@@ -17,6 +17,7 @@ TEST_LOG_FILE_POSTFIX = "TEST"
 
 
 def determine_project_and_parent_dir(project_name_and_file, stack):
+    LOG.debug(f"Determining project name. Received args: {locals()}")
     if REPOS_DIR in project_name_and_file:
         filename = project_name_and_file[len(REPOS_DIR):]
         # We should return the first dir name of the path
@@ -27,9 +28,12 @@ def determine_project_and_parent_dir(project_name_and_file, stack):
         LOG.info(f"Determined path: {REPOS_DIR}, project: {project}")
         return REPOS_DIR, project
 
+    LOG.debug("Execution environment is not local, trying to determine project name with other method.")
     for path in sys.path:
         if project_name_and_file.startswith(path):
+            LOG.debug(f"Found parent path of caller file: {path}")
             parts = project_name_and_file.split(path)
+            LOG.debug(f"Parts of path: {parts}")
             # Cut leading slashes
             if parts[1].startswith(os.sep):
                 project_name_and_file = parts[1][1:]
