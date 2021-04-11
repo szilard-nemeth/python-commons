@@ -663,6 +663,14 @@ class FileUtils:
             if e.errno == errno.EEXIST:
                 LOG.warning("Symlink does exist, ignoring. Details: %s", str(e))
 
+    @classmethod
+    def get_temp_file_name(cls, prefix=None):
+        kwargs = {"delete": False}
+        if prefix:
+            kwargs["prefix"] = prefix
+        tmp = tempfile.NamedTemporaryFile(**kwargs)
+        return tmp.name
+
 
 class JsonFileUtils:
     @classmethod

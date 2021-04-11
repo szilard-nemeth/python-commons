@@ -186,7 +186,7 @@ class SubprocessCommandRunner:
             time.sleep(wait_after)
 
     @classmethod
-    def run_and_follow_stdout_stderr(cls, cmd, log_file='test.log',
+    def run_and_follow_stdout_stderr(cls, cmd, log_file=FileUtils.get_temp_file_name(),
                                      stdout_logger=None,
                                      exit_on_nonzero_exitcode=False):
         if not stdout_logger:
@@ -194,11 +194,13 @@ class SubprocessCommandRunner:
         args = shlex.split(cmd)
         LOG.info(f"Running command: {cmd}")
         LOG.info(f"Command args: {args}")
+        LOG.info(f"Config: Logging stderr to stdout, and stdout to logger. The logger is: {stdout_logger}")
+        LOG.info(f"Config: Also logging to file: {log_file}")
 
         with open(log_file, 'w') as f:
             # Redirect stderr to stdout
             process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            LOG.info(f"Returned process: {process}")
+            LOG.info(f"Returned process from subprocess.Popen: {process}")
             for line in io.TextIOWrapper(process.stdout, encoding="utf-8"):
                 line = line.strip()
                 stdout_logger.info(line)
@@ -209,7 +211,7 @@ class SubprocessCommandRunner:
             LOG.info(f"Exit code of command '{cmd}' was: {process.returncode}")
 
             if exit_on_nonzero_exitcode and process.returncode != 0:
-                LOG.error(f"Error while running command: {cmd}. Please check logs above.")
+                LOG.error(f"Non-zero exit code was received while running command: {cmd}. Please check logs above.")
                 sys.exit(process.returncode)
             return process
 
