@@ -195,8 +195,9 @@ class FileUtils:
         def _does_files_exist_in_dir(d):
             if not FileUtils.is_dir(d):
                 return False
+            LOG.debug(f"Listing files in dir {d}")
             files = os.listdir(d)
-            LOG.debug(f"Listing files in dir '{d}': {files}")
+            LOG.debug(f"Found files in dir '{d}': {files}")
             return all(FileUtils.is_file(FileUtils.join_path(d, f)) and f in files_to_search for f in files)
 
         if not files_to_search:
@@ -206,7 +207,9 @@ class FileUtils:
         path = orig_path
         visited = [path]
         while path != os.sep and not _does_files_exist_in_dir(path):
+            LOG.debug(f"Finding root dir: Current path is: {path}")
             path = FileUtils.get_parent_dir_name(path)
+            LOG.debug(f"Finding root dir: Moving up the path, new path is: {path}")
             visited.append(path)
         if path == os.sep:
             raise ValueError(
