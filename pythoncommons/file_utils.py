@@ -637,6 +637,13 @@ class FileUtils:
         return open(f, 'r').read()
 
     @classmethod
+    def does_file_contain_str(cls, file, string):
+        with open(file) as f:
+            if string in f.read():
+                return True
+            return False
+
+    @classmethod
     def create_symlink(cls, link_name, linked_path, dest_dir, remove_if_exists=True):
         link_src = linked_path
         link_dest = FileUtils.join_path(dest_dir, link_name)
