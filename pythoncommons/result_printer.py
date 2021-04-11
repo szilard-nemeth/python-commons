@@ -186,3 +186,30 @@ class ResultPrinter:
                     converted_row[i] = color(converted_row[i], **color_args)
             if conf.eval_method == EvaluationMethod.FIRST_TRUTHY:
                 break
+
+    # TODO Users of this function should be migrated to _colorize_row and the new ResultPrinter
+    @staticmethod
+    def colorize_row(curr_row,
+            convert_bools=False,
+            char_if_present="X",
+            char_if_not_present="-",
+            color_if_okay="green",
+            color_if_not_okay="red"):
+        res = []
+        missing_backport = False
+        if not all(curr_row[1:]):
+            missing_backport = True
+
+        # Mark first cell with red if any of the backports are missing
+        # Mark first cell with green if all backports are present
+        # Mark any bool cell with green if True, red if False
+        for idx, cell in enumerate(curr_row):
+            if (isinstance(cell, bool) and cell) or not missing_backport:
+                if convert_bools and isinstance(cell, bool):
+                    cell = char_if_present if cell else char_if_not_present
+                res.append(color(cell, fore=color_if_okay))
+            else:
+                if convert_bools and isinstance(cell, bool):
+                    cell = char_if_present if cell else char_if_not_present
+                res.append(color(cell, fore=color_if_not_okay))
+        return res
