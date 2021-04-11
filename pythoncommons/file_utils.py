@@ -198,7 +198,7 @@ class FileUtils:
             LOG.debug(f"Listing files in dir {d}")
             files = os.listdir(d)
             LOG.debug(f"Found files in dir '{d}': {files}")
-            return all(FileUtils.is_file(FileUtils.join_path(d, f)) and f in files_to_search for f in files)
+            return all(FileUtils.is_file(FileUtils.join_path(d, f)) and f in files for f in files_to_search)
 
         if not files_to_search:
             files_to_search = ["setup.py", "requirements.txt"]
