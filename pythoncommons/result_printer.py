@@ -216,12 +216,12 @@ class ResultPrinter:
 
 
 class BasicResultPrinter:
-  @staticmethod
-  def print_table(data, headers):
-      LOG.info("Printing result table with format: fancy_grid")
-      LOG.info(tabulate(data, headers, tablefmt="fancy_grid"))
+    @staticmethod
+    def print_table(data, headers):
+        LOG.info("Printing result table with format: fancy_grid")
+        LOG.info(tabulate(data, headers, tablefmt="fancy_grid"))
 
-  @staticmethod
-  def print_table_html(data, headers):
-      LOG.info("Printing result table with format: html")
-      LOG.info(tabulate(data, headers, tablefmt="html"))
+    @staticmethod
+    def print_table_html(data, headers):
+        LOG.info("Printing result table with format: html")
+        LOG.info(tabulate(data, headers, tablefmt="html"))
