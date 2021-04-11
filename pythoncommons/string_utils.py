@@ -43,7 +43,7 @@ class StringUtils:
 
     @staticmethod
     def list_to_multiline_string(list):
-        return "\n".join(list)
+        return "\n".join(str(x) for x in list)
 
     @staticmethod
     def dict_to_multiline_string(dict):
