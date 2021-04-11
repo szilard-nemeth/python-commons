@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+from enum import Enum
 from os.path import expanduser
 import inspect
 
@@ -16,21 +17,25 @@ TEST_OUTPUT_DIR_NAME = "test"
 TEST_LOG_FILE_POSTFIX = "TEST"
 
 
+class ProjectRootDeterminationStrategy(Enum):
+    COMMON_FILE = 0
+    SYS_PATH = 1
+
+
 class ProjectUtils:
     PROJECT_BASEDIR_DICT = {}
     CHILD_DIR_DICT = {}
     CHILD_DIR_TEST_DICT = {}
 
     # TODO idea: Store all known python file paths for a project, so they are cached
-    # TODO idea2: Find setup.py / requirements.txt as always there directories so we know the base dir
     @classmethod
-    def determine_project_and_parent_dir(cls, file_of_caller, stack):
+    def determine_project_and_parent_dir(cls, file_of_caller, stack, strategy=ProjectRootDeterminationStrategy.COMMON_FILE):
         received_args = locals()
         received_args['stack'] = ProjectUtils.get_stack_human_readable(stack)
         LOG.debug(f"Determining project name. Received args: {received_args}. \n"
                   f"{cls._get_known_projects_str()}\n")
 
-        if REPOS_DIR in file_of_caller:
+        def _determine_project_by_repos_dir(file_of_caller):
             filename = file_of_caller[len(REPOS_DIR):]
             # We should return the first dir name of the path
             # Cut leading slashes, if any as split would return empty string for 0th component
@@ -40,29 +45,50 @@ class ProjectUtils:
             LOG.info(f"Determined path: {REPOS_DIR}, project: {project}")
             return REPOS_DIR, project
 
-        LOG.debug("Execution environment is not local, trying to determine project name with sys.path method. "
-                  f"Current sys.path: \n{ProjectUtils.get_sys_path_human_readable()}")
-        for path in sys.path:
-            if file_of_caller.startswith(path):
-                LOG.debug(f"Found parent path of caller file: {path}")
-                parts = file_of_caller.split(path)
-                LOG.debug(f"Parts of path after split: {parts}")
-                # Cut leading slashes
-                if parts[1].startswith(os.sep):
-                    project = parts[1][1:]
-                else:
-                    project = parts[1]
-                if os.sep in project:
-                    project = os.path.split(project)[0]
-                LOG.info(f"Determined path: {path}, project: {project}")
-                return path, project
+        def _determine_project_by_common_files(file_of_caller):
+            LOG.debug("Execution environment is not local, trying to determine project name with common files strategy. "
+                      f"Current sys.path: \n{ProjectUtils.get_sys_path_human_readable()}"
+                      f"Current caller file: {file_of_caller}")
+            project_root_path = FileUtils.find_repo_root_dir_auto(file_of_caller)
+            LOG.debug(f"Found project root: {project_root_path}")
+            comps = FileUtils.get_path_components(project_root_path)
+            project = comps[-1]
+            path = comps[0:-1]
+            LOG.info(f"Determined path: {path}, project: {project}")
+            return path, project
 
+        def _determine_project_by_sys_path(file_of_caller):
+            LOG.debug("Execution environment is not local, trying to determine project name with sys.path strategy. "
+                      f"Current sys.path: \n{ProjectUtils.get_sys_path_human_readable()}")
+            for path in sys.path:
+                if file_of_caller.startswith(path):
+                    LOG.debug(f"Found parent path of caller file: {path}")
+                    parts = file_of_caller.split(path)
+                    LOG.debug(f"Parts of path after split: {parts}")
+                    # Cut leading slashes
+                    if parts[1].startswith(os.sep):
+                        project = parts[1][1:]
+                    else:
+                        project = parts[1]
+                    if os.sep in project:
+                        project = os.path.split(project)[0]
+                    LOG.info(f"Determined path: {path}, project: {project}")
+                    return path, project
+
+        if REPOS_DIR in file_of_caller:
+            return _determine_project_by_repos_dir(file_of_caller)
+        if strategy == ProjectRootDeterminationStrategy.COMMON_FILE:
+            return _determine_project_by_common_files(file_of_caller)
+        elif strategy == ProjectRootDeterminationStrategy.SYS_PATH:
+            return _determine_project_by_sys_path(file_of_caller)
         raise ValueError(
             f"Unexpected project execution directory. \n"
             f"Filename of caller: '{file_of_caller}'\n"
             f"Printing diagnostic info including call stack + sys.path...\n"
             f"\nCall stack: \n{ProjectUtils.get_stack_human_readable(stack)}\n"
             f"\nsys.path: \n{ProjectUtils.get_sys_path_human_readable()}")
+
+
 
     @classmethod
     def get_output_basedir(cls, basedir_name: str, ensure_created=True):
