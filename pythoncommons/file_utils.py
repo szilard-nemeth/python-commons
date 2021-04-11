@@ -190,6 +190,27 @@ class FileUtils:
                 "Visited: {}".format(root_dir_name, orig_path, visited))
         return path
 
+    @staticmethod
+    def find_repo_root_dir_auto(curr_file, files_to_search: List[str] = None):
+        def _does_files_exist_in_dir(d):
+            return all(FileUtils.is_file(FileUtils.join_path(d, f)) and f in files_to_search for f in os.listdir(d))
+
+        if not files_to_search:
+            files_to_search = ["setup.py", "requirements.txt"]
+
+        orig_path = os.path.realpath(curr_file)
+        path = orig_path
+        visited = [path]
+        while path != os.sep and not _does_files_exist_in_dir(path):
+            path = FileUtils.get_parent_dir_name(path)
+            visited.append(path)
+        if path == os.sep:
+            raise ValueError(
+                f"Failed to find project root directory starting from path '{orig_path}'. "
+                f"Visited: {visited}")
+        return path
+
+
     # TODO rename method
     @classmethod
     def find_files(cls, basedir, regex: str = None, single_level=False, full_path_result=False,
