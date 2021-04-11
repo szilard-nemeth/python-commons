@@ -29,7 +29,8 @@ setup(
         'gitpython',
         'tabulate',
         'docker',
-        'sh'
+        'sh',
+        'colr'
     ]
 )
 
