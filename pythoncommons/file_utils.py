@@ -609,6 +609,14 @@ class FileUtils:
         return open(f, 'r').read()
 
     @classmethod
+    def create_symlink(cls, link_name, linked_path, dest_dir, remove_if_exists=True):
+        link_src = linked_path
+        link_dest = FileUtils.join_path(dest_dir, link_name)
+        if remove_if_exists and os.path.exists(link_dest):
+            os.remove(link_dest)
+        FileUtils.create_symlink(link_src, link_dest)
+
+    @classmethod
     def create_symlink(cls, link_src, link_dest):
         LOG.info("Creating symlink: %s -> %s", link_dest, link_src)
         # os.symlink(src, dest)
