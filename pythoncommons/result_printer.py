@@ -218,8 +218,10 @@ class ResultPrinter:
 class BasicResultPrinter:
   @staticmethod
   def print_table(data, headers):
-    print(tabulate(data, headers, tablefmt="fancy_grid"))
+      LOG.info("Printing result table with format: fancy_grid")
+      LOG.info(tabulate(data, headers, tablefmt="fancy_grid"))
 
   @staticmethod
   def print_table_html(data, headers):
-    print(tabulate(data, headers, tablefmt="html"))
+      LOG.info("Printing result table with format: html")
+      LOG.info(tabulate(data, headers, tablefmt="html"))
