@@ -193,6 +193,8 @@ class FileUtils:
     @staticmethod
     def find_repo_root_dir_auto(curr_file, files_to_search: List[str] = None):
         def _does_files_exist_in_dir(d):
+            if not FileUtils.is_dir(d):
+                return False
             return all(FileUtils.is_file(FileUtils.join_path(d, f)) and f in files_to_search for f in os.listdir(d))
 
         if not files_to_search:
