@@ -17,7 +17,8 @@ TEST_LOG_FILE_POSTFIX = "TEST"
 
 
 def determine_project_and_parent_dir(project_name_and_file, stack):
-    LOG.debug(f"Determining project name. Received args: {locals()}")
+    args = (project_name_and_file, ProjectUtils.get_stack_human_readable(stack))
+    LOG.debug(f"Determining project name. Received args: {args}")
     if REPOS_DIR in project_name_and_file:
         filename = project_name_and_file[len(REPOS_DIR):]
         # We should return the first dir name of the path
@@ -40,14 +41,12 @@ def determine_project_and_parent_dir(project_name_and_file, stack):
                 LOG.info(f"Determined path: {parts[0]}, filename: {project_name_and_file}")
             return path, project_name_and_file
 
-    stack_str = "\n".join([str(f.frame) for f in stack])
-    sys_path_str = "\n".join(sys.path)
     raise ValueError(
         f"Unexpected project execution directory. \n"
         f"Filename of caller: '{project_name_and_file}'\n"
         f"Printing diagnostic info including call stack + sys.path...\n"
-        f"\nCall stack: \n{stack_str}\n"
-        f"\nsys.path: \n{sys_path_str}")
+        f"\nCall stack: \n{ProjectUtils.get_stack_human_readable(stack)}\n"
+        f"\nsys.path: \n{ProjectUtils.get_sys_path_human_readable()}")
 
 
 class ProjectUtils:
@@ -227,8 +226,16 @@ class ProjectUtils:
             idx += 1
         if idx == len(stack):
             # Walked up the stack and haven't found any frame that is not pythoncommons
-            stack_str = "\n".join([str(f.frame) for f in stack])
+            stack_str = ProjectUtils.get_stack_human_readable(stack)
             raise ValueError("Walked up the stack but haven't found any frame that does not belong to python-commons. \n"
                              "Printing the stack: \n"
                              f"{stack_str}")
         return stack[idx]
+
+    @classmethod
+    def get_stack_human_readable(cls, stack):
+        return "\n".join([str(f.frame) for f in stack])
+
+    @staticmethod
+    def get_sys_path_human_readable():
+        return "\n".join(sys.path)
