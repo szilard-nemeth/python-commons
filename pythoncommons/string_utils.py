@@ -165,6 +165,7 @@ class RegexUtils:
             )
         return match.group(group)
 
+
 # TODO Move to result_printer.py (Check usages in other projects before moving !!)
 class ResultPrinter:
     def __init__(self, data: List[List[str]], headers: List[str]):

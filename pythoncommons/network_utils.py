@@ -16,7 +16,6 @@ class NetworkUtils:
     def get_random_port():
         return random.randrange(5000, 6000)
 
-    # TODO move this to utility class
     @staticmethod
     def wait_for_internet_connection():
         counter = 0

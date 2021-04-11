@@ -1,5 +1,6 @@
 import io
-from typing import Callable
+from dataclasses import dataclass
+from typing import Callable, Any, List
 from subprocess import Popen
 import sh
 import logging
@@ -136,15 +137,13 @@ LOG = logging.getLogger(__name__)
 CONSOLE = logging.getLogger("console")
 
 
-@auto_str
-# TODO convert this to dataclass
+@dataclass
 class RegularCommandResult:
-    def __init__(self, cli_cmd, args, stdout, stderr, exit_code):
-        self.cli_cmd = cli_cmd
-        self.args = args
-        self.stdout = stdout
-        self.stderr = stderr
-        self.exit_code = exit_code
+    cli_cmd: str
+    args: List[Any]
+    stdout: str
+    stderr: str
+    exit_code: int
 
 
 class SubprocessCommandRunner:
