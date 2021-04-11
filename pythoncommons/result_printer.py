@@ -213,3 +213,13 @@ class ResultPrinter:
                     cell = char_if_present if cell else char_if_not_present
                 res.append(color(cell, fore=color_if_not_okay))
         return res
+
+
+class BasicResultPrinter:
+  @staticmethod
+  def print_table(data, headers):
+    print(tabulate(data, headers, tablefmt="fancy_grid"))
+
+  @staticmethod
+  def print_table_html(data, headers):
+    print(tabulate(data, headers, tablefmt="html"))
