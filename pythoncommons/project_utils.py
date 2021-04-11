@@ -27,8 +27,7 @@ class ProjectUtils:
     def determine_project_and_parent_dir(cls, file_of_caller, stack):
         received_args = locals()
         received_args['stack'] = ProjectUtils.get_stack_human_readable(stack)
-        args = (file_of_caller, ProjectUtils.get_stack_human_readable(stack))
-        LOG.debug(f"Determining project name. Received args: {args}."
+        LOG.debug(f"Determining project name. Received args: {received_args}."
                   f"{cls._get_known_projects_str()}\n")
 
         if REPOS_DIR in file_of_caller:
