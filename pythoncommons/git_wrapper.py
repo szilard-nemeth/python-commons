@@ -2,7 +2,7 @@ import logging
 import os
 from typing import List
 
-from git import Repo, RemoteProgress, GitCommandError, Commit
+from git import Repo, RemoteProgress, GitCommandError, Commit, Actor
 from pythoncommons.git_constants import ORIGIN
 from pythoncommons.git_constants import HEAD, COMMIT_FIELD_SEPARATOR
 
@@ -10,6 +10,7 @@ FORMAT_CODE_HASH = "%H"
 FORMAT_CODE_COMMIT_MSG = "%s"
 FORMAT_CODE_DATE_ISO_8601 = "%cI"
 FORMAT_CODE_AUTHOR = "%ae"
+DEFAULT_BRANCH = "master"
 
 LOG = logging.getLogger(__name__)
 
@@ -35,11 +36,13 @@ class GitWrapper:
     def checkout_branch(self, branch, track=False):
         prev_branch = self.get_current_branch_name()
         LOG.info("Checking out branch: %s (Previous branch was: %s)", branch, prev_branch)
+        if branch not in self.repo.heads:
+            raise ValueError(f"Cannot find branch: {branch}")
+
         self.repo.git.checkout(branch)
         if track:
             LOG.info("Tracking branch '%s' with remote '%s'", branch, ORIGIN)
             self.repo.git.branch("-u", ORIGIN + "/" + branch)
-        # self.repo.heads.past_branch.checkout()
 
     def checkout_new_branch(self, new_branch, base_ref):
         base_exist = self.is_branch_exist(base_ref)
@@ -63,6 +66,11 @@ class GitWrapper:
         LOG.info("Pulling remote: %s", remote_name)
         result = remote.pull(progress=progress)
         LOG.debug("Result of git pull: %s", result)
+
+    def checkout_and_pull(self, checkout_ref, remote_to_pull=ORIGIN):
+        self.checkout_branch(checkout_ref)
+        LOG.info(f"Pulling {remote_to_pull}")
+        self.repo.remotes[remote_to_pull].pull()
 
     def fetch(self, repo_url=None, remote_name=None, all=False):
         progress = ProgressPrinter("fetch")
@@ -228,15 +236,27 @@ class GitWrapper:
             LOG.exception("Failed to commit changes from index", exc_info=True)
             return False
 
-    def commit(self, amend=False, message=None):
-        kwargs = {}
+    def commit(self, message,
+               author: Actor = None,
+               committer: Actor = None,
+               add_files_to_index: List[str] = None,
+               amend=False):
+        if not add_files_to_index:
+            add_files_to_index = []
 
+        kwargs = {}
         if amend:
             kwargs["amend"] = amend
-        if message:
-            kwargs["m"] = message
+        if author:
+            kwargs["author"] = author
+        if committer:
+            kwargs["committer"] = committer
         LOG.info("Running git commit with arguments: %s", kwargs)
-        self.repo.git.commit(**kwargs)
+
+        if add_files_to_index:
+            self.add_to_index(add_files_to_index)
+        self.repo.index.commit(message, **kwargs)
+
 
     def log(
         self,
@@ -360,6 +380,12 @@ class GitWrapper:
     def get_head_commit_message(self):
         return self.log(HEAD, format="%B", n=1, as_string_message=True)
 
+    def get_commit_message_of_branch(self, branch):
+        # TODO error handling if branch does not exist
+        commit = self.repo.heads[branch].commit
+        actual_commit_message = commit.message.rstrip()
+        return actual_commit_message
+
     @staticmethod
     def extract_commit_hash_from_gitlog_results(results):
         return [res.split(COMMIT_FIELD_SEPARATOR)[0] for res in results]
@@ -367,6 +393,70 @@ class GitWrapper:
     @staticmethod
     def extract_commit_hash_from_gitlog_result(result):
         return result.split(COMMIT_FIELD_SEPARATOR)[0]
+
+    def reset_changes(self, reset_to="master", reset_index=True, reset_working_tree=True, clean=True):
+        LOG.info(f"Reset all changes. Params: {locals()}")
+        self.repo.head.reset(commit=reset_to, index=reset_index, working_tree=reset_working_tree)
+        if clean:
+            self.repo.git.clean("-xdf")
+
+    def reset(self, hard=False):
+        if hard:
+            self.repo.git.reset("--hard")
+        else:
+            self.repo.git.reset()
+
+    def setup_committer_info(self, user, email):
+        self.repo.config_writer().set_value("user", "name", user).release()
+        self.repo.config_writer().set_value("user", "email", email).release()
+
+    def remove_committer_info(self):
+        self.repo.config_writer().set_value("user", "name", "").release()
+        self.repo.config_writer().set_value("user", "email", "").release()
+
+    def add_remote(self, name, url):
+        try:
+            self.repo.create_remote(name, url=url)
+        except GitCommandError:
+            # TODO make swallowing exception optional
+            pass
+
+    def remove_remote(self, name):
+        self.repo.delete_remote(name)
+
+    def get_hash_of_commit(self, branch):
+        return self.repo.heads[branch].commit.hexsha
+
+    def checkout_parent_of_branch(self, branch):
+        if branch not in self.repo.heads:
+            raise ValueError(f"Cannot find branch: {branch}")
+        self.repo.git.checkout(branch + "^")
+        return self.repo.git.rev_parse("--verify", HEAD)
+
+    def get_all_branch_names(self):
+        return [br.name for br in self.repo.heads]
+
+    def remove_branches_with_prefix(self, prefix):
+        branches = self.get_all_branch_names()
+        matching_branches = list(filter(lambda br: br.startswith(prefix), branches))
+
+        for branch in matching_branches:
+            self.remove_branch(branch)
+
+    def remove_branch(self, branch, ignore_error=True):
+        LOG.info("Removing branch: %s", branch)
+        # Checkout master, in case of branch is currently checked out
+        self.checkout_branch(DEFAULT_BRANCH)
+
+        try:
+            self.repo.delete_head(branch, force=True)
+        except GitCommandError as e:
+            if not ignore_error:
+                raise e
+
+    def add_to_index(self, items: List[str]):
+        LOG.debug(f"Adding files to index: {items}")
+        self.repo.index.add(items)
 
 
 class ProgressPrinter(RemoteProgress):
