@@ -3,7 +3,6 @@ from typing import List
 
 from googleapiclient.discovery import build
 
-from pythoncommons.google.common import ServiceType
 from pythoncommons.google.google_auth import GoogleApiAuthorizer
 from pythoncommons.string_utils import StringUtils, auto_str
 
