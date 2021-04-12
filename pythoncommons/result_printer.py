@@ -113,7 +113,7 @@ class ResultPrinter:
         if not tabulate_fmts:
             tabulate_fmts = DEFAULT_TABLE_FORMATS
 
-        orig_args = locals()
+        orig_args = locals().copy()
         tables = {}
         for fmt in tabulate_fmts:
             args = orig_args.copy()

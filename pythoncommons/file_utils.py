@@ -222,7 +222,7 @@ class FileUtils:
     @classmethod
     def find_files(cls, basedir, regex: str = None, single_level=False, full_path_result=False,
                    extension=None, debug=False, exclude_dirs: List[str] = None):
-        saved_args = locals()
+        saved_args = locals().copy()
         if debug:
             LOG.debug(f"[FINDING FILES] Received args: {saved_args}")
         if not exclude_dirs:

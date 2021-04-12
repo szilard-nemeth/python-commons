@@ -30,7 +30,7 @@ class ProjectUtils:
 
     @classmethod
     def determine_project_and_parent_dir(cls, file_of_caller, stack, strategy=ProjectRootDeterminationStrategy.COMMON_FILE):
-        received_args = locals()
+        received_args = locals().copy()
         received_args['stack'] = ProjectUtils.get_stack_human_readable(stack)
         LOG.debug(f"Determining project name. Received args: {received_args}. \n"
                   f"{cls._get_known_projects_str()}\n")
