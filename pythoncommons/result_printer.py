@@ -8,6 +8,13 @@ from tabulate import tabulate
 LOG = logging.getLogger(__name__)
 
 
+class TableFormat(Enum):
+    GRID = "fancy_grid"
+    HTML = "html"
+
+DEFAULT_TABLE_FORMATS = [TableFormat.GRID, TableFormat.HTML]
+
+
 class Color(Enum):
     GREEN = "green"
     RED = "red"
@@ -92,6 +99,32 @@ class ConversionConfig:
 
 
 class ResultPrinter:
+    @staticmethod
+    def print_tables(
+            data,
+            row_callback,
+            header,
+            print_result=True,
+            max_width: int = None,
+            max_width_separator: str = " ",
+            bool_conversion_config: BoolConversionConfig = None,
+            colorize_config: ColorizeConfig = None,
+            tabulate_fmts=None):
+        if not tabulate_fmts:
+            tabulate_fmts = DEFAULT_TABLE_FORMATS
+
+        orig_args = locals()
+        tables = {}
+        for fmt in tabulate_fmts:
+            args = orig_args.copy()
+            del args["tabulate_fmts"]
+            args["tabulate_fmt"] = fmt
+            LOG.debug(f"Calling {ResultPrinter.print_table.__name__} with args: {args}")
+            table = ResultPrinter.print_table(**args)
+            tables[fmt] = table
+        return tables
+
+
     # TODO Signature can be modified later if all usages migrated to use ConversionConfig object as input
     @staticmethod
     def print_table(
@@ -103,6 +136,7 @@ class ResultPrinter:
         max_width_separator: str = " ",
         bool_conversion_config: BoolConversionConfig = None,
         colorize_config: ColorizeConfig = None,
+        tabulate_fmt="fancy_grid"
     ):
         conversion_config = ConversionConfig(
             max_width=max_width,
@@ -112,21 +146,10 @@ class ResultPrinter:
         )
         conversion_result = ResultPrinter.convert_list_data(data, row_callback, conversion_config)
         # LOG.debug(f"Conversion result: {conversion_result}")
-        tabulated = tabulate(conversion_result.dst_data, header, tablefmt="fancy_grid")
+        tabulated = tabulate(conversion_result.dst_data, header, tablefmt=tabulate_fmt)
         if print_result:
             print(tabulated)
         return tabulated
-
-    @staticmethod
-    def print_table_html(data, row_callback, header, print_result=True, max_width=None, max_width_separator=" "):
-        converted_data = ResultPrinter.convert_list_data(
-            data, row_callback, max_width=max_width, max_width_separator=max_width_separator
-        )
-        tabulated = tabulate(converted_data, header, tablefmt="html")
-        if print_result:
-            print(tabulated)
-        else:
-            return tabulated
 
     @staticmethod
     def convert_list_data(src_data, row_callback, conf: ConversionConfig):
