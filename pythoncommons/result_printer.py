@@ -8,11 +8,11 @@ from tabulate import tabulate
 LOG = logging.getLogger(__name__)
 
 
-class TableFormat(Enum):
+class TabulateTableFormat(Enum):
     GRID = "fancy_grid"
     HTML = "html"
 
-DEFAULT_TABLE_FORMATS = [TableFormat.GRID, TableFormat.HTML]
+DEFAULT_TABLE_FORMATS = [TabulateTableFormat.GRID, TabulateTableFormat.HTML]
 
 
 class Color(Enum):
@@ -136,7 +136,7 @@ class ResultPrinter:
         max_width_separator: str = " ",
         bool_conversion_config: BoolConversionConfig = None,
         colorize_config: ColorizeConfig = None,
-        tabulate_fmt="fancy_grid"
+        tabulate_fmt=TabulateTableFormat.GRID
     ):
         conversion_config = ConversionConfig(
             max_width=max_width,
@@ -146,7 +146,7 @@ class ResultPrinter:
         )
         conversion_result = ResultPrinter.convert_list_data(data, row_callback, conversion_config)
         # LOG.debug(f"Conversion result: {conversion_result}")
-        tabulated = tabulate(conversion_result.dst_data, header, tablefmt=tabulate_fmt)
+        tabulated = tabulate(conversion_result.dst_data, header, tablefmt=tabulate_fmt.value)
         if print_result:
             print(tabulated)
         return tabulated
@@ -242,9 +242,9 @@ class BasicResultPrinter:
     @staticmethod
     def print_table(data, headers):
         LOG.info("Printing result table with format: fancy_grid")
-        LOG.info(tabulate(data, headers, tablefmt="fancy_grid"))
+        LOG.info(tabulate(data, headers, tablefmt=TabulateTableFormat.GRID.name))
 
     @staticmethod
     def print_table_html(data, headers):
         LOG.info("Printing result table with format: html")
-        LOG.info(tabulate(data, headers, tablefmt="html"))
+        LOG.info(tabulate(data, headers, tablefmt=TabulateTableFormat.HTML.name))
