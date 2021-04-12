@@ -394,7 +394,7 @@ class GitWrapper:
     def extract_commit_hash_from_gitlog_result(result):
         return result.split(COMMIT_FIELD_SEPARATOR)[0]
 
-    def reset_changes(self, reset_to="master", reset_index=True, reset_working_tree=True, clean=True):
+    def reset_changes(self, reset_to=DEFAULT_BRANCH, reset_index=True, reset_working_tree=True, clean=True):
         LOG.info(f"Reset all changes. Params: {locals()}")
         self.repo.head.reset(commit=reset_to, index=reset_index, working_tree=reset_working_tree)
         if clean:
@@ -436,17 +436,17 @@ class GitWrapper:
     def get_all_branch_names(self):
         return [br.name for br in self.repo.heads]
 
-    def remove_branches_with_prefix(self, prefix):
+    def remove_branches_with_prefix(self, prefix, checkout_before_remove=DEFAULT_BRANCH):
         branches = self.get_all_branch_names()
         matching_branches = list(filter(lambda br: br.startswith(prefix), branches))
 
         for branch in matching_branches:
-            self.remove_branch(branch)
+            self.remove_branch(branch, checkout_before_remove=checkout_before_remove)
 
-    def remove_branch(self, branch, ignore_error=True):
+    def remove_branch(self, branch, ignore_error=True, checkout_before_remove=DEFAULT_BRANCH):
         LOG.info("Removing branch: %s", branch)
-        # Checkout master, in case of branch is currently checked out
-        self.checkout_branch(DEFAULT_BRANCH)
+        # Checkout default branch, in case of branch is currently checked out
+        self.checkout_branch(checkout_before_remove)
 
         try:
             self.repo.delete_head(branch, force=True)
