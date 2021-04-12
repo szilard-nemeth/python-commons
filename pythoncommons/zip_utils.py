@@ -60,11 +60,17 @@ class ZipFileUtils:
         # Iterate over all the files in directory
         LOG.debug(f"Adding directory '{src_dir}' to zip file '${zip_file.filename}'")
         for dirpath, dirnames, filenames in os.walk(src_dir):
-            LOG.debug(f"dirpath: {dirpath}, dirnames: {dirnames}, filenames: {filenames}")
+            LOG.debug(f"[os.walk] dirpath: {dirpath}, dirnames: {dirnames}, filenames: {filenames}")
             for filename in filenames:
-                LOG.debug(f"filename: {filename}")
-                # create complete filepath of file in directory
-                file_path = os.path.join(dirpath, filename)
-                # Add file to zip
-                LOG.debug(f"Writing to zip. File path: {file_path}, basename: {FileUtils.basename(file_path)}")
-                zip_file.write(file_path, FileUtils.basename(file_path))
+                ZipFileUtils._add_file_to_zip(zip_file, dirpath, filename, src_dir)
+
+    @staticmethod
+    def _add_file_to_zip(zip, dirpath, filename, src_dir):
+        file_full_path = os.path.join(dirpath, filename)
+        dir_path_from_src_dir = dirpath.replace(src_dir, '')
+        if dir_path_from_src_dir.startswith(os.sep):
+            dir_path_from_src_dir = dir_path_from_src_dir[1:]
+
+        path_in_zip = FileUtils.join_path(dir_path_from_src_dir, filename)
+        LOG.debug(f"Writing to zip: File full path: {file_full_path}, path in zip file: {path_in_zip}")
+        zip.write(file_full_path, path_in_zip)
