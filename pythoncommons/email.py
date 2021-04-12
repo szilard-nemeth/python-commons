@@ -28,7 +28,8 @@ class EmailService:
     def __init__(self, email_config: EmailConfig):
         self.conf = email_config
 
-    def send_mail(self, sender: str, subject: str, body: str, recipients: List[str], attachment_file=None):
+    def send_mail(self, sender: str, subject: str, body: str, recipients: List[str], attachment_file=None,
+                  body_mimetype="plain"):
         self._validate_config(recipients)
 
         email_msg = None
@@ -36,7 +37,7 @@ class EmailService:
             FileUtils.ensure_file_exists(attachment_file)
             # https://stackoverflow.com/a/169406/1106893
             email_msg = MIMEMultipart()
-            email_msg.attach(MIMEText(str(body), "plain"))
+            email_msg.attach(MIMEText(str(body), body_mimetype))
             attachment = self._create_attachment(attachment_file)
             email_msg.attach(attachment)
         else:
