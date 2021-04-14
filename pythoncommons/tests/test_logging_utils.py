@@ -22,16 +22,16 @@ class LoggingUtilsTests(unittest.TestCase):
         with self.assertLogs('testLogger', level='INFO') as cm:
             logger = LoggerFactory.get_logger("testLogger")
             logger.setLevel(logging.WARN)
-            logger.combined("testInfo0", ["a1", "a2"])
+            logger.combined_log("testInfo0", ["a1", "a2"])
 
             logger.setLevel(logging.INFO)
-            logger.combined("testInfo1...|", ["a1", "a2"])
-            logger.combined(f"te {COLLECTION_PLACEHOLDER} stInfo2...", ["a1", "a2", "a3"])
+            logger.combined_log("testInfo1...|", ["a1", "a2"])
+            logger.combined_log(f"te {COLLECTION_PLACEHOLDER} stInfo2...", ["a1", "a2", "a3"])
 
             logger.setLevel(logging.DEBUG)
-            logger.combined("testDebug1...", ["a1", "a2"])
-            logger.combined(f"te {COLLECTION_PLACEHOLDER} stDebug2...", ["a1", "a2", "a3"])
-            logger.combined(f"te {COLLECTION_PLACEHOLDER} stDebug3...", ["a1", "a2", "a3", "a4"], coll_func=double_coll)
+            logger.combined_log("testDebug1...", ["a1", "a2"])
+            logger.combined_log(f"te {COLLECTION_PLACEHOLDER} stDebug2...", ["a1", "a2", "a3"])
+            logger.combined_log(f"te {COLLECTION_PLACEHOLDER} stDebug3...", ["a1", "a2", "a3", "a4"], debug_coll_func=double_coll)
 
             self.assertEqual(cm.output, [self.testlogger_info_msg("testInfo1...| 2"),
                                          self.testlogger_info_msg("te 3 stInfo2..."),
