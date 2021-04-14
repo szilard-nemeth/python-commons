@@ -10,6 +10,7 @@ FORMAT_CODE_HASH = "%H"
 FORMAT_CODE_COMMIT_MSG = "%s"
 FORMAT_CODE_DATE_ISO_8601 = "%cI"
 FORMAT_CODE_AUTHOR = "%ae"
+FORMAT_CODE_COMMITTER = "%ce"
 DEFAULT_BRANCH = "master"
 
 LOG = logging.getLogger(__name__)
@@ -264,6 +265,7 @@ class GitWrapper:
         oneline=False,
         oneline_with_date=False,
         oneline_with_date_and_author=False,
+        oneline_with_date_author_committer=False,
         grep=None,
         format=None,
         n=None,
@@ -273,6 +275,8 @@ class GitWrapper:
         follow=False,
         all=False,
     ):
+        # TODO Raise error if any of oneline_with_date, oneline_with_date_and_author, oneline_with_date_author_committer
+        # are True at the same time
         if oneline and oneline_with_date:
             raise ValueError("oneline and oneline_with_date should be exclusive!")
 
@@ -296,6 +300,10 @@ class GitWrapper:
             kwargs[
                 "format"
             ] = f"{FORMAT_CODE_HASH} {FORMAT_CODE_COMMIT_MSG} {FORMAT_CODE_DATE_ISO_8601} {FORMAT_CODE_AUTHOR}"
+        if oneline_with_date_author_committer:
+            kwargs[
+                "format"
+            ] = f"{FORMAT_CODE_HASH} {FORMAT_CODE_COMMIT_MSG} {FORMAT_CODE_DATE_ISO_8601} {FORMAT_CODE_AUTHOR} {FORMAT_CODE_COMMITTER}"
         if format:
             kwargs["format"] = format
         if grep:
