@@ -109,7 +109,8 @@ class ResultPrinter:
             max_width_separator: str = " ",
             bool_conversion_config: BoolConversionConfig = None,
             colorize_config: ColorizeConfig = None,
-            tabulate_fmts=None):
+            tabulate_fmts=None,
+            add_row_numbers=True):
         if not tabulate_fmts:
             tabulate_fmts = DEFAULT_TABLE_FORMATS
 
@@ -136,13 +137,15 @@ class ResultPrinter:
         max_width_separator: str = " ",
         bool_conversion_config: BoolConversionConfig = None,
         colorize_config: ColorizeConfig = None,
-        tabulate_fmt=TabulateTableFormat.GRID
+        tabulate_fmt=TabulateTableFormat.GRID,
+        add_row_numbers=True
     ):
         conversion_config = ConversionConfig(
             max_width=max_width,
             max_width_separator=max_width_separator,
             bool_conversion_config=bool_conversion_config,
             colorize_config=colorize_config,
+            add_row_numbers=add_row_numbers
         )
         conversion_result = ResultPrinter.convert_list_data(data, row_callback, conversion_config)
         # LOG.debug(f"Conversion result: {conversion_result}")
