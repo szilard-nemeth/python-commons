@@ -28,7 +28,9 @@ class EmailService:
     def __init__(self, email_config: EmailConfig):
         self.conf = email_config
 
-    def send_mail(self, sender: str, subject: str, body: str, recipients: List[str], attachment_file=None,
+    def send_mail(self, sender: str, subject: str, body: str, recipients: List[str],
+                  attachment_file=None,
+                  override_attachment_filename: str = None,
                   body_mimetype="plain"):
         self._validate_config(recipients)
 
@@ -38,7 +40,10 @@ class EmailService:
             # https://stackoverflow.com/a/169406/1106893
             email_msg = MIMEMultipart()
             email_msg.attach(MIMEText(str(body), body_mimetype))
-            attachment = self._create_attachment(attachment_file)
+            if override_attachment_filename:
+                attachment = self._create_attachment(attachment_file, attachment_name=override_attachment_filename)
+            else:
+                attachment = self._create_attachment(attachment_file)
             email_msg.attach(attachment)
         else:
             email_msg = MIMEText(str(body))
@@ -75,14 +80,22 @@ class EmailService:
         server.quit()
 
     @staticmethod
-    def _create_attachment(file_path):
+    def _create_attachment(file_path: str, attachment_name: str = None):
         msg = MIMEBase('application', 'zip')
         file = open(file_path, "rb")
         msg.set_payload(file.read())
         encoders.encode_base64(msg)
-        attachment_fname_header = FileUtils.basename(file_path)
-        if not attachment_fname_header.endswith(".zip"):
-            attachment_fname_header += ".zip"
+
+        attachment_fname_header = EmailService._get_attachment_name(attachment_name, file_path)
         msg.add_header('Content-Disposition', 'attachment',
                        filename=attachment_fname_header)
         return msg
+
+    @staticmethod
+    def _get_attachment_name(attachment_name, file_path):
+        name = FileUtils.basename(file_path)
+        if attachment_name:
+            name: str = attachment_name
+        if not name.endswith(".zip"):
+            name += ".zip"
+        return name
