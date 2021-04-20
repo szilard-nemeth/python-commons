@@ -110,7 +110,8 @@ class ResultPrinter:
             bool_conversion_config: BoolConversionConfig = None,
             colorize_config: ColorizeConfig = None,
             tabulate_fmts=None,
-            add_row_numbers=True):
+            add_row_numbers=True,
+            verbose=False):
         if not tabulate_fmts:
             tabulate_fmts = DEFAULT_TABLE_FORMATS
 
@@ -120,7 +121,8 @@ class ResultPrinter:
             args = orig_args.copy()
             del args["tabulate_fmts"]
             args["tabulate_fmt"] = fmt
-            LOG.debug(f"Calling {ResultPrinter.print_table.__name__} with args: {args}")
+            if verbose:
+                LOG.debug(f"Calling {ResultPrinter.print_table.__name__} with args: {args}")
             table = ResultPrinter.print_table(**args)
             tables[fmt] = table
         return tables
