@@ -140,7 +140,8 @@ class ResultPrinter:
         bool_conversion_config: BoolConversionConfig = None,
         colorize_config: ColorizeConfig = None,
         tabulate_fmt=TabulateTableFormat.GRID,
-        add_row_numbers=True
+        add_row_numbers=True,
+        verbose=False
     ):
         conversion_config = ConversionConfig(
             max_width=max_width,
