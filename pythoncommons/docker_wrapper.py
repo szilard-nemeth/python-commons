@@ -60,6 +60,10 @@ class DockerWrapper:
         return container
 
     @classmethod
+    def inspect_container(cls, container_id: str):
+        return docker.client.inspect_container(container_id)
+
+    @classmethod
     def log_response(cls, response):
         errors = []
         for r in response:
@@ -294,6 +298,9 @@ class DockerTestSetup:
         if fail_on_error and exit_code != 0:
             raise ValueError(f"Command '{cmd}' returned with non-zero exit code: {exit_code}. See logs above for more details.")
         return exit_code
+
+    def inspect_container(self, container_id: str):
+        return DockerWrapper.inspect_container(container_id)
 
 
 class DockerFileReplacer:
