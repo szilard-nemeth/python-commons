@@ -4,11 +4,17 @@ import smtplib
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
+from enum import Enum
 from typing import List
 
 from pythoncommons.file_utils import FileUtils
 
 LOG = logging.getLogger(__name__)
+
+
+class EmailMimeType(Enum):
+    HTML = "html"
+    PLAIN = "plain"
 
 
 class EmailAccount:
@@ -31,7 +37,7 @@ class EmailService:
     def send_mail(self, sender: str, subject: str, body: str, recipients: List[str],
                   attachment_file=None,
                   override_attachment_filename: str = None,
-                  body_mimetype="plain"):
+                  body_mimetype: EmailMimeType = EmailMimeType.PLAIN):
         self._validate_config(recipients)
 
         email_msg = None
@@ -39,7 +45,7 @@ class EmailService:
             FileUtils.ensure_file_exists(attachment_file)
             # https://stackoverflow.com/a/169406/1106893
             email_msg = MIMEMultipart()
-            email_msg.attach(MIMEText(str(body), body_mimetype))
+            email_msg.attach(MIMEText(str(body), body_mimetype.value))
             if override_attachment_filename:
                 attachment = self._create_attachment(attachment_file, attachment_name=override_attachment_filename)
             else:
