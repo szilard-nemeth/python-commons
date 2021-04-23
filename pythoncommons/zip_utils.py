@@ -1,5 +1,6 @@
 import logging
 import os
+from contextlib import closing
 from typing import List
 
 from pythoncommons.file_utils import FileUtils
@@ -74,3 +75,10 @@ class ZipFileUtils:
         path_in_zip = FileUtils.join_path(dir_path_from_src_dir, filename)
         LOG.debug(f"Writing to zip: File full path: {file_full_path}, path in zip file: {path_in_zip}")
         zip.write(file_full_path, path_in_zip)
+
+    @staticmethod
+    def get_number_of_files_in_zip(zip_file: str):
+        with closing(zipfile.ZipFile(zip_file)) as archive:
+            count = len(archive.infolist())
+        return count
+
