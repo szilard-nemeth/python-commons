@@ -358,6 +358,21 @@ class FileUtils:
         os.rmdir(dir)
 
     @staticmethod
+    def copy_files_to_dir(files: List[str], dst_dir: str, cut_path: str = None):
+        for f in files:
+            dest_fname = f
+            if cut_path:
+                if not f.startswith(cut_path):
+                    raise ValueError(f"Expected cut_path '{cut_path}' to be in beginning of file's full path: {f}")
+                dest_fname = FileUtils.join_path(*f.split(cut_path))
+                if dest_fname.startswith(os.sep):
+                    dest_fname = dest_fname[1:]
+
+            dest_file_path = os.path.join(dst_dir, dest_fname)
+            FileUtils.ensure_file_exists(dest_file_path, create=True)
+            shutil.copyfile(f, dest_file_path)
+
+    @staticmethod
     def copy_file_to_dir(src_file, dst_dir, dst_file_name_func, msg_template=None):
         dest_filename = dst_file_name_func(src_file, dst_dir)
         dest_file_path = os.path.join(dst_dir, dest_filename)
