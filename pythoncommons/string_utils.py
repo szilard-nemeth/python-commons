@@ -137,6 +137,27 @@ class StringUtils:
         LOG.debug("Stripped string: " + filename)
         return filename
 
+    @staticmethod
+    def escape_strs(strings: List[str]):
+        escaped_lines = []
+        for orig_str in strings:
+            mod_str = StringUtils.escape_str(orig_str)
+            if orig_str != mod_str:
+                LOG.debug(f"Modified line. Original: {orig_str}, Modified: {mod_str}")
+            escaped_lines.append(orig_str)
+        return escaped_lines
+
+    @staticmethod
+    def escape_str(orig_str,
+                   escape_single_quotes=True,
+                   escape_double_quotes=True):
+        mod_str = orig_str
+        if escape_single_quotes:
+            mod_str = mod_str.replace("'", "\\'")
+        if escape_double_quotes:
+            mod_str = mod_str.replace("\"", "\\\"")
+        return mod_str
+
 
 class RegexUtils:
     @staticmethod

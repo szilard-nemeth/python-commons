@@ -96,9 +96,15 @@ class CommandRunner:
         return RegularCommandResult(command, args2, proc.stdout, proc.stderr, proc.returncode)
 
     @staticmethod
-    def egrep_with_cli(git_log_result, file, piped_jira_ids):
+    def egrep_with_cli(git_log_result: List[str], file: str, grep_for: str,
+                       escape_single_quotes=True,
+                       escape_double_quotes=True):
         FileUtils.save_to_file(file, StringUtils.list_to_multiline_string(git_log_result))
-        cli_command = f"cat {file} | egrep '{piped_jira_ids}'"
+        if escape_single_quotes or escape_double_quotes:
+            grep_for = StringUtils.escape_str(grep_for,
+                                              escape_single_quotes=escape_single_quotes,
+                                              escape_double_quotes=escape_double_quotes)
+        cli_command = f"cat {file} | egrep \"{grep_for}\""
         return CommandRunner.run_cli_command(cli_command)
 
     @staticmethod
@@ -122,6 +128,7 @@ class CommandRunner:
             LOG.info("Running CLI command: %s", cli_command)
         output = CommandRunner._getoutput(cli_command, raise_on_error=fail_on_error)
         if fail_on_empty_output and not output:
+            # TODO Faulty format string: Search for all kinds of '%s' occurrences with ValueError
             raise ValueError("Command failed: %s", cli_command)
         return cli_command, output
 
@@ -129,7 +136,7 @@ class CommandRunner:
     def _getoutput(command, raise_on_error=True):
         statusoutput = subprocess.getstatusoutput(command)
         if raise_on_error and statusoutput[0] != 0:
-            raise ValueError("Command failed with exit code %d. Command was: %s", statusoutput[0], command)
+            raise ValueError(f"Command failed with exit code {statusoutput[0]}. Command was: {command}")
         return statusoutput[1]
 
 
