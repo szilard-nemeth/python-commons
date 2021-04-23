@@ -186,6 +186,24 @@ class ProjectUtils:
         return new_child_dir
 
     @classmethod
+    def get_session_dir_under_child_dir(cls, child_dir_name: str):
+        if not child_dir_name:
+            raise ValueError("Project child dir name should be specified!")
+
+        project_name = cls._validate_project_for_child_dir_creation()
+        if project_name in cls.CHILD_DIR_DICT and child_dir_name in cls.CHILD_DIR_DICT[project_name]:
+            stored_dir = cls.CHILD_DIR_DICT[project_name][child_dir_name]
+            LOG.debug(f"Found already stored child dir for project '{project_name}': {stored_dir}")
+
+            session_dir = FileUtils.join_path(stored_dir, f"session-{DateUtils.now_formatted('%Y%m%d_%H%M%S')}")
+            FileUtils.ensure_dir_created(session_dir)
+            return session_dir
+        else:
+            raise ValueError(f"Cannot find stored child dir for project. "
+                             f"Project: {project_name}, child dir: {child_dir_name}, "
+                             f"All stored child dirs: {cls.CHILD_DIR_DICT}")
+
+    @classmethod
     def save_to_test_file(cls, dir_name: str, filename: str, file_contents: str):
         if not dir_name:
             raise ValueError("Dir name should be specified!")
