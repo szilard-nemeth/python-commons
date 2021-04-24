@@ -98,14 +98,18 @@ class CommandRunner:
     @staticmethod
     def egrep_with_cli(git_log_result: List[str], file: str, grep_for: str,
                        escape_single_quotes=True,
-                       escape_double_quotes=True):
+                       escape_double_quotes=True,
+                       fail_on_empty_output=True,
+                       fail_on_error=True):
         FileUtils.save_to_file(file, StringUtils.list_to_multiline_string(git_log_result))
         if escape_single_quotes or escape_double_quotes:
             grep_for = StringUtils.escape_str(grep_for,
                                               escape_single_quotes=escape_single_quotes,
                                               escape_double_quotes=escape_double_quotes)
         cli_command = f"cat {file} | egrep \"{grep_for}\""
-        return CommandRunner.run_cli_command(cli_command)
+        return CommandRunner.run_cli_command(cli_command,
+                                             fail_on_empty_output=fail_on_empty_output,
+                                             fail_on_error=fail_on_error)
 
     @staticmethod
     def execute_script(script: str, args: str, working_dir: str = None, output_file: str = None, use_tee=False):
