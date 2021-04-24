@@ -37,11 +37,13 @@ class JiraUtils:
         soup = BeautifulSoup(html_doc, "html.parser")
         result_dict = {}
 
+        links = []
         if find_all_links:
             links = soup.find_all("a", attrs={"class": "issue-link"})
         else:
             table = soup.find("table", id="issuetable")
-            links = table.find_all("a", attrs={"class": "issue-link"})
+            if table is not None:
+                links = table.find_all("a", attrs={"class": "issue-link"})
         for link in links:
             jira_id = link.attrs["data-issue-key"]
             jira_title = str(link.contents[0])
