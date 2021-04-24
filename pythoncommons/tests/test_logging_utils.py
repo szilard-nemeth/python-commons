@@ -33,24 +33,24 @@ class LoggingUtilsTests(unittest.TestCase):
             logger.combined_log(f"te {COLLECTION_PLACEHOLDER} stDebug2...", ["a1", "a2", "a3"])
             logger.combined_log(f"te {COLLECTION_PLACEHOLDER} stDebug3...", ["a1", "a2", "a3", "a4"], debug_coll_func=double_coll)
 
-            self.assertEqual(cm.output, [self.testlogger_info_msg("testInfo1...| 2"),
-                                         self.testlogger_info_msg("te 3 stInfo2..."),
+            self.assertEqual(cm.output, [self.logger_info_msg("testInfo1...| 2"),
+                                         self.logger_info_msg("te 3 stInfo2..."),
 
-                                         self.testlogger_info_msg("testDebug1... 2"),
-                                         self.testlogger_debug_msg("testDebug1... ['a1', 'a2']"),
+                                         self.logger_info_msg("testDebug1... 2"),
+                                         self.logger_debug_msg("testDebug1... ['a1', 'a2']"),
 
-                                         self.testlogger_info_msg("te 3 stDebug2..."),
-                                         self.testlogger_debug_msg("te ['a1', 'a2', 'a3'] stDebug2..."),
+                                         self.logger_info_msg("te 3 stDebug2..."),
+                                         self.logger_debug_msg("te ['a1', 'a2', 'a3'] stDebug2..."),
 
-                                         self.testlogger_info_msg("te 4 stDebug3..."),
-                                         self.testlogger_debug_msg("te ['a1', 'a2', 'a3', 'a4', "
+                                         self.logger_info_msg("te 4 stDebug3..."),
+                                         self.logger_debug_msg("te ['a1', 'a2', 'a3', 'a4', "
                                                                    "'a1', 'a2', 'a3', 'a4'] stDebug3...")
                                          ])
 
-    def testlogger_info_msg(self, msg):
+    def logger_info_msg(self, msg):
         return f"{TESTLOGGER_INFO}{msg}"
 
-    def testlogger_debug_msg(self, msg):
+    def logger_debug_msg(self, msg):
         return f"{TESTLOGGER_DEBUG}{msg}"
 
 
