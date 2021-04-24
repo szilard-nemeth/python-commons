@@ -33,10 +33,16 @@ class JiraUtils:
         return issue_keys
 
     @staticmethod
-    def parse_subjiras_and_jira_titles_from_umbrella_html(html_doc, to_file, filter_ids):
+    def parse_subjiras_and_jira_titles_from_umbrella_html(html_doc, to_file, filter_ids, find_all_links=True):
         soup = BeautifulSoup(html_doc, "html.parser")
         result_dict = {}
-        for link in soup.find_all("a", attrs={"class": "issue-link"}):
+
+        if find_all_links:
+            links = soup.find_all("a", attrs={"class": "issue-link"})
+        else:
+            table = soup.find("table", id="issuetable")
+            links = table.find_all("a", attrs={"class": "issue-link"})
+        for link in links:
             jira_id = link.attrs["data-issue-key"]
             jira_title = str(link.contents[0])
             # There are 2 anchors with class: 'issue-link' per row. Only store the one with valid title.
