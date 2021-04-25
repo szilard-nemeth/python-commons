@@ -44,6 +44,19 @@ class FileFinder:
         return True
 
     @classmethod
+    def _find_files(cls, root, files, extension, full_path_result, regex_pattern) -> List[str]:
+        result: List[str] = []
+        for file in files:
+            cls._smartlog(f"Processing file: {file}")
+            if cls._is_file_matches_criteria(file, extension, regex_pattern):
+                cls._smartlog(f"File matched: {file}")
+                if full_path_result:
+                    result.append(FileUtils.join_path(root, file))
+                else:
+                    result.append(file)
+        return result
+
+    @classmethod
     def find_files(cls, basedir, regex: str = None, single_level=False, full_path_result=False,
                    extension=None, debug=False, exclude_dirs: List[str] = None):
         cls.old_debug = cls.debug
@@ -62,6 +75,10 @@ class FileFinder:
 
         kwargs: Dict[str, Any] = {}
         if exclude_dirs:
+            # When topdown is True, the caller can modify the dirnames list in-place
+            # (perhaps using del or slice assignment),
+            # and walk() will only recurse into the subdirectories whose names remain in dirnames;
+            # this can be used to prune the search
             kwargs["topdown"] = True
 
         regex_pattern = re.compile(regex) if regex else None
@@ -75,15 +92,7 @@ class FileFinder:
                 dirs[:] = [d for d in dirs if d not in exclude_dirs]
                 if len(orig_dirs) != len(dirs):
                     cls._smartlog(f"Excluded dirs: {list(set(orig_dirs) - set(dirs))}")
-
-            for file in files:
-                cls._smartlog(f"Processing file: {file}")
-                if cls._is_file_matches_criteria(file, extension, regex_pattern):
-                    cls._smartlog(f"File matched: {file}")
-                    if full_path_result:
-                        result_files.append(FileUtils.join_path(root, file))
-                    else:
-                        result_files.append(file)
+            result_files.extend(cls._find_files(root, files, extension, full_path_result, regex_pattern))
             if single_level:
                 return result_files
         cls.debug = cls.old_debug
