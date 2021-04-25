@@ -332,7 +332,7 @@ class FileUtils:
 
     # TODO rename method
     @classmethod
-    def find_files(cls, basedir, find_type: FindResultType, regex: str = None, single_level=False, full_path_result=False,
+    def find_files(cls, basedir, find_type: FindResultType = FindResultType.FILES, regex: str = None, single_level=False, full_path_result=False,
                    extension=None, debug=False, exclude_dirs: List[str] = None):
         args = locals()
         return FileFinder.find_files(**args)
