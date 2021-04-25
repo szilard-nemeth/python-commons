@@ -52,6 +52,28 @@ class FileFinder:
         return True
 
     @classmethod
+    def _get_os_walk_kwargs(cls, exclude_dirs):
+        oswalk_kwargs: Dict[str, Any] = {}
+        if exclude_dirs:
+            # When topdown is True, the caller can modify the dirnames list in-place
+            # (perhaps using del or slice assignment),
+            # and walk() will only recurse into the subdirectories whose names remain in dirnames;
+            # this can be used to prune the search
+            oswalk_kwargs["topdown"] = True
+        return oswalk_kwargs
+
+    @classmethod
+    def _handle_dir_exclusions(cls, dirs, exclude_dirs):
+        if exclude_dirs:
+            # Not enough to check against basename(root) as all other dirs underneath will be walked on the next
+            # invocation of the walk generator with the loop statement
+            orig_dirs = dirs.copy()
+            dirs[:] = [d for d in dirs if d not in exclude_dirs]
+            if len(orig_dirs) != len(dirs):
+                cls._smartlog(f"Excluded dirs: {list(set(orig_dirs) - set(dirs))}")
+        return dirs
+
+    @classmethod
     def _find_files(cls, root, files, criteria: FileFinderCriteria) -> List[str]:
         result: List[str] = []
         for file in files:
@@ -70,24 +92,10 @@ class FileFinder:
         cls.old_debug = cls.debug
         cls.debug = debug
         find_criteria: FileFinderCriteria = cls._get_criteria_from_args(exclude_dirs, extension, regex, full_path_result)
-        oswalk_kwargs: Dict[str, Any] = {}
-        if exclude_dirs:
-            # When topdown is True, the caller can modify the dirnames list in-place
-            # (perhaps using del or slice assignment),
-            # and walk() will only recurse into the subdirectories whose names remain in dirnames;
-            # this can be used to prune the search
-            oswalk_kwargs["topdown"] = True
-
         result_files: List[str] = []
-        for root, dirs, files in os.walk(basedir, **oswalk_kwargs):
+        for root, dirs, files in os.walk(basedir, **cls._get_os_walk_kwargs(exclude_dirs)):
             cls._smartlog(f"Processing root: {root}, dirs: {dirs}")
-            if exclude_dirs:
-                # Not enough to check against basename(root) as all other dirs underneath will be walked on the next
-                # invocation of the walk generator with the loop statement
-                orig_dirs = dirs.copy()
-                dirs[:] = [d for d in dirs if d not in exclude_dirs]
-                if len(orig_dirs) != len(dirs):
-                    cls._smartlog(f"Excluded dirs: {list(set(orig_dirs) - set(dirs))}")
+            dirs[:] = cls._handle_dir_exclusions(dirs, exclude_dirs)
             result_files.extend(cls._find_files(root, files, find_criteria))
             if single_level:
                 return result_files
