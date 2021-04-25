@@ -32,11 +32,12 @@ class FindResultType(Enum):
 
 
 class FileFinderCriteria:
-    def __init__(self, exclude_dirs, extension, regex_pattern, full_path_result):
+    def __init__(self, exclude_dirs, extension, regex_pattern, parent_dir, full_path_result):
         self.exclude_dirs = exclude_dirs
         self.extension = extension
         self.regex_pattern = regex_pattern
         self.full_path_result = full_path_result
+        self.parent_dir = parent_dir
 
 
 class FileFinder:
@@ -50,9 +51,10 @@ class FileFinder:
             LOG.debug(f"{cls.LOG_PREFIX} {s}")
 
     @classmethod
-    def _is_file_matches_criteria(cls, file, criteria: FileFinderCriteria):
+    def _is_file_matches_criteria(cls, file, parent_dir, criteria: FileFinderCriteria):
         if (criteria.extension and not file.endswith("." + criteria.extension)) or \
-                (criteria.regex_pattern and not criteria.regex_pattern.match(file)):
+                (criteria.regex_pattern and not criteria.regex_pattern.match(file)) or \
+                (criteria.parent_dir and not criteria.parent_dir == parent_dir):
             return False
         return True
 
@@ -83,7 +85,7 @@ class FileFinder:
         result: List[str] = []
         for file in files:
             cls._smartlog(f"Processing file: {file}")
-            if cls._is_file_matches_criteria(file, criteria):
+            if cls._is_file_matches_criteria(file, FileUtils.basename(root), criteria):
                 cls._smartlog(f"File matched: {file}")
                 if criteria.full_path_result:
                     result.append(FileUtils.join_path(root, file))
@@ -96,7 +98,7 @@ class FileFinder:
         result: List[str] = []
         for dir in dirs:
             cls._smartlog(f"Processing dir: {dir}")
-            if cls._is_file_matches_criteria(dir, criteria):
+            if cls._is_file_matches_criteria(dir, FileUtils.basename(root), criteria):
                 cls._smartlog(f"Dir matched: {dir}")
                 if criteria.full_path_result:
                     result.append(FileUtils.join_path(root, dir))
@@ -105,11 +107,18 @@ class FileFinder:
         return result
 
     @classmethod
-    def find_files(cls, basedir: str, find_type: FindResultType, regex: str = None, single_level=False, full_path_result=False,
-                   extension=None, debug=False, exclude_dirs: List[str] = None):
+    def find_files(cls, basedir: str,
+                   find_type: FindResultType,
+                   regex: str = None,
+                   parent_dir: str = None,
+                   single_level=False,
+                   full_path_result=False,
+                   extension=None,
+                   debug=False,
+                   exclude_dirs: List[str] = None):
         cls.old_debug = cls.debug
         cls.debug = debug
-        find_criteria: FileFinderCriteria = cls._get_criteria_from_args(exclude_dirs, extension, regex, full_path_result)
+        find_criteria: FileFinderCriteria = cls._get_criteria_from_args(exclude_dirs, extension, regex, parent_dir, full_path_result)
         result_files: List[str] = []
         for root, dirs, files in os.walk(basedir, **cls._get_os_walk_kwargs(exclude_dirs)):
             cls._smartlog(f"Processing root: {root}, dirs: {dirs}")
@@ -124,7 +133,7 @@ class FileFinder:
         return result_files
 
     @classmethod
-    def _get_criteria_from_args(cls, exclude_dirs, extension, regex, full_path_result):
+    def _get_criteria_from_args(cls, exclude_dirs, extension, regex, parent_dir, full_path_result):
         saved_args = locals().copy()
         cls._smartlog(f"Received args: {saved_args}")
         if not exclude_dirs:
@@ -136,7 +145,7 @@ class FileFinder:
             cls._smartlog(f"Filtering files with extension: {extension}")
         regex_pattern = re.compile(regex) if regex else None
         cls._smartlog(f"Modified args: {locals()}")
-        return FileFinderCriteria(exclude_dirs, extension, regex_pattern, full_path_result)
+        return FileFinderCriteria(exclude_dirs, extension, regex_pattern, parent_dir, full_path_result)
 
 
 class FileUtils:
@@ -332,9 +341,17 @@ class FileUtils:
 
     # TODO rename method
     @classmethod
-    def find_files(cls, basedir, find_type: FindResultType = FindResultType.FILES, regex: str = None, single_level=False, full_path_result=False,
-                   extension=None, debug=False, exclude_dirs: List[str] = None):
-        args = locals()
+    def find_files(cls, basedir,
+                   find_type: FindResultType = FindResultType.FILES,
+                   regex: str = None,
+                   parent_dir: str = None,
+                   single_level=False,
+                   full_path_result=False,
+                   extension=None,
+                   debug=False,
+                   exclude_dirs: List[str] = None):
+        args = locals().copy()
+        del args["cls"]
         return FileFinder.find_files(**args)
 
     @staticmethod
