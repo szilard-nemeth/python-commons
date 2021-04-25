@@ -26,6 +26,62 @@ class FileMatchType(Enum):
     fnmatch = "fnmatch"
 
 
+class FileFinder:
+
+    @classmethod
+    def find_files(cls, basedir, regex: str = None, single_level=False, full_path_result=False,
+                   extension=None, debug=False, exclude_dirs: List[str] = None):
+        saved_args = locals().copy()
+        if debug:
+            LOG.debug(f"[FINDING FILES] Received args: {saved_args}")
+        if not exclude_dirs:
+            exclude_dirs = []
+        # Preprocess
+        if extension:
+            if extension.startswith(".") or extension.startswith("*."):
+                extension = extension.split(".")[-1]
+            LOG.debug(f"[FINDING FILES] Filtering files with extension: {extension}")
+
+        if debug:
+            LOG.debug(f"[FINDING FILES] Modified args: {locals()}")
+
+        kwargs = {}
+        if exclude_dirs:
+            kwargs["topdown"] = True
+
+        regex_pattern = re.compile(regex) if regex else None
+        result_files: List[str] = []
+        for root, dirs, files in os.walk(basedir, **kwargs):
+            if debug:
+                LOG.debug(f"[FINDING FILES] Processing root: {root}, dirs: {dirs}")
+            if exclude_dirs:
+                # Not enough to check against basename(root) as all other dirs underneath will be walked on the next
+                # invocation of the walk generator with the loop statement
+                orig_dirs = dirs.copy()
+                dirs[:] = [d for d in dirs if d not in exclude_dirs]
+                if len(orig_dirs) != len(dirs):
+                    if debug:
+                        LOG.debug(f"[FINDING FILES] Excluded dirs: {list(set(orig_dirs) - set(dirs))}")
+
+            for file in files:
+                if debug:
+                    LOG.debug(f"[FINDING FILES] Processing file: {file}")
+                matched = True
+                if (extension and not file.endswith("." + extension)) or \
+                        (regex_pattern and not regex_pattern.match(file)):
+                    matched = False
+                if matched:
+                    if debug:
+                        LOG.debug(f"[FINDING FILES] File matched: {file}")
+                    if full_path_result:
+                        result_files.append(FileUtils.join_path(root, file))
+                    else:
+                        result_files.append(file)
+            if single_level:
+                return result_files
+        return result_files
+
+
 class FileUtils:
     previous_cwd = None
 
@@ -177,7 +233,7 @@ class FileUtils:
         return result
 
     @staticmethod
-    def find_repo_root_dir(current_script, root_dir_name):
+    def find_repo_root_dir(current_script: str, root_dir_name: str):
         orig_path = os.path.realpath(current_script)
         path = orig_path
         visited = [path]
@@ -217,60 +273,11 @@ class FileUtils:
                 f"Visited: {visited}")
         return path
 
-
     # TODO rename method
     @classmethod
     def find_files(cls, basedir, regex: str = None, single_level=False, full_path_result=False,
                    extension=None, debug=False, exclude_dirs: List[str] = None):
-        saved_args = locals().copy()
-        if debug:
-            LOG.debug(f"[FINDING FILES] Received args: {saved_args}")
-        if not exclude_dirs:
-            exclude_dirs = []
-        # Preprocess
-        if extension:
-            if extension.startswith(".") or extension.startswith("*."):
-                extension = extension.split(".")[-1]
-            LOG.debug(f"[FINDING FILES] Filtering files with extension: {extension}")
-
-        if debug:
-            LOG.debug(f"[FINDING FILES] Modified args: {locals()}")
-
-        kwargs = {}
-        if exclude_dirs:
-            kwargs["topdown"] = True
-
-        regex_pattern = re.compile(regex) if regex else None
-        res_files: List[str] = []
-        for root, dirs, files in os.walk(basedir, **kwargs):
-            if debug:
-                LOG.debug(f"[FINDING FILES] Processing root: {root}, dirs: {dirs}")
-            if exclude_dirs:
-                # Not enough to check against basename(root) as all other dirs underneath will be walked on the next
-                # invocation of the walk generator with the loop statement
-                orig_dirs = dirs.copy()
-                dirs[:] = [d for d in dirs if d not in exclude_dirs]
-                if len(orig_dirs) != len(dirs):
-                    if debug:
-                        LOG.debug(f"[FINDING FILES] Excluded dirs: {list(set(orig_dirs) - set(dirs))}")
-
-            for file in files:
-                if debug:
-                    LOG.debug(f"[FINDING FILES] Processing file: {file}")
-                matched = True
-                if (extension and not file.endswith("." + extension)) or \
-                        (regex_pattern and not regex_pattern.match(file)):
-                    matched = False
-                if matched:
-                    if debug:
-                        LOG.debug(f"[FINDING FILES] File matched: {file}")
-                    if full_path_result:
-                        res_files.append(FileUtils.join_path(root, file))
-                    else:
-                        res_files.append(file)
-            if single_level:
-                return res_files
-        return res_files
+        return FileFinder.find_files(**locals())
 
     @staticmethod
     def list_files_in_dir(dir, pattern=None):
