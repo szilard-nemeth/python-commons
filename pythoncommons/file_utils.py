@@ -26,6 +26,11 @@ class FileMatchType(Enum):
     fnmatch = "fnmatch"
 
 
+class FindResultType(Enum):
+    FILES = "files"
+    DIRS = "dirs"
+
+
 class FileFinderCriteria:
     def __init__(self, exclude_dirs, extension, regex_pattern, full_path_result):
         self.exclude_dirs = exclude_dirs
@@ -87,7 +92,20 @@ class FileFinder:
         return result
 
     @classmethod
-    def find_files(cls, basedir, regex: str = None, single_level=False, full_path_result=False,
+    def _find_dirs(cls, root, dirs, criteria: FileFinderCriteria) -> List[str]:
+        result: List[str] = []
+        for dir in dirs:
+            cls._smartlog(f"Processing dir: {dir}")
+            if cls._is_file_matches_criteria(dir, criteria):
+                cls._smartlog(f"Dir matched: {dir}")
+                if criteria.full_path_result:
+                    result.append(FileUtils.join_path(root, dir))
+                else:
+                    result.append(dir)
+        return result
+
+    @classmethod
+    def find_files(cls, basedir: str, find_type: FindResultType, regex: str = None, single_level=False, full_path_result=False,
                    extension=None, debug=False, exclude_dirs: List[str] = None):
         cls.old_debug = cls.debug
         cls.debug = debug
@@ -96,7 +114,10 @@ class FileFinder:
         for root, dirs, files in os.walk(basedir, **cls._get_os_walk_kwargs(exclude_dirs)):
             cls._smartlog(f"Processing root: {root}, dirs: {dirs}")
             dirs[:] = cls._handle_dir_exclusions(dirs, exclude_dirs)
-            result_files.extend(cls._find_files(root, files, find_criteria))
+            if find_type == FindResultType.FILES:
+                result_files.extend(cls._find_files(root, files, find_criteria))
+            elif find_type == FindResultType.DIRS:
+                result_files.extend(cls._find_dirs(root, dirs, find_criteria))
             if single_level:
                 return result_files
         cls.debug = cls.old_debug
@@ -311,9 +332,10 @@ class FileUtils:
 
     # TODO rename method
     @classmethod
-    def find_files(cls, basedir, regex: str = None, single_level=False, full_path_result=False,
+    def find_files(cls, basedir, find_type: FindResultType, regex: str = None, single_level=False, full_path_result=False,
                    extension=None, debug=False, exclude_dirs: List[str] = None):
-        return FileFinder.find_files(**locals())
+        args = locals()
+        return FileFinder.find_files(**args)
 
     @staticmethod
     def list_files_in_dir(dir, pattern=None):
