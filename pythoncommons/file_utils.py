@@ -9,7 +9,7 @@ import tempfile
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import List
+from typing import List, Dict, Any
 from stat import ST_SIZE
 from stat import ST_MTIME
 
@@ -27,58 +27,63 @@ class FileMatchType(Enum):
 
 
 class FileFinder:
+    old_debug: bool = False
+    debug: bool = False
+    LOG_PREFIX = "[FINDING FILES]"
+
+    @classmethod
+    def _smartlog(cls, s: str):
+        if cls.debug:
+            LOG.debug(f"{cls.LOG_PREFIX} {s}")
 
     @classmethod
     def find_files(cls, basedir, regex: str = None, single_level=False, full_path_result=False,
                    extension=None, debug=False, exclude_dirs: List[str] = None):
         saved_args = locals().copy()
-        if debug:
-            LOG.debug(f"[FINDING FILES] Received args: {saved_args}")
+        cls.old_debug = cls.debug
+        cls.debug = debug
+        cls._smartlog(f"Received args: {saved_args}")
         if not exclude_dirs:
             exclude_dirs = []
         # Preprocess
         if extension:
             if extension.startswith(".") or extension.startswith("*."):
                 extension = extension.split(".")[-1]
-            LOG.debug(f"[FINDING FILES] Filtering files with extension: {extension}")
+            cls._smartlog(f"Filtering files with extension: {extension}")
 
-        if debug:
-            LOG.debug(f"[FINDING FILES] Modified args: {locals()}")
+        cls._smartlog(f"Modified args: {locals()}")
 
-        kwargs = {}
+        kwargs: Dict[str, Any] = {}
         if exclude_dirs:
             kwargs["topdown"] = True
 
         regex_pattern = re.compile(regex) if regex else None
         result_files: List[str] = []
         for root, dirs, files in os.walk(basedir, **kwargs):
-            if debug:
-                LOG.debug(f"[FINDING FILES] Processing root: {root}, dirs: {dirs}")
+            cls._smartlog(f"Processing root: {root}, dirs: {dirs}")
             if exclude_dirs:
                 # Not enough to check against basename(root) as all other dirs underneath will be walked on the next
                 # invocation of the walk generator with the loop statement
                 orig_dirs = dirs.copy()
                 dirs[:] = [d for d in dirs if d not in exclude_dirs]
                 if len(orig_dirs) != len(dirs):
-                    if debug:
-                        LOG.debug(f"[FINDING FILES] Excluded dirs: {list(set(orig_dirs) - set(dirs))}")
+                    cls._smartlog(f"Excluded dirs: {list(set(orig_dirs) - set(dirs))}")
 
             for file in files:
-                if debug:
-                    LOG.debug(f"[FINDING FILES] Processing file: {file}")
+                cls._smartlog(f"Processing file: {file}")
                 matched = True
                 if (extension and not file.endswith("." + extension)) or \
                         (regex_pattern and not regex_pattern.match(file)):
                     matched = False
                 if matched:
-                    if debug:
-                        LOG.debug(f"[FINDING FILES] File matched: {file}")
+                    cls._smartlog(f"File matched: {file}")
                     if full_path_result:
                         result_files.append(FileUtils.join_path(root, file))
                     else:
                         result_files.append(file)
             if single_level:
                 return result_files
+        cls.debug = cls.old_debug
         return result_files
 
 
