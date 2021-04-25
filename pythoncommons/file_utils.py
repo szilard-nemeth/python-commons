@@ -37,11 +37,18 @@ class FileFinder:
             LOG.debug(f"{cls.LOG_PREFIX} {s}")
 
     @classmethod
+    def _is_file_matches_criteria(cls, file, extension, regex_pattern):
+        if (extension and not file.endswith("." + extension)) or \
+                (regex_pattern and not regex_pattern.match(file)):
+            return False
+        return True
+
+    @classmethod
     def find_files(cls, basedir, regex: str = None, single_level=False, full_path_result=False,
                    extension=None, debug=False, exclude_dirs: List[str] = None):
-        saved_args = locals().copy()
         cls.old_debug = cls.debug
         cls.debug = debug
+        saved_args = locals().copy()
         cls._smartlog(f"Received args: {saved_args}")
         if not exclude_dirs:
             exclude_dirs = []
@@ -71,11 +78,7 @@ class FileFinder:
 
             for file in files:
                 cls._smartlog(f"Processing file: {file}")
-                matched = True
-                if (extension and not file.endswith("." + extension)) or \
-                        (regex_pattern and not regex_pattern.match(file)):
-                    matched = False
-                if matched:
+                if cls._is_file_matches_criteria(file, extension, regex_pattern):
                     cls._smartlog(f"File matched: {file}")
                     if full_path_result:
                         result_files.append(FileUtils.join_path(root, file))
