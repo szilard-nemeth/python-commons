@@ -27,6 +27,7 @@ class ProjectUtils:
     CHILD_DIR_DICT = {}
     CHILD_DIR_TEST_DICT = {}
     FILES_TO_PROJECT = {}
+    test_execution: bool = False
 
     @classmethod
     def determine_project_and_parent_dir(cls, file_of_caller, stack, strategy=ProjectRootDeterminationStrategy.COMMON_FILE):
@@ -123,6 +124,7 @@ class ProjectUtils:
 
     @classmethod
     def get_test_output_basedir(cls, basedir_name: str):
+        cls.test_execution = True
         project_name = cls.verify_caller_filename_valid()
         if project_name not in cls.PROJECT_BASEDIR_DICT:
             # Creating project dir for the first time
@@ -187,21 +189,36 @@ class ProjectUtils:
 
     @classmethod
     def get_session_dir_under_child_dir(cls, child_dir_name: str):
+        # If this method called from production code but we are exeucting it from test code
+        if cls.test_execution:
+            return cls._get_session_dir_under_child_dir(child_dir_name, test=True)
+        return cls._get_session_dir_under_child_dir(child_dir_name)
+
+    @classmethod
+    def get_test_session_dir_under_child_dir(cls, child_dir_name: str):
+        return cls._get_session_dir_under_child_dir(child_dir_name, test=True)
+
+    @classmethod
+    def _get_session_dir_under_child_dir(cls, child_dir_name, test: bool = False):
+        child_dir_type: str = "child dir" if not test else "test child dir"
+        dir_dict = cls.CHILD_DIR_DICT if not test else cls.CHILD_DIR_TEST_DICT
+
         if not child_dir_name:
-            raise ValueError("Project child dir name should be specified!")
+            raise ValueError(f"Project {child_dir_type} name should be specified!")
 
         project_name = cls._validate_project_for_child_dir_creation()
-        if project_name in cls.CHILD_DIR_DICT and child_dir_name in cls.CHILD_DIR_DICT[project_name]:
-            stored_dir = cls.CHILD_DIR_DICT[project_name][child_dir_name]
-            LOG.debug(f"Found already stored child dir for project '{project_name}': {stored_dir}")
+        if project_name in dir_dict and child_dir_name in dir_dict[project_name]:
+            stored_dir = dir_dict[project_name][child_dir_name]
+            LOG.debug(f"Found already stored {child_dir_type} for project '{project_name}': {stored_dir}")
 
             session_dir = FileUtils.join_path(stored_dir, f"session-{DateUtils.now_formatted('%Y%m%d_%H%M%S')}")
             FileUtils.ensure_dir_created(session_dir)
             return session_dir
         else:
-            raise ValueError(f"Cannot find stored child dir for project. "
-                             f"Project: {project_name}, child dir: {child_dir_name}, "
-                             f"All stored child dirs: {cls.CHILD_DIR_DICT}")
+            raise ValueError(f"Cannot find stored {child_dir_type} for project. "
+                             f"Project: {project_name}, "
+                             f"Child dir: {child_dir_name}, "
+                             f"All stored {child_dir_type}s: {dir_dict}")
 
     @classmethod
     def save_to_test_file(cls, dir_name: str, filename: str, file_contents: str):
