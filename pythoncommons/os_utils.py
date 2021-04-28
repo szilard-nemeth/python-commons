@@ -22,6 +22,9 @@ class OsUtils:
         full_command = " ".join(sys.argv)
         if filter_password:
             split_res = full_command.split(PASSWORD_PREFIX)
+            if len(split_res) == 1:
+                # Password not found, return full command
+                return full_command
             # Chop the first word from the 2nd string, that word should be the password.
             return split_res[0] + f"{PASSWORD_PREFIX}****** " + " ".join(split_res[1].split(" ")[1:])
         else:
