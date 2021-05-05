@@ -772,7 +772,7 @@ class FileUtils:
 class JsonFileUtils:
     @classmethod
     @timeit
-    def write_data_to_file_as_json(cls, path, data):
+    def write_data_to_file_as_json(cls, path, data, pretty=False):
         import json
 
         dirname = os.path.dirname(path)
@@ -783,7 +783,10 @@ class JsonFileUtils:
 
         LOG.info("Starting to write to file: %s", path)
         with open(path, 'w') as file:
-            json.dump(data, file, sort_keys=True)
+            kwargs = {'sort_keys': True}
+            if pretty:
+                kwargs["indent"] = 4
+            json.dump(data, file, **kwargs)
         LOG.info("Finished writing to file: %s", path)
 
     @classmethod
