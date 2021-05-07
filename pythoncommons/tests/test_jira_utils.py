@@ -9,7 +9,7 @@ PROJECT_NAME = "pythoncommons"
 
 class JiraUtilsTests(unittest.TestCase):
     def test_YARN_10496(self):
-        project_out_root = ProjectUtils.get_test_output_basedir(PROJECT_NAME)
+        project_out_root = ProjectUtils.get_test_output_basedir(PROJECT_NAME, allow_python_commons_as_project=True)
         result_basedir = FileUtils.join_path(project_out_root, "jira-data")
         FileUtils.ensure_dir_created(result_basedir)
         jira_id = "YARN-10496"

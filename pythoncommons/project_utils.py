@@ -1,5 +1,6 @@
 import logging
 import os
+import platform
 import sys
 from enum import Enum
 from os.path import expanduser
@@ -31,6 +32,8 @@ class ProjectUtils:
 
     @classmethod
     def determine_project_and_parent_dir(cls, file_of_caller, stack, strategy=ProjectRootDeterminationStrategy.COMMON_FILE):
+        if not strategy:
+            strategy = ProjectRootDeterminationStrategy.COMMON_FILE
         received_args = locals().copy()
         received_args['stack'] = ProjectUtils.get_stack_human_readable(stack)
         LOG.debug(f"Determining project name. Received args: {received_args}. \n"
@@ -65,11 +68,39 @@ class ProjectUtils:
             return path, project
 
         def _determine_project_by_sys_path(file_of_caller):
+            def _special_startswith(path, file_of_caller, is_mac):
+                # Had to make an OS-based distinction here...
+                # On MacOS, if the file is executed from /var or /tmp, the stackframe will contain the normal path.
+                # However, even if the normal path is added to sys.path from a testcase,
+                # it will be prepended with /private.
+                # More on /private can be found here: https://apple.stackexchange.com/a/227869
+
+                # Example scenario:
+                # path: '/private/var/folders/nn/mkv5bwbd2fg8v8ztz5swpq980000gn/T/tmpp3k75qk2/python'
+                # file_of_caller: '/var/folders/nn/mkv5bwbd2fg8v8ztz5swpq980000gn/T/tmpp3k75qk2/python/hello_world.py'
+                if is_mac and path.startswith(os.sep + "private"):
+                    # WARNING: Cannot use os.path.join here as it removes /private from the path string :(
+                    extended_file_of_caller = os.sep + "private" + file_of_caller
+                    if extended_file_of_caller.startswith(path):
+                        LOG.info(f"Matched with special startswith. "
+                                 f"Original file of caller: {file_of_caller}"
+                                 f"Extended file of caller: {extended_file_of_caller}"
+                                 f"Path: {path}")
+                        return True, extended_file_of_caller
+                return False, file_of_caller
+
             LOG.debug("Execution environment is not local, "
                       "trying to determine project name with sys.path strategy. "
                       f"Current sys.path: \n{ProjectUtils.get_sys_path_human_readable()}")
+
+            is_mac = platform.system() == "Darwin"
             for path in sys.path:
-                if file_of_caller.startswith(path):
+                match = file_of_caller.startswith(path)
+                if not match:
+                    match, new_file_of_caller = _special_startswith(path, file_of_caller, is_mac)
+                    if match:
+                        file_of_caller = new_file_of_caller
+                if match:
                     LOG.debug(f"Found parent path of caller file: {path}")
                     parts = file_of_caller.split(path)
                     LOG.debug(f"Parts of path after split: {parts}")
@@ -82,6 +113,8 @@ class ProjectUtils:
                         project = os.path.split(project)[0]
                     LOG.info(f"Determined path: {path}, project: {project}")
                     return path, project
+            raise ValueError(f"Cannot determine project. File of caller: {file_of_caller}\n"
+                             f"Call stack: \n{ProjectUtils.get_stack_human_readable(stack)}")
 
         def _store_and_return(cls, file_of_caller, path, project):
             cls.FILES_TO_PROJECT[file_of_caller] = project
@@ -102,11 +135,16 @@ class ProjectUtils:
             f"\nsys.path: \n{ProjectUtils.get_sys_path_human_readable()}")
 
     @classmethod
-    def get_output_basedir(cls, basedir_name: str, ensure_created=True):
+    def get_output_basedir(cls, basedir_name: str,
+                           ensure_created=True,
+                           allow_python_commons_as_project=False,
+                           project_root_determination_strategy=None):
         if not basedir_name:
             raise ValueError("Basedir name should be specified!")
 
-        project_name = cls.verify_caller_filename_valid()
+        project_name = cls.verify_caller_filename_valid(
+            allow_python_commons_as_project=allow_python_commons_as_project,
+            project_root_determination_strategy=project_root_determination_strategy)
         proj_basedir = FileUtils.join_path(PROJECTS_BASEDIR, basedir_name)
         if project_name in cls.PROJECT_BASEDIR_DICT:
             old_basedir = cls.PROJECT_BASEDIR_DICT[project_name]
@@ -123,12 +161,25 @@ class ProjectUtils:
         return proj_basedir
 
     @classmethod
-    def get_test_output_basedir(cls, basedir_name: str):
+    def get_test_output_basedir(cls, basedir_name: str,
+                                allow_python_commons_as_project=False,
+                                project_root_determination_strategy=None):
+        """
+
+        :param basedir_name:
+        :param allow_python_commons_as_project: This is useful and a must for test executions of ProjectUtils (e.g. JiraUtilsTests)
+        as stackframes calling pythoncommons are only the methods of the unittest framework.
+        :return:
+        """
         cls.test_execution = True
-        project_name = cls.verify_caller_filename_valid()
+        project_name = cls.verify_caller_filename_valid(
+            allow_python_commons_as_project=allow_python_commons_as_project,
+            project_root_determination_strategy=project_root_determination_strategy)
         if project_name not in cls.PROJECT_BASEDIR_DICT:
             # Creating project dir for the first time
-            proj_basedir = cls.get_output_basedir(basedir_name)
+            proj_basedir = cls.get_output_basedir(basedir_name,
+                                                  allow_python_commons_as_project=allow_python_commons_as_project,
+                                                  project_root_determination_strategy=project_root_determination_strategy)
         else:
             proj_basedir = cls.PROJECT_BASEDIR_DICT[project_name]
 
@@ -289,12 +340,26 @@ class ProjectUtils:
         return FileUtils.join_path(log_dir, filename)
 
     @classmethod
-    def verify_caller_filename_valid(cls):
+    def verify_caller_filename_valid(cls, allow_python_commons_as_project=False,
+                                     project_root_determination_strategy=None):
         stack = inspect.stack()
-        stack_frame = cls._find_first_non_pythoncommons_stackframe(stack)
+        stack_frame, idx = cls._find_first_non_pythoncommons_stackframe(stack)
         file_of_caller = stack_frame.filename
         LOG.debug("Filename of caller: " + file_of_caller)
-        path, project = cls.determine_project_and_parent_dir(file_of_caller, stack)
+        if "unittest" in file_of_caller.split(os.sep):
+            message = f"Detected caller as 'unittest'. Current stack frame: {stack_frame}\n" \
+                     f"Stack: {ProjectUtils.get_stack_human_readable(stack)}"
+            if allow_python_commons_as_project:
+                LOG.warning(message)
+                # Get the previous frame which should belong to pythoncommons
+                python_commons_frame = stack[idx - 1]
+                file_of_caller = python_commons_frame.filename
+            else:
+                message += "\n'allow_python_commons_as_project' is set to False. " \
+                               "Please set 'allow_python_commons_as_project' to True " \
+                               "to the ProjectUtils method that initiated the call."
+                raise ValueError(message)
+        path, project = cls.determine_project_and_parent_dir(file_of_caller, stack, strategy=project_root_determination_strategy)
         return project
 
     @classmethod
@@ -310,7 +375,7 @@ class ProjectUtils:
             raise ValueError("Walked up the stack but haven't found any frame that does not belong to python-commons. \n"
                              "Printing the stack: \n"
                              f"{ProjectUtils.get_stack_human_readable(stack)}")
-        return stack[idx]
+        return stack[idx], idx
 
     @classmethod
     def get_stack_human_readable(cls, stack):

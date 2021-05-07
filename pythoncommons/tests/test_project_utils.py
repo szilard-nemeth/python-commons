@@ -1,5 +1,7 @@
 import os
 import subprocess
+import sys
+import tempfile
 import unittest
 from pythoncommons.file_utils import FileUtils
 
@@ -8,11 +10,16 @@ PROJECT_NAME = "pythoncommons"
 
 class ProjectUtilsTests(unittest.TestCase):
     def test_executing_script_from_uncommon_directory(self):
-        script_dir = FileUtils.ensure_dir_created(FileUtils.join_path(os.sep, "private", "tmp", "python"))
+        # Can't use /tmp as it's platform dependent.
+        # On MacOS, it's mounted as /private/tmp but some Linux systems don't have /private/tmp.
+        # Let's use python's built-in temp dir creation methods.
+        tmp_dir: tempfile.TemporaryDirectory = tempfile.TemporaryDirectory()
+        script_dir = FileUtils.ensure_dir_created(FileUtils.join_path(tmp_dir.name, "python"))
+        sys.path.append(script_dir)
         script_abs_path = script_dir + os.sep + "hello_world.py"
-        contents = "from pythoncommons.project_utils import ProjectUtils\n" \
+        contents = "from pythoncommons.project_utils import ProjectUtils,ProjectRootDeterminationStrategy\n" \
                    "print(\"hello world\")\n" \
-                   "basedir = ProjectUtils.get_output_basedir('test')\n" \
+                   "basedir = ProjectUtils.get_output_basedir('test', project_root_determination_strategy=ProjectRootDeterminationStrategy.SYS_PATH)\n" \
                    "logfilename = ProjectUtils.get_default_log_file('test')\n"
         FileUtils.save_to_file(script_abs_path, contents)
         os.system(f'python3 {script_abs_path}')
