@@ -12,6 +12,7 @@ class HtmlGenerator:
 
     def begin_html_tag(self):
         self.html = self.soup.new_tag("html")
+        return self
 
     def finish_html(self):
         if self.finished_html:
@@ -21,6 +22,7 @@ class HtmlGenerator:
 
         self.soup.append(self.html)
         self.finished_html = True
+        return self
 
     def render(self):
         if not self.finished_html:
@@ -40,15 +42,18 @@ table, th, td {
 """
         head.append(style)
         self.html.append(head)
+        return self
 
     def append_paragraphs(self, strings: List[str]):
         for line in strings:
             self.append_paragraph(line)
+        return self
 
     def append_paragraph(self, string):
         p = self.soup.new_tag("p")
         p.append(string)
         self.soup.append(p)
+        return self
 
     @staticmethod
     def generate_separator(tag="hr", breaks=2):
@@ -78,3 +83,4 @@ table, th, td {
             tables_html += separator.join(f"<{ht}>{header}</{ht}>{table}")
         gen_tables_soup = BeautifulSoup(tables_html, "html.parser")
         self.html.append(gen_tables_soup)
+        return self
