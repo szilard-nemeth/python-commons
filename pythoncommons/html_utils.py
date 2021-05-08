@@ -62,7 +62,7 @@ table, th, td {
         return html_sep
 
     def append_html_tables(self,
-                           tables: List[Tuple[str, str]],
+                           table_tups: List[Tuple[str, str]],
                            separator=None,
                            additional_separator_at_beginning=False,
                            header_type="h1"):
@@ -77,10 +77,8 @@ table, th, td {
         if additional_separator_at_beginning:
             tables_html += separator
 
-        for tup in tables:
-            header = tup[0]
-            table = tup[1]
-            tables_html += separator.join(f"<{ht}>{header}</{ht}>{table}")
+        # header = tup[0], table = tup[1]
+        tables_html += separator.join([f"<h1>{tup[0]}</h1>" + tup[1] for tup in table_tups])
         gen_tables_soup = BeautifulSoup(tables_html, "html.parser")
         self.html.append(gen_tables_soup)
         return self
