@@ -12,7 +12,26 @@ class TabulateTableFormat(Enum):
     GRID = "fancy_grid"
     HTML = "html"
 
+
 DEFAULT_TABLE_FORMATS = [TabulateTableFormat.GRID, TabulateTableFormat.HTML]
+
+
+class GenericTableWithHeader:
+    def __init__(
+        self, header_title, table: str, table_fmt: TabulateTableFormat, colorized: bool = False
+    ):
+        self.header = (
+            StringUtils.generate_header_line(
+                header_title, char="═", length=len(StringUtils.get_first_line_of_multiline_str(table))
+            )
+            + "\n"
+        )
+        self.table = table
+        self.table_fmt: TabulateTableFormat = table_fmt
+        self.colorized = colorized
+
+    def __str__(self):
+        return self.header + self.table
 
 
 class Color(Enum):
