@@ -1,6 +1,6 @@
 import logging
 from enum import Enum
-from typing import Tuple, List
+from typing import Tuple, List, Any
 from colr import color
 from pythoncommons.string_utils import StringUtils, auto_str
 from tabulate import tabulate
@@ -18,15 +18,23 @@ DEFAULT_TABLE_FORMATS = [TabulateTableFormat.GRID, TabulateTableFormat.HTML]
 
 class GenericTableWithHeader:
     def __init__(
-        self, header_title, table: str, table_fmt: TabulateTableFormat, colorized: bool = False
+        self,
+            header_title: str,
+            header_list: List[str],
+            source_data: Any,
+            rendered_table: str,
+            table_fmt: TabulateTableFormat,
+            colorized: bool = False
     ):
         self.header = (
             StringUtils.generate_header_line(
-                header_title, char="═", length=len(StringUtils.get_first_line_of_multiline_str(table))
+                header_title, char="═", length=len(StringUtils.get_first_line_of_multiline_str(rendered_table))
             )
             + "\n"
         )
-        self.table = table
+        self.header_list = header_list
+        self.source_data = source_data
+        self.table = rendered_table
         self.table_fmt: TabulateTableFormat = table_fmt
         self.colorized = colorized
 
