@@ -121,3 +121,7 @@ class DateUtils:
             return datetime.datetime.combine(date_obj, datetime.datetime.min.time())
         if max_time:
             return datetime.datetime.combine(date_obj, datetime.datetime.max.time())
+
+    @classmethod
+    def reset_to_midnight(cls, dt: datetime.datetime):
+        return datetime.datetime.combine(dt, datetime.datetime.min.time())
