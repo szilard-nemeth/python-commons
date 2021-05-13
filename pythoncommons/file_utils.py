@@ -744,8 +744,8 @@ class FileUtils:
     def create_symlink_path_dir(cls, link_name, linked_path, dest_dir, remove_if_exists=True):
         link_src = linked_path
         link_dest = FileUtils.join_path(dest_dir, link_name)
-        if remove_if_exists and os.path.exists(link_dest):
-            os.remove(link_dest)
+        if remove_if_exists:
+            os.unlink(link_dest)
         FileUtils.create_symlink(link_src, link_dest)
 
     @classmethod
