@@ -2,6 +2,7 @@ import logging
 import os
 from contextlib import closing
 from typing import List
+from zlib import Z_DEFAULT_COMPRESSION
 
 from pythoncommons.file_utils import FileUtils
 import tempfile
@@ -11,14 +12,14 @@ LOG = logging.getLogger(__name__)
 
 class ZipFileUtils:
     @staticmethod
-    def create_zip_as_tmp_file(src_files: List[str], filename: str):
+    def create_zip_as_tmp_file(src_files: List[str], filename: str, compress=False):
         filename, suffix = ZipFileUtils._validate_zip_file_name(filename)
         tmp_file = tempfile.NamedTemporaryFile(prefix=filename, suffix=suffix, delete=False)
-        return ZipFileUtils._create_zip_file(src_files, tmp_file)
+        return ZipFileUtils._create_zip_file(src_files, tmp_file, compress=compress)
 
     @staticmethod
-    def create_zip_file(src_files: List[str], filename: str):
-        return ZipFileUtils._create_zip_file(src_files, open(filename, mode="wb"))
+    def create_zip_file(src_files: List[str], filename: str, compress=False):
+        return ZipFileUtils._create_zip_file(src_files, open(filename, mode="wb"), compress=compress)
 
     @staticmethod
     def extract_zip_file(file: str, path: str):
@@ -43,8 +44,12 @@ class ZipFileUtils:
         return filename, suffix
 
     @staticmethod
-    def _create_zip_file(src_files, file):
-        zip_file = zipfile.ZipFile(file, "w")
+    def _create_zip_file(src_files, file, compress=False):
+        kwargs = {}
+        if compress:
+            kwargs["compression"] = zipfile.ZIP_DEFLATED
+            kwargs["compresslevel"] = Z_DEFAULT_COMPRESSION # https://docs.python.org/3/library/zlib.html#zlib.compress
+        zip_file = zipfile.ZipFile(file, "w", **kwargs)
         LOG.info(f"Creating zip file. Target file: {zip_file.filename}, Input files: {src_files}")
         for src_file in src_files:
             if FileUtils.is_dir(src_file):
