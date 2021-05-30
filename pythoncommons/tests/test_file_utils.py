@@ -1,11 +1,7 @@
 import os
 import shutil
 import unittest
-import logging
-import sys
-
 from pythoncommons.file_utils import FileUtils
-from pythoncommons.logging_utils import LoggerFactory, COLLECTION_PLACEHOLDER
 
 
 class FileUtilsTests(unittest.TestCase):
