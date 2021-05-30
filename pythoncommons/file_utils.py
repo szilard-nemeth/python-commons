@@ -754,11 +754,14 @@ class FileUtils:
             else:
                 LOG.warning(f"Not removing not existing link dest: {link_dest}")
         if remove_linked_file_if_exists:
-            if os.path.exists(link_src):
+            if os.path.exists(link_src) and FileUtils.is_file(link_src):
                 LOG.info(f"Removing linked file: {link_src}")
+                FileUtils.remove_file(link_src)
+            elif os.path.exists(link_src) and FileUtils.is_dir(link_src):
+                LOG.info(f"Removing linked dir: {link_src}")
                 shutil.rmtree(link_src)
             else:
-                LOG.warning(f"Not removing not existing linked file: {link_src}")
+                LOG.warning(f"Not removing not existing linked file or directory: {link_src}")
 
         FileUtils.create_symlink(link_src, link_dest)
 
