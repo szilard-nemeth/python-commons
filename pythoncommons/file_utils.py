@@ -745,7 +745,11 @@ class FileUtils:
         link_src = linked_path
         link_dest = FileUtils.join_path(dest_dir, link_name)
         if remove_if_exists:
-            os.unlink(link_dest)
+            if os.path.exists(link_dest):
+                LOG.info(f"Removing link dest: {link_dest}")
+                os.unlink(link_dest)
+            else:
+                LOG.warning(f"Not removing not existing link dest: {link_dest}")
         FileUtils.create_symlink(link_src, link_dest)
 
     @classmethod
