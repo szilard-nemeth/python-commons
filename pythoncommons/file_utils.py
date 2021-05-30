@@ -742,15 +742,24 @@ class FileUtils:
             return False
 
     @classmethod
-    def create_symlink_path_dir(cls, link_name, linked_path, dest_dir, remove_if_exists=True):
+    def create_symlink_path_dir(cls, link_name, linked_path, dest_dir,
+                                remove_link_if_exists=True,
+                                remove_linked_file_if_exists=False):
         link_src = linked_path
         link_dest = FileUtils.join_path(dest_dir, link_name)
-        if remove_if_exists:
+        if remove_link_if_exists:
             if os.path.exists(link_dest):
                 LOG.info(f"Removing link dest: {link_dest}")
                 os.unlink(link_dest)
             else:
                 LOG.warning(f"Not removing not existing link dest: {link_dest}")
+        if remove_linked_file_if_exists:
+            if os.path.exists(link_src):
+                LOG.info(f"Removing linked file: {link_src}")
+                shutil.rmtree(link_src)
+            else:
+                LOG.warning(f"Not removing not existing linked file: {link_src}")
+
         FileUtils.create_symlink(link_src, link_dest)
 
     @classmethod
