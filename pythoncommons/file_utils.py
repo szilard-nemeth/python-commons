@@ -748,7 +748,7 @@ class FileUtils:
         link_src = linked_path
         link_dest = FileUtils.join_path(dest_dir, link_name)
         if remove_link_if_exists:
-            if os.path.exists(link_dest):
+            if os.path.islink(link_dest):
                 LOG.info(f"Removing link dest: {link_dest}")
                 os.unlink(link_dest)
             else:
