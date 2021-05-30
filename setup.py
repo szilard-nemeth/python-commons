@@ -30,7 +30,8 @@ setup(
         'tabulate',
         'docker',
         'sh',
-        'colr'
+        'colr',
+        'shutil'
     ]
 )
 
