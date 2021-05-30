@@ -645,6 +645,7 @@ class FileUtils:
 
     @classmethod
     def copy_file(cls, src, dest):
+        LOG.info(f"Copying file. {src} -> {dest}")
         shutil.copyfile(src, dest)
 
     @classmethod
