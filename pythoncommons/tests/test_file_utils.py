@@ -12,7 +12,8 @@ class FileUtilsTests(unittest.TestCase):
         self.link_name = "link_name"
 
     def tearDown(self) -> None:
-        shutil.rmtree(self.link_container_dir)
+        if os.path.exists:
+            shutil.rmtree(self.link_container_dir)
 
     def test_create_symlink_path_dir_link_dest_not_exist(self):
         FileUtils.create_symlink_path_dir(self.link_name, self.linked_dir, self.link_container_dir)
