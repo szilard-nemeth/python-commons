@@ -39,14 +39,14 @@ class LoggerFactory:
                      info_coll_func: Callable[[Sized], str] = len,
                      debug_coll_func: Callable[[Sized], str] = str,
                      show_warnings: bool = False):
-        if not any([coll, info_coll, debug_coll]):
+        if not any(e is not None for e in [coll, info_coll, debug_coll]):
             raise ValueError("Wrong collection configuration, one of coll, info_coll or debug_coll should not be None!"
                              "Please verify arguments!")
         if not info_coll:
             info_coll = coll
         if not debug_coll:
             debug_coll = coll
-        if not all([info_coll, debug_coll]):
+        if not all([info_coll is not None, debug_coll is not None]):
             raise ValueError("Wrong collection configuration, one of info_coll or debug_coll is None! "
                              "Please verify arguments!")
 
