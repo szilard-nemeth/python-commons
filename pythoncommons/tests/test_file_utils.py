@@ -34,3 +34,10 @@ class FileUtilsTests(unittest.TestCase):
         FileUtils.remove_file(full_path_to_link)
         os.symlink(self.linked_dir, full_path_to_link)
         FileUtils.create_symlink_path_dir(self.link_name, self.linked_dir, self.link_container_dir)
+
+    def test_read_file_into_list(self):
+        text_file_path = "/tmp/pythontest/textfile"
+        FileUtils.create_new_empty_file(text_file_path)
+        FileUtils.write_to_file(text_file_path, "bla\nbla2\nbla3")
+        file_lines_list = FileUtils.read_file_to_list(text_file_path)
+        self.assertEqual(['bla', 'bla2', 'bla3'], file_lines_list)

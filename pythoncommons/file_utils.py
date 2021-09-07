@@ -735,6 +735,10 @@ class FileUtils:
         return open(f, 'r').read()
 
     @classmethod
+    def read_file_to_list(cls, f):
+        return open(f, 'r').read().splitlines()
+
+    @classmethod
     def does_file_contain_str(cls, file, string):
         with open(file) as f:
             if string in f.read():
