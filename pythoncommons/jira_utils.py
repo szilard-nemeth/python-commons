@@ -17,6 +17,12 @@ class JiraUtils:
         return resp.text
 
     @staticmethod
+    def parse_jira_title(html_doc):
+        soup = BeautifulSoup(html_doc, "html.parser")
+        title = soup.find("h1", attrs={"id": "summary-val"})
+        return title.string
+
+    @staticmethod
     def parse_subjiras_from_umbrella_html(html_doc, to_file, filter_ids):
         soup = BeautifulSoup(html_doc, "html.parser")
         issue_keys = []
