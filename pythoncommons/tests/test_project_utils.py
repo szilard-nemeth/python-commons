@@ -18,8 +18,9 @@ class ProjectUtilsTests(unittest.TestCase):
         sys.path.append(script_dir)
         script_abs_path = script_dir + os.sep + "hello_world.py"
         contents = "from pythoncommons.project_utils import ProjectUtils,ProjectRootDeterminationStrategy\n" \
+                   "ProjectUtils.project_root_determine_strategy = ProjectRootDeterminationStrategy.SYS_PATH" \
                    "print(\"hello world\")\n" \
-                   "basedir = ProjectUtils.get_output_basedir('test', project_root_determination_strategy=ProjectRootDeterminationStrategy.SYS_PATH)\n" \
+                   "basedir = ProjectUtils.get_output_basedir('test')\n" \
                    "logfilename = ProjectUtils.get_default_log_file('test')\n"
         FileUtils.save_to_file(script_abs_path, contents)
         os.system(f'python3 {script_abs_path}')
