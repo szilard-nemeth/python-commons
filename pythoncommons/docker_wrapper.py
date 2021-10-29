@@ -84,7 +84,7 @@ class DockerWrapper:
         return errors
 
 
-
+@auto_str
 class DockerMount:
     def __init__(self, host_dir, container_dir, mode=MOUNT_MODE_RW):
         self.host_dir = host_dir
@@ -166,6 +166,7 @@ class DockerTestSetup:
 
     def mount_dir(self, host_dir, container_dir, mode=MOUNT_MODE_RW):
         self.mounts.append(DockerMount(host_dir, container_dir, mode=mode))
+        LOG.info("Docker mounts: %s", self.mounts)
 
     def add_diagnostics(self, diags: List[DockerDiagnosticCommand]):
         for diag in diags:
