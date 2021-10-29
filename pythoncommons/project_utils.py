@@ -29,11 +29,10 @@ class ProjectUtils:
     CHILD_DIR_TEST_DICT = {}
     FILES_TO_PROJECT = {}
     test_execution: bool = False
+    project_root_determine_strategy = ProjectRootDeterminationStrategy.COMMON_FILE
 
     @classmethod
-    def determine_project_and_parent_dir(cls, file_of_caller, stack, strategy=ProjectRootDeterminationStrategy.COMMON_FILE):
-        if not strategy:
-            strategy = ProjectRootDeterminationStrategy.COMMON_FILE
+    def determine_project_and_parent_dir(cls, file_of_caller, stack):
         received_args = locals().copy()
         received_args['stack'] = ProjectUtils.get_stack_human_readable(stack)
         LOG.debug(f"Determining project name. Received args: {received_args}. \n"
@@ -122,9 +121,9 @@ class ProjectUtils:
 
         if REPOS_DIR in file_of_caller:
             return _store_and_return(cls, file_of_caller, *_determine_project_by_repos_dir(file_of_caller))
-        if strategy == ProjectRootDeterminationStrategy.COMMON_FILE:
+        if cls.project_root_determine_strategy == ProjectRootDeterminationStrategy.COMMON_FILE:
             return _store_and_return(cls, file_of_caller, *_determine_project_by_common_files(file_of_caller))
-        elif strategy == ProjectRootDeterminationStrategy.SYS_PATH:
+        elif cls.project_root_determine_strategy == ProjectRootDeterminationStrategy.SYS_PATH:
             return _store_and_return(cls, file_of_caller, *_determine_project_by_sys_path(file_of_caller))
 
         raise ValueError(
@@ -137,14 +136,12 @@ class ProjectUtils:
     @classmethod
     def get_output_basedir(cls, basedir_name: str,
                            ensure_created=True,
-                           allow_python_commons_as_project=False,
-                           project_root_determination_strategy=None):
+                           allow_python_commons_as_project=False):
         if not basedir_name:
             raise ValueError("Basedir name should be specified!")
 
         project_name = cls.verify_caller_filename_valid(
-            allow_python_commons_as_project=allow_python_commons_as_project,
-            project_root_determination_strategy=project_root_determination_strategy)
+            allow_python_commons_as_project=allow_python_commons_as_project)
         proj_basedir = FileUtils.join_path(PROJECTS_BASEDIR, basedir_name)
         if project_name in cls.PROJECT_BASEDIR_DICT:
             old_basedir = cls.PROJECT_BASEDIR_DICT[project_name]
@@ -162,8 +159,7 @@ class ProjectUtils:
 
     @classmethod
     def get_test_output_basedir(cls, basedir_name: str,
-                                allow_python_commons_as_project=False,
-                                project_root_determination_strategy=None):
+                                allow_python_commons_as_project=False):
         """
 
         :param basedir_name:
@@ -173,13 +169,11 @@ class ProjectUtils:
         """
         cls.test_execution = True
         project_name = cls.verify_caller_filename_valid(
-            allow_python_commons_as_project=allow_python_commons_as_project,
-            project_root_determination_strategy=project_root_determination_strategy)
+            allow_python_commons_as_project=allow_python_commons_as_project)
         if project_name not in cls.PROJECT_BASEDIR_DICT:
             # Creating project dir for the first time
             proj_basedir = cls.get_output_basedir(basedir_name,
-                                                  allow_python_commons_as_project=allow_python_commons_as_project,
-                                                  project_root_determination_strategy=project_root_determination_strategy)
+                                                  allow_python_commons_as_project=allow_python_commons_as_project)
         else:
             proj_basedir = cls.PROJECT_BASEDIR_DICT[project_name]
 
@@ -340,8 +334,7 @@ class ProjectUtils:
         return FileUtils.join_path(log_dir, filename)
 
     @classmethod
-    def verify_caller_filename_valid(cls, allow_python_commons_as_project=False,
-                                     project_root_determination_strategy=None):
+    def verify_caller_filename_valid(cls, allow_python_commons_as_project=False):
         stack = inspect.stack()
         stack_frame, idx = cls._find_first_non_pythoncommons_stackframe(stack)
         file_of_caller = stack_frame.filename
@@ -359,7 +352,7 @@ class ProjectUtils:
                                "Please set 'allow_python_commons_as_project' to True " \
                                "to the ProjectUtils method that initiated the call."
                 raise ValueError(message)
-        path, project = cls.determine_project_and_parent_dir(file_of_caller, stack, strategy=project_root_determination_strategy)
+        path, project = cls.determine_project_and_parent_dir(file_of_caller, stack)
         return project
 
     @classmethod
