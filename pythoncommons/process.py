@@ -200,6 +200,7 @@ class SubprocessCommandRunner:
     def run_and_follow_stdout_stderr(cls, cmd, log_file=FileUtils.get_temp_file_name(),
                                      stdout_logger=None,
                                      exit_on_nonzero_exitcode=False):
+        #TODO stderr is not logged at all
         if not stdout_logger:
             stdout_logger = LOG
         args = shlex.split(cmd)
