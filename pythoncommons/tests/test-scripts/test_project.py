@@ -12,7 +12,7 @@ LOG.setLevel(logging.DEBUG)
 
 LOG = logging.getLogger(__name__)
 ProjectUtils.project_root_determine_strategy = ProjectRootDeterminationStrategy.SYS_PATH
-output_basedir = ProjectUtils.get_output_basedir('test_project')
+output_basedir = ProjectUtils.get_output_basedir('testproject')
 output_child_dir = ProjectUtils.get_output_child_dir("branch-comparator")
 logfilename = ProjectUtils.get_default_log_file('test-log')
 

@@ -1,15 +1,16 @@
 import contextlib
 import logging
-import os
 import site
-import subprocess
 import sys
 import tempfile
 import unittest
-import sys
+
 from pythoncommons.file_utils import FileUtils, FindResultType
 from pythoncommons.process import SubprocessCommandRunner
 from pythoncommons.project_utils import SimpleProjectUtils
+from pythoncommons.string_utils import StringUtils
+
+TEST_PROJECT_NAME = "testproject"
 
 LOG = logging.getLogger(__name__)
 PROJECT_NAME = "pythoncommons"
@@ -38,18 +39,16 @@ class ProjectUtilsTests(unittest.TestCase):
     def test_executing_script_from_uncommon_directory(self):
         with self._copy_script_to_temp_dir("hello_world_simple.py") as tup:
             script_abs_path = tup[1]
-            # self.launch_script(script_abs_path)
             proc = self.launch_script(script_abs_path)
             self.assertEqual(0, proc.returncode)
 
     def test_executing_script_from_global_user_site(self):
-        script_abs_path = self._copy_script_to_global_site("test_project", "test_project.py")
-
-        # Second script will be imported from the script above
-        self._copy_script_to_global_site("testproject", "test_project.py")
-        self._copy_script_to_global_site("testproject", "dummy_test_command.py",
+        script = self._copy_script_to_global_site(TEST_PROJECT_NAME, "test_project.py")
+        # Second script (dummy_test_command.py) will be imported from the script
+        self._copy_script_to_global_site(TEST_PROJECT_NAME, "test_project.py")
+        self._copy_script_to_global_site(TEST_PROJECT_NAME, "dummy_test_command.py",
                                          relative_dest_dir=FileUtils.join_path("commands", "testcommand"))
-        proc = self.launch_script(script_abs_path)
+        proc = self.launch_script(script)
         self.assertEqual(0, proc.returncode)
 
     @staticmethod
@@ -74,16 +73,14 @@ class ProjectUtilsTests(unittest.TestCase):
         FileUtils.copy_file(src_script, script_abs_path)
         yield tmp_dir, script_abs_path
 
-    def _copy_script_to_global_site(self, project_dir: str, script_filename: str, dest_filename: str = None,
+    @staticmethod
+    def _copy_script_to_global_site(project_dir: str, script_filename: str, dest_filename: str = None,
                                     relative_dest_dir=None):
         if not dest_filename:
             dest_filename = script_filename
         if not relative_dest_dir:
             relative_dest_dir = ""
-        if os.sep in relative_dest_dir:
-            relative_dest_dirs = relative_dest_dir.split(os.sep)
-        else:
-            relative_dest_dirs = [relative_dest_dir]
+        relative_dest_dirs = StringUtils.get_list_of_components_from_path(relative_dest_dir)
 
         python_global_site = site.getsitepackages()[0]
         script_dest_parent_dir = FileUtils.join_path(python_global_site, project_dir)
