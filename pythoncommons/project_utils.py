@@ -7,7 +7,7 @@ from os.path import expanduser
 import inspect
 
 from pythoncommons.date_utils import DateUtils
-from pythoncommons.file_utils import FileUtils
+from pythoncommons.file_utils import FileUtils, FindResultType
 
 LOG = logging.getLogger(__name__)
 PROJECTS_BASEDIR_NAME = "snemeth-dev-projects"
@@ -23,13 +23,50 @@ class ProjectRootDeterminationStrategy(Enum):
     SYS_PATH = 1
 
 
+class SimpleProjectUtils:
+    @classmethod
+    def get_project_dir(cls, basedir: str, parent_dir: str, dir_to_find: str, find_result_type: FindResultType, ):
+        found_dirs = FileUtils.find_files(
+            basedir,
+            find_type=find_result_type,
+            regex=dir_to_find,
+            parent_dir=parent_dir,
+            single_level=False,
+            full_path_result=True,
+        )
+        if len(found_dirs) != 1:
+            raise ValueError(
+                f"Expected to find 1 dir with name {dir_to_find} "
+                f"and parent dir '{parent_dir}'. "
+                f"Actual results: {found_dirs}"
+            )
+        return found_dirs[0]
+
+    @classmethod
+    def get_project_file(cls, basedir: str, file_to_find: str, find_result_type: FindResultType, ):
+        found_files = FileUtils.find_files(
+            basedir,
+            find_type=find_result_type,
+            regex=file_to_find,
+            single_level=False,
+            full_path_result=True,
+        )
+        if len(found_files) != 1:
+            raise ValueError(
+                f"Expected to find 1 file with name {file_to_find}."
+                f"Actual results: {found_files}"
+            )
+        return found_files[0]
+
+
 class ProjectUtils:
     PROJECT_BASEDIR_DICT = {}
     CHILD_DIR_DICT = {}
     CHILD_DIR_TEST_DICT = {}
     FILES_TO_PROJECT = {}
     test_execution: bool = False
-    project_root_determine_strategy = ProjectRootDeterminationStrategy.COMMON_FILE
+    default_project_determine_strategy = ProjectRootDeterminationStrategy.COMMON_FILE
+    project_root_determine_strategy = default_project_determine_strategy
 
     @classmethod
     def determine_project_and_parent_dir(cls, file_of_caller, stack):
@@ -44,6 +81,8 @@ class ProjectUtils:
             return file_of_caller, project
 
         def _determine_project_by_repos_dir(file_of_caller):
+            LOG.debug("Trying to determine project name with repository dir strategy. "
+                      f"Current sys.path: \n{ProjectUtils.get_sys_path_human_readable()}")
             filename = file_of_caller[len(REPOS_DIR):]
             # We should return the first dir name of the path
             # Cut leading slashes, if any as split would return empty string for 0th component
@@ -119,7 +158,7 @@ class ProjectUtils:
             cls.FILES_TO_PROJECT[file_of_caller] = project
             return path, project
 
-        if REPOS_DIR in file_of_caller:
+        if REPOS_DIR in file_of_caller and cls.project_root_determine_strategy == cls.default_project_determine_strategy:
             return _store_and_return(cls, file_of_caller, *_determine_project_by_repos_dir(file_of_caller))
         if cls.project_root_determine_strategy == ProjectRootDeterminationStrategy.COMMON_FILE:
             return _store_and_return(cls, file_of_caller, *_determine_project_by_common_files(file_of_caller))
