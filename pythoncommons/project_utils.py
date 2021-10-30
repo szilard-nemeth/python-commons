@@ -8,6 +8,9 @@ import inspect
 
 from pythoncommons.date_utils import DateUtils
 from pythoncommons.file_utils import FileUtils, FindResultType
+from pythoncommons.string_utils import StringUtils
+
+MAC_PRIVATE_DIR = "private"
 
 LOG = logging.getLogger(__name__)
 PROJECTS_BASEDIR_NAME = "snemeth-dev-projects"
@@ -16,6 +19,7 @@ REPOS_DIR = FileUtils.join_path(expanduser("~"), "development", "my-repos")
 LOGS_DIR_NAME = "logs"
 TEST_OUTPUT_DIR_NAME = "test"
 TEST_LOG_FILE_POSTFIX = "TEST"
+SITE_PACKAGES_DIRNAME = "site-packages"
 
 
 class ProjectRootDeterminationStrategy(Enum):
@@ -86,9 +90,8 @@ class ProjectUtils:
             filename = file_of_caller[len(REPOS_DIR):]
             # We should return the first dir name of the path
             # Cut leading slashes, if any as split would return empty string for 0th component
-            if filename.startswith(os.sep):
-                filename = filename[1:]
-            project = filename.split(os.sep)[0]
+            filename = StringUtils.strip_leading_os_sep(filename)
+            project = StringUtils.get_first_dir_of_path(filename)
             LOG.info(f"Determined path: {REPOS_DIR}, project: {project}")
             return REPOS_DIR, project
 
@@ -116,9 +119,9 @@ class ProjectUtils:
                 # Example scenario:
                 # path: '/private/var/folders/nn/mkv5bwbd2fg8v8ztz5swpq980000gn/T/tmpp3k75qk2/python'
                 # file_of_caller: '/var/folders/nn/mkv5bwbd2fg8v8ztz5swpq980000gn/T/tmpp3k75qk2/python/hello_world.py'
-                if is_mac and path.startswith(os.sep + "private"):
+                if is_mac and StringUtils.is_path_starting_with_dirname(path, MAC_PRIVATE_DIR):
                     # WARNING: Cannot use os.path.join here as it removes /private from the path string :(
-                    extended_file_of_caller = os.sep + "private" + file_of_caller
+                    extended_file_of_caller = StringUtils.prepend_path(file_of_caller, MAC_PRIVATE_DIR)
                     if extended_file_of_caller.startswith(path):
                         LOG.info(f"Matched with special startswith. "
                                  f"Original file of caller: {file_of_caller}"
@@ -132,26 +135,47 @@ class ProjectUtils:
                       f"Current sys.path: \n{ProjectUtils.get_sys_path_human_readable()}")
 
             is_mac = platform.system() == "Darwin"
+            matched_base_path = None
             for path in sys.path:
-                match = file_of_caller.startswith(path)
-                if not match:
-                    match, new_file_of_caller = _special_startswith(path, file_of_caller, is_mac)
-                    if match:
-                        file_of_caller = new_file_of_caller
-                if match:
-                    LOG.debug(f"Found parent path of caller file: {path}")
-                    parts = file_of_caller.split(path)
+                LOG.debug("Checking path: '%s' against file_of_caller: '%s'", path, file_of_caller)
+                if SITE_PACKAGES_DIRNAME not in path:
+                    LOG.debug("Skipping path: '%s', as '%s' not found in the path", path, SITE_PACKAGES_DIRNAME)
+                    continue
+                found_match: bool = file_of_caller.startswith(path)
+                if not found_match:
+                    found_match, new_file_of_caller = _special_startswith(path, file_of_caller, is_mac)
+                    if found_match:
+                        matched_base_path = new_file_of_caller
+                        LOG.debug("Found base path for project: %s", matched_base_path)
+                else:
+                    matched_base_path = path
+                if found_match:
+                    LOG.debug(f"Found parent path of caller file: {matched_base_path}")
+                    matched_base_path = StringUtils.strip_trailing_os_sep(matched_base_path)
+                    if not matched_base_path.endswith(SITE_PACKAGES_DIRNAME):
+                        LOG.debug("Matched base path does not end with '%s'. Dropping path components after it.", SITE_PACKAGES_DIRNAME)
+                        # Need to cut the last dir from the path, so we find the site-packages root
+                        # Example: /<somepath>/venv/lib/python3.8/site-packages/test_project
+                        matched_base_path = StringUtils.remove_last_dir_from_path(matched_base_path)
+                        LOG.debug("Final base path: %s", matched_base_path)
+
+                    parts = file_of_caller.split(matched_base_path)
                     LOG.debug(f"Parts of path after split: {parts}")
+
+                    # Example #1: ['', '/test_project.py'] --> Need to get item with index 1
                     # Cut leading slashes
-                    if parts[1].startswith(os.sep):
-                        project = parts[1][1:]
-                    else:
-                        project = parts[1]
-                    if os.sep in project:
-                        project = os.path.split(project)[0]
-                    LOG.info(f"Determined path: {path}, project: {project}")
-                    return path, project
-            raise ValueError(f"Cannot determine project. File of caller: {file_of_caller}\n"
+                    proj_name = parts[1]
+                    proj_name = StringUtils.strip_leading_os_sep(proj_name)
+
+                    # Example #2: ['', '/testproject/commands/testcommand/dummy_test_command.py']
+                    if StringUtils.is_path_multi_component(proj_name):
+                        LOG.debug("Found multiple dirs in project name: %s. "
+                                  "Assuming first dir is the name of the project.", proj_name)
+                        proj_name = StringUtils.get_first_dir_of_path_if_multi_component(proj_name)
+                    LOG.info(f"Determined path: {matched_base_path}, project: {proj_name}")
+                    return matched_base_path, proj_name
+            raise ValueError(f"Cannot determine project! "
+                             f"File of caller: {file_of_caller}\n"
                              f"Call stack: \n{ProjectUtils.get_stack_human_readable(stack)}")
 
         def _store_and_return(cls, file_of_caller, path, project):
@@ -186,7 +210,7 @@ class ProjectUtils:
             old_basedir = cls.PROJECT_BASEDIR_DICT[project_name]
             if old_basedir != proj_basedir:
                 raise ValueError("Project is already registered with a different output basedir. Details: \n"
-                                 f"Old basedir name: {old_basedir.split(os.sep)[-1]}\n"
+                                 f"Old basedir name: {StringUtils.get_last_dir_of_path(old_basedir)}\n"
                                  f"Project basedir's old full path: {old_basedir}\n"
                                  f"New basedir name would be: {basedir_name}\n"
                                  f"Project basedir's new full path would be: {proj_basedir}\n")
@@ -378,7 +402,7 @@ class ProjectUtils:
         stack_frame, idx = cls._find_first_non_pythoncommons_stackframe(stack)
         file_of_caller = stack_frame.filename
         LOG.debug("Filename of caller: " + file_of_caller)
-        if "unittest" in file_of_caller.split(os.sep):
+        if StringUtils.is_dir_name_in_path(file_of_caller, "unittest"):
             message = f"Detected caller as 'unittest'. Current stack frame: {stack_frame}\n" \
                      f"Stack: {ProjectUtils.get_stack_human_readable(stack)}"
             if allow_python_commons_as_project:
