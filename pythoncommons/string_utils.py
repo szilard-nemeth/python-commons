@@ -1,12 +1,13 @@
 import logging
 import math
+import os
 import string
 import re
 import unicodedata
 from enum import Enum
 from typing import List
 
-from tabulate import tabulate
+from pythoncommons.file_utils import FileUtils
 
 LOG = logging.getLogger(__name__)
 
@@ -157,6 +158,72 @@ class StringUtils:
         if escape_double_quotes:
             mod_str = mod_str.replace("\"", "\\\"")
         return mod_str
+
+    @staticmethod
+    def strip_leading_os_sep(path):
+        if path.startswith(os.sep):
+            return path[1:]
+        return path
+
+    @staticmethod
+    def strip_trailing_os_sep(path):
+        if path.endswith(os.sep):
+            return path[:-1]
+        return path
+
+    @staticmethod
+    def get_first_dir_of_path(path):
+        components = path.split(os.sep)
+        if not components or len(components) == 0:
+            raise ValueError(f"Invalid path: {path}, can't extract first directory!")
+        return components[0]
+
+    @staticmethod
+    def get_last_dir_of_path(path):
+        components = path.split(os.sep)
+        if not components or len(components) == 0:
+            raise ValueError(f"Invalid path: {path}, can't extract first directory!")
+        return components[-1]
+
+    @staticmethod
+    def remove_last_dir_from_path(path):
+        path_components = path.split(os.sep)
+        path_components = path_components[:-1]
+        return os.sep.join(path_components)
+
+    @staticmethod
+    def is_path_starting_with_dirname(path, dir_name):
+        return path.startswith(os.sep + dir_name)
+
+    @staticmethod
+    def prepend_path(orig_path, prepend_with):
+        return FileUtils.join_path(os.sep, prepend_with, orig_path)
+
+    @staticmethod
+    def get_first_dir_of_path_if_multi_component(path):
+        if os.sep in path:
+            return path.split(os.sep)[0]
+        return path
+
+    @staticmethod
+    def is_path_multi_component(path):
+        if os.sep in path:
+            return True
+        return False
+
+    @staticmethod
+    def is_dir_name_in_path(path, dir_name):
+        parts = path.split(os.sep)
+        if dir_name in parts:
+            return True
+        return False
+
+    @staticmethod
+    def get_list_of_components_from_path(path):
+        if os.sep in path:
+            return path.split(os.sep)
+        else:
+            return [path]
 
 
 class RegexUtils:
