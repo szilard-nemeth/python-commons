@@ -83,6 +83,7 @@ class StrategyBase(ABC):
         found_match: bool = file_of_caller.startswith(path)
         if not found_match:
             found_match, new_file_of_caller = self.mac_specific_path_startswith(path, file_of_caller)
+            LOG.debug("File of caller: '%s', path: '%s', found match: %s", file_of_caller, path, found_match)
             if found_match:
                 return new_file_of_caller
         else:
@@ -105,11 +106,10 @@ class StrategyBase(ABC):
         if is_mac and StringUtils.is_path_starting_with_dirname(path, MAC_PRIVATE_DIR):
             # WARNING: Cannot use os.path.join here as it removes /private from the path string :(
             extended_file_of_caller = StringUtils.prepend_path(file_of_caller, MAC_PRIVATE_DIR)
+            LOG.debug(f"Original file of caller: {file_of_caller}"
+                      f"Extended file of caller: {extended_file_of_caller}"
+                      f"Path: {path}")
             if extended_file_of_caller.startswith(path):
-                LOG.info(f"Matched with special startswith. "
-                         f"Original file of caller: {file_of_caller}"
-                         f"Extended file of caller: {extended_file_of_caller}"
-                         f"Path: {path}")
                 return True, extended_file_of_caller
         return False, file_of_caller
 
