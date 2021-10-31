@@ -333,11 +333,7 @@ class FileUtils:
             path = FileUtils.get_parent_dir_name(path)
             LOG.debug(f"Finding root dir: Moving up the path, new path is: {path}")
             visited.append(path)
-        if path == os.sep:
-            raise ValueError(
-                f"Failed to find project root directory starting from path '{orig_path}'. "
-                f"Visited: {visited}")
-        return path
+        return path, visited
 
     # TODO rename method
     @classmethod

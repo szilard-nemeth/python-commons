@@ -100,7 +100,13 @@ class ProjectUtils:
                       "trying to determine project name with common files strategy. "
                       f"Current sys.path: \n{ProjectUtils.get_sys_path_human_readable()}"
                       f"Current caller file: {file_of_caller}")
-            project_root_path = FileUtils.find_repo_root_dir_auto(file_of_caller)
+            project_root_path, visited_paths = FileUtils.find_repo_root_dir_auto(file_of_caller)
+            if project_root_path == os.sep:
+                orig_path = os.path.realpath(file_of_caller)
+                raise ValueError(
+                    f"Failed to find project root directory starting from path '{orig_path}'. "
+                    f"Visited: {visited_paths}")
+
             LOG.debug(f"Found project root: {project_root_path}")
             comps = FileUtils.get_path_components(project_root_path)
             project = comps[-1]
@@ -109,7 +115,7 @@ class ProjectUtils:
             return path, project
 
         def _determine_project_by_sys_path(file_of_caller):
-            def _special_startswith(path, file_of_caller, is_mac):
+            def _mac_specific_path_startswith(path, file_of_caller):
                 # Had to make an OS-based distinction here...
                 # On MacOS, if the file is executed from /var or /tmp, the stackframe will contain the normal path.
                 # However, even if the normal path is added to sys.path from a testcase,
@@ -119,6 +125,7 @@ class ProjectUtils:
                 # Example scenario:
                 # path: '/private/var/folders/nn/mkv5bwbd2fg8v8ztz5swpq980000gn/T/tmpp3k75qk2/python'
                 # file_of_caller: '/var/folders/nn/mkv5bwbd2fg8v8ztz5swpq980000gn/T/tmpp3k75qk2/python/hello_world.py'
+                is_mac = platform.system() == "Darwin"
                 if is_mac and StringUtils.is_path_starting_with_dirname(path, MAC_PRIVATE_DIR):
                     # WARNING: Cannot use os.path.join here as it removes /private from the path string :(
                     extended_file_of_caller = StringUtils.prepend_path(file_of_caller, MAC_PRIVATE_DIR)
@@ -134,7 +141,6 @@ class ProjectUtils:
                       "trying to determine project name with sys.path strategy. "
                       f"Current sys.path: \n{ProjectUtils.get_sys_path_human_readable()}")
 
-            is_mac = platform.system() == "Darwin"
             matched_base_path = None
             for path in sys.path:
                 LOG.debug("Checking path: '%s' against file_of_caller: '%s'", path, file_of_caller)
@@ -143,7 +149,7 @@ class ProjectUtils:
                     continue
                 found_match: bool = file_of_caller.startswith(path)
                 if not found_match:
-                    found_match, new_file_of_caller = _special_startswith(path, file_of_caller, is_mac)
+                    found_match, new_file_of_caller = _mac_specific_path_startswith(path, file_of_caller)
                     if found_match:
                         matched_base_path = new_file_of_caller
                         LOG.debug("Found base path for project: %s", matched_base_path)
