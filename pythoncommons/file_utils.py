@@ -299,7 +299,7 @@ class FileUtils:
         return result
 
     @staticmethod
-    def find_repo_root_dir(current_script: str, root_dir_name: str):
+    def find_repo_root_dir(current_script: str, root_dir_name: str, raise_error=True):
         orig_path = os.path.realpath(current_script)
         path = orig_path
         visited = [path]
@@ -307,9 +307,12 @@ class FileUtils:
             path = FileUtils.get_parent_dir_name(path)
             visited.append(path)
         if path == os.sep:
-            raise ValueError(
-                "Failed to find directory '{}' starting from path '{}'. "
-                "Visited: {}".format(root_dir_name, orig_path, visited))
+            message = "Failed to find directory '{}' starting from path '{}'. " \
+                              "Visited: {}".format(root_dir_name, orig_path, visited)
+            if raise_error:
+                raise ValueError(message)
+            else:
+                LOG.error(message)
         return path
 
     @staticmethod
