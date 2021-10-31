@@ -79,7 +79,18 @@ class StrategyBase(ABC):
     def determine_path(self, caller_file, stack):
         pass
 
-    def mac_specific_path_startswith(self, path, file_of_caller):
+    def find_common_paths(self, path, file_of_caller):
+        found_match: bool = file_of_caller.startswith(path)
+        if not found_match:
+            found_match, new_file_of_caller = self.mac_specific_path_startswith(path, file_of_caller)
+            if found_match:
+                return new_file_of_caller
+        else:
+            return path
+        return None
+
+    @staticmethod
+    def mac_specific_path_startswith(path, file_of_caller):
         # Had to make an OS-based distinction here...
         # On MacOS, if the file is executed from /var or /tmp, the stackframe will contain the normal path.
         # However, even if the normal path is added to sys.path from a testcase,
@@ -142,49 +153,41 @@ class RepositoryDirStrategy(StrategyBase):
 
 class SysPathStrategy(StrategyBase):
     def determine_path(self, file_of_caller, stack):
-        matched_base_path = None
         for path in sys.path:
             LOG.debug("Checking path: '%s' against file_of_caller: '%s'", path, file_of_caller)
             if SITE_PACKAGES_DIRNAME not in path:
                 LOG.debug("Skipping path: '%s', as '%s' not found in the path", path, SITE_PACKAGES_DIRNAME)
                 continue
-            found_match: bool = file_of_caller.startswith(path)
-            if not found_match:
-                found_match, new_file_of_caller = self.mac_specific_path_startswith(path, file_of_caller)
-                if found_match:
-                    matched_base_path = new_file_of_caller
-                    LOG.debug("Found base path for project: %s", matched_base_path)
-            else:
-                matched_base_path = path
-            if found_match:
-                LOG.debug(f"Found parent path of caller file: {matched_base_path}")
-                matched_base_path = StringUtils.strip_trailing_os_sep(matched_base_path)
-                if not matched_base_path.endswith(SITE_PACKAGES_DIRNAME):
-                    LOG.debug("Matched base path does not end with '%s'. Dropping path components after it.",
-                              SITE_PACKAGES_DIRNAME)
-                    # Need to cut the last dir from the path, so we find the site-packages root
-                    # Example: /<somepath>/venv/lib/python3.8/site-packages/test_project
-                    matched_base_path = StringUtils.remove_last_dir_from_path(matched_base_path)
-                    LOG.debug("Final base path: %s", matched_base_path)
+            matched_base_path = self.find_common_paths(path, file_of_caller)
+            if not matched_base_path:
+                raise ValueError(f"Cannot determine project! "
+                                 f"File of caller: {file_of_caller}\n"
+                                 f"Call stack: \n{get_stack_human_readable(stack)}")
 
-                parts = file_of_caller.split(matched_base_path)
-                LOG.debug(f"Parts of path after split: {parts}")
+            matched_base_path = StringUtils.strip_trailing_os_sep(matched_base_path)
+            if not matched_base_path.endswith(SITE_PACKAGES_DIRNAME):
+                LOG.debug("Matched base path does not end with '%s'. Dropping path components after it.",
+                          SITE_PACKAGES_DIRNAME)
+                # Need to cut the last dir from the path, so we find the site-packages root
+                # Example: /<somepath>/venv/lib/python3.8/site-packages/test_project
+                matched_base_path = StringUtils.remove_last_dir_from_path(matched_base_path)
+                LOG.debug("Final base path: %s", matched_base_path)
 
-                # Example #1: ['', '/test_project.py'] --> Need to get item with index 1
-                # Cut leading slashes
-                proj_name = parts[1]
-                proj_name = StringUtils.strip_leading_os_sep(proj_name)
+            parts = file_of_caller.split(matched_base_path)
+            LOG.debug(f"Parts of path after split: {parts}")
 
-                # Example #2: ['', '/testproject/commands/testcommand/dummy_test_command.py']
-                if StringUtils.is_path_multi_component(proj_name):
-                    LOG.debug("Found multiple dirs in project name: %s. "
-                              "Assuming first dir is the name of the project.", proj_name)
-                    proj_name = StringUtils.get_first_dir_of_path_if_multi_component(proj_name)
-                LOG.info(f"Determined path: {matched_base_path}, project: {proj_name}")
-                return matched_base_path, proj_name
-        raise ValueError(f"Cannot determine project! "
-                         f"File of caller: {file_of_caller}\n"
-                         f"Call stack: \n{get_stack_human_readable(stack)}")
+            # Example #1: ['', '/test_project.py'] --> Need to get item with index 1
+            # Cut leading slashes
+            proj_name = parts[1]
+            proj_name = StringUtils.strip_leading_os_sep(proj_name)
+
+            # Example #2: ['', '/testproject/commands/testcommand/dummy_test_command.py']
+            if StringUtils.is_path_multi_component(proj_name):
+                LOG.debug("Found multiple dirs in project name: %s. "
+                          "Assuming first dir is the name of the project.", proj_name)
+                proj_name = StringUtils.get_first_dir_of_path_if_multi_component(proj_name)
+            LOG.info(f"Determined path: {matched_base_path}, project: {proj_name}")
+            return matched_base_path, proj_name
 
 
 class ProjectUtils:
