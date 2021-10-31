@@ -38,7 +38,9 @@ class ProjectUtilsTests(unittest.TestCase):
 
     def test_executing_script_from_uncommon_directory(self):
         with self._copy_script_to_temp_dir("hello_world_simple.py") as tup:
+            tmp_dir = tup[0]
             script_abs_path = tup[1]
+            sys.path.append(tmp_dir)
             proc = self.launch_script(script_abs_path)
             self.assertEqual(0, proc.returncode)
 
