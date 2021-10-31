@@ -81,14 +81,15 @@ class StrategyBase(ABC):
 
     def find_common_paths(self, path, file_of_caller):
         found_match: bool = file_of_caller.startswith(path)
-        if not found_match:
-            found_match, new_file_of_caller = self.mac_specific_path_startswith(path, file_of_caller)
-            LOG.debug("File of caller: '%s', path: '%s', found match: %s", file_of_caller, path, found_match)
-            if found_match:
-                return new_file_of_caller
-        else:
-            return path
-        return None
+        if found_match:
+            return path, file_of_caller
+
+        found_match, new_file_of_caller = self.mac_specific_path_startswith(path, file_of_caller)
+        LOG.debug("File of caller: '%s', path: '%s', found match: %s", file_of_caller, path, found_match)
+        if found_match:
+            return path, new_file_of_caller
+
+        return None, None
 
     @staticmethod
     def mac_specific_path_startswith(path, file_of_caller):
@@ -104,11 +105,12 @@ class StrategyBase(ABC):
         is_mac = platform.system() == "Darwin"
         LOG.debug("Trying to match file '%s' with path '%s' with Mac-specific startswith.", file_of_caller, path)
         if is_mac and StringUtils.is_path_starting_with_dirname(path, MAC_PRIVATE_DIR):
-            # WARNING: Cannot use os.path.join here as it removes /private from the path string :(
-            extended_file_of_caller = StringUtils.prepend_path(file_of_caller, MAC_PRIVATE_DIR)
+            # WARNING: Cannot use os.path.join, neither StringUtils.prepend_path here as it removes /private from the path string :(
+            # extended_file_of_caller = StringUtils.prepend_path(file_of_caller, MAC_PRIVATE_DIR)
+            extended_file_of_caller = os.sep + MAC_PRIVATE_DIR + file_of_caller
             LOG.debug(f"Original file of caller: {file_of_caller}"
-                      f"Extended file of caller: {extended_file_of_caller}"
-                      f"Path: {path}")
+                      f"\nExtended file of caller: {extended_file_of_caller}"
+                      f"\nPath: {path}")
             if extended_file_of_caller.startswith(path):
                 return True, extended_file_of_caller
         return False, file_of_caller
@@ -159,10 +161,11 @@ class SysPathStrategy(StrategyBase):
             if ProjectUtils.FORCE_SITE_PACKAGES_IN_PATH_NAME and SITE_PACKAGES_DIRNAME not in path:
                 LOG.debug("Skipping path: '%s', as '%s' not found in the path", path, SITE_PACKAGES_DIRNAME)
                 continue
-            matched_base_path = self.find_common_paths(path, file_of_caller)
+            matched_base_path, file_of_caller = self.find_common_paths(path, file_of_caller)
             if not matched_base_path:
                 continue
 
+            LOG.debug("Found Base path: %s for file of caller: %s", matched_base_path, file_of_caller)
             matched_base_path = StringUtils.strip_trailing_os_sep(matched_base_path)
             if ProjectUtils.FORCE_SITE_PACKAGES_IN_PATH_NAME and not matched_base_path.endswith(SITE_PACKAGES_DIRNAME):
                 LOG.debug("Matched base path does not end with '%s'. Dropping path components after it.",
