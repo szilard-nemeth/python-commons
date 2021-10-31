@@ -2,9 +2,11 @@ import logging
 import os
 import platform
 import sys
+from abc import ABC, abstractmethod
 from enum import Enum
 from os.path import expanduser
 import inspect
+from typing import Dict
 
 from pythoncommons.date_utils import DateUtils
 from pythoncommons.file_utils import FileUtils, FindResultType
@@ -23,8 +25,17 @@ SITE_PACKAGES_DIRNAME = "site-packages"
 
 
 class ProjectRootDeterminationStrategy(Enum):
-    COMMON_FILE = 0
-    SYS_PATH = 1
+    COMMON_FILE = "common_file"
+    SYS_PATH = "sys_path"
+    REPOSITORY_DIR = "repository_dir"
+
+
+def get_sys_path_human_readable():
+    return "\n".join(sys.path)
+
+
+def get_stack_human_readable(stack):
+    return "\n".join([str(f.frame) for f in stack])
 
 
 class SimpleProjectUtils:
@@ -63,6 +74,119 @@ class SimpleProjectUtils:
         return found_files[0]
 
 
+class StrategyBase(ABC):
+    @abstractmethod
+    def determine_path(self, caller_file, stack):
+        pass
+
+    def mac_specific_path_startswith(self, path, file_of_caller):
+        # Had to make an OS-based distinction here...
+        # On MacOS, if the file is executed from /var or /tmp, the stackframe will contain the normal path.
+        # However, even if the normal path is added to sys.path from a testcase,
+        # it will be prepended with /private.
+        # More on /private can be found here: https://apple.stackexchange.com/a/227869
+
+        # Example scenario:
+        # path: '/private/var/folders/nn/mkv5bwbd2fg8v8ztz5swpq980000gn/T/tmpp3k75qk2/python'
+        # file_of_caller: '/var/folders/nn/mkv5bwbd2fg8v8ztz5swpq980000gn/T/tmpp3k75qk2/python/hello_world.py'
+        is_mac = platform.system() == "Darwin"
+        if is_mac and StringUtils.is_path_starting_with_dirname(path, MAC_PRIVATE_DIR):
+            # WARNING: Cannot use os.path.join here as it removes /private from the path string :(
+            extended_file_of_caller = StringUtils.prepend_path(file_of_caller, MAC_PRIVATE_DIR)
+            if extended_file_of_caller.startswith(path):
+                LOG.info(f"Matched with special startswith. "
+                         f"Original file of caller: {file_of_caller}"
+                         f"Extended file of caller: {extended_file_of_caller}"
+                         f"Path: {path}")
+                return True, extended_file_of_caller
+        return False, file_of_caller
+
+    LOG.debug("Execution environment is not local, "
+              "trying to determine project name with sys.path strategy. "
+              f"Current sys.path: \n{get_sys_path_human_readable()}")
+
+
+class CommonPathStrategy(StrategyBase):
+    def determine_path(self, file_of_caller, stack):
+        LOG.debug("Execution environment is not local, "
+                  "trying to determine project name with common files strategy. "
+                  f"Current sys.path: \n{get_sys_path_human_readable()}"
+                  f"Current caller file: {file_of_caller}")
+        project_root_path, visited_paths = FileUtils.find_repo_root_dir_auto(file_of_caller)
+        if project_root_path == os.sep:
+            orig_path = os.path.realpath(file_of_caller)
+            raise ValueError(
+                f"Failed to find project root directory starting from path '{orig_path}'. "
+                f"Visited: {visited_paths}")
+
+        LOG.debug(f"Found project root: {project_root_path}")
+        comps = FileUtils.get_path_components(project_root_path)
+        project = comps[-1]
+        path = comps[0:-1]
+        LOG.info(f"Determined path: {path}, project: {project}")
+        return path, project
+
+
+class RepositoryDirStrategy(StrategyBase):
+    def determine_path(self, file_of_caller, stack):
+        LOG.debug("Trying to determine project name with repository dir strategy. "
+                  f"Current sys.path: \n{get_sys_path_human_readable()}")
+        filename = file_of_caller[len(REPOS_DIR):]
+        # We should return the first dir name of the path
+        # Cut leading slashes, if any as split would return empty string for 0th component
+        filename = StringUtils.strip_leading_os_sep(filename)
+        project = StringUtils.get_first_dir_of_path(filename)
+        LOG.info(f"Determined path: {REPOS_DIR}, project: {project}")
+        return REPOS_DIR, project
+
+
+class SysPathStrategy(StrategyBase):
+    def determine_path(self, file_of_caller, stack):
+        matched_base_path = None
+        for path in sys.path:
+            LOG.debug("Checking path: '%s' against file_of_caller: '%s'", path, file_of_caller)
+            if SITE_PACKAGES_DIRNAME not in path:
+                LOG.debug("Skipping path: '%s', as '%s' not found in the path", path, SITE_PACKAGES_DIRNAME)
+                continue
+            found_match: bool = file_of_caller.startswith(path)
+            if not found_match:
+                found_match, new_file_of_caller = self.mac_specific_path_startswith(path, file_of_caller)
+                if found_match:
+                    matched_base_path = new_file_of_caller
+                    LOG.debug("Found base path for project: %s", matched_base_path)
+            else:
+                matched_base_path = path
+            if found_match:
+                LOG.debug(f"Found parent path of caller file: {matched_base_path}")
+                matched_base_path = StringUtils.strip_trailing_os_sep(matched_base_path)
+                if not matched_base_path.endswith(SITE_PACKAGES_DIRNAME):
+                    LOG.debug("Matched base path does not end with '%s'. Dropping path components after it.",
+                              SITE_PACKAGES_DIRNAME)
+                    # Need to cut the last dir from the path, so we find the site-packages root
+                    # Example: /<somepath>/venv/lib/python3.8/site-packages/test_project
+                    matched_base_path = StringUtils.remove_last_dir_from_path(matched_base_path)
+                    LOG.debug("Final base path: %s", matched_base_path)
+
+                parts = file_of_caller.split(matched_base_path)
+                LOG.debug(f"Parts of path after split: {parts}")
+
+                # Example #1: ['', '/test_project.py'] --> Need to get item with index 1
+                # Cut leading slashes
+                proj_name = parts[1]
+                proj_name = StringUtils.strip_leading_os_sep(proj_name)
+
+                # Example #2: ['', '/testproject/commands/testcommand/dummy_test_command.py']
+                if StringUtils.is_path_multi_component(proj_name):
+                    LOG.debug("Found multiple dirs in project name: %s. "
+                              "Assuming first dir is the name of the project.", proj_name)
+                    proj_name = StringUtils.get_first_dir_of_path_if_multi_component(proj_name)
+                LOG.info(f"Determined path: {matched_base_path}, project: {proj_name}")
+                return matched_base_path, proj_name
+        raise ValueError(f"Cannot determine project! "
+                         f"File of caller: {file_of_caller}\n"
+                         f"Call stack: \n{get_stack_human_readable(stack)}")
+
+
 class ProjectUtils:
     PROJECT_BASEDIR_DICT = {}
     CHILD_DIR_DICT = {}
@@ -71,11 +195,15 @@ class ProjectUtils:
     test_execution: bool = False
     default_project_determine_strategy = ProjectRootDeterminationStrategy.COMMON_FILE
     project_root_determine_strategy = default_project_determine_strategy
+    STRATEGIES: Dict[ProjectRootDeterminationStrategy, StrategyBase] = {
+        ProjectRootDeterminationStrategy.COMMON_FILE: CommonPathStrategy(),
+        ProjectRootDeterminationStrategy.SYS_PATH: SysPathStrategy(),
+        ProjectRootDeterminationStrategy.REPOSITORY_DIR: RepositoryDirStrategy()}
 
     @classmethod
     def determine_project_and_parent_dir(cls, file_of_caller, stack):
         received_args = locals().copy()
-        received_args['stack'] = ProjectUtils.get_stack_human_readable(stack)
+        received_args['stack'] = get_stack_human_readable(stack)
         LOG.debug(f"Determining project name. Received args: {received_args}. \n"
                   f"{cls._get_known_projects_str()}\n")
 
@@ -84,123 +212,21 @@ class ProjectUtils:
             LOG.debug(f"Found cached project name '{project}', file was already a caller: {file_of_caller}")
             return file_of_caller, project
 
-        def _determine_project_by_repos_dir(file_of_caller):
-            LOG.debug("Trying to determine project name with repository dir strategy. "
-                      f"Current sys.path: \n{ProjectUtils.get_sys_path_human_readable()}")
-            filename = file_of_caller[len(REPOS_DIR):]
-            # We should return the first dir name of the path
-            # Cut leading slashes, if any as split would return empty string for 0th component
-            filename = StringUtils.strip_leading_os_sep(filename)
-            project = StringUtils.get_first_dir_of_path(filename)
-            LOG.info(f"Determined path: {REPOS_DIR}, project: {project}")
-            return REPOS_DIR, project
-
-        def _determine_project_by_common_files(file_of_caller):
-            LOG.debug("Execution environment is not local, "
-                      "trying to determine project name with common files strategy. "
-                      f"Current sys.path: \n{ProjectUtils.get_sys_path_human_readable()}"
-                      f"Current caller file: {file_of_caller}")
-            project_root_path, visited_paths = FileUtils.find_repo_root_dir_auto(file_of_caller)
-            if project_root_path == os.sep:
-                orig_path = os.path.realpath(file_of_caller)
-                raise ValueError(
-                    f"Failed to find project root directory starting from path '{orig_path}'. "
-                    f"Visited: {visited_paths}")
-
-            LOG.debug(f"Found project root: {project_root_path}")
-            comps = FileUtils.get_path_components(project_root_path)
-            project = comps[-1]
-            path = comps[0:-1]
-            LOG.info(f"Determined path: {path}, project: {project}")
-            return path, project
-
-        def _determine_project_by_sys_path(file_of_caller):
-            def _mac_specific_path_startswith(path, file_of_caller):
-                # Had to make an OS-based distinction here...
-                # On MacOS, if the file is executed from /var or /tmp, the stackframe will contain the normal path.
-                # However, even if the normal path is added to sys.path from a testcase,
-                # it will be prepended with /private.
-                # More on /private can be found here: https://apple.stackexchange.com/a/227869
-
-                # Example scenario:
-                # path: '/private/var/folders/nn/mkv5bwbd2fg8v8ztz5swpq980000gn/T/tmpp3k75qk2/python'
-                # file_of_caller: '/var/folders/nn/mkv5bwbd2fg8v8ztz5swpq980000gn/T/tmpp3k75qk2/python/hello_world.py'
-                is_mac = platform.system() == "Darwin"
-                if is_mac and StringUtils.is_path_starting_with_dirname(path, MAC_PRIVATE_DIR):
-                    # WARNING: Cannot use os.path.join here as it removes /private from the path string :(
-                    extended_file_of_caller = StringUtils.prepend_path(file_of_caller, MAC_PRIVATE_DIR)
-                    if extended_file_of_caller.startswith(path):
-                        LOG.info(f"Matched with special startswith. "
-                                 f"Original file of caller: {file_of_caller}"
-                                 f"Extended file of caller: {extended_file_of_caller}"
-                                 f"Path: {path}")
-                        return True, extended_file_of_caller
-                return False, file_of_caller
-
-            LOG.debug("Execution environment is not local, "
-                      "trying to determine project name with sys.path strategy. "
-                      f"Current sys.path: \n{ProjectUtils.get_sys_path_human_readable()}")
-
-            matched_base_path = None
-            for path in sys.path:
-                LOG.debug("Checking path: '%s' against file_of_caller: '%s'", path, file_of_caller)
-                if SITE_PACKAGES_DIRNAME not in path:
-                    LOG.debug("Skipping path: '%s', as '%s' not found in the path", path, SITE_PACKAGES_DIRNAME)
-                    continue
-                found_match: bool = file_of_caller.startswith(path)
-                if not found_match:
-                    found_match, new_file_of_caller = _mac_specific_path_startswith(path, file_of_caller)
-                    if found_match:
-                        matched_base_path = new_file_of_caller
-                        LOG.debug("Found base path for project: %s", matched_base_path)
-                else:
-                    matched_base_path = path
-                if found_match:
-                    LOG.debug(f"Found parent path of caller file: {matched_base_path}")
-                    matched_base_path = StringUtils.strip_trailing_os_sep(matched_base_path)
-                    if not matched_base_path.endswith(SITE_PACKAGES_DIRNAME):
-                        LOG.debug("Matched base path does not end with '%s'. Dropping path components after it.", SITE_PACKAGES_DIRNAME)
-                        # Need to cut the last dir from the path, so we find the site-packages root
-                        # Example: /<somepath>/venv/lib/python3.8/site-packages/test_project
-                        matched_base_path = StringUtils.remove_last_dir_from_path(matched_base_path)
-                        LOG.debug("Final base path: %s", matched_base_path)
-
-                    parts = file_of_caller.split(matched_base_path)
-                    LOG.debug(f"Parts of path after split: {parts}")
-
-                    # Example #1: ['', '/test_project.py'] --> Need to get item with index 1
-                    # Cut leading slashes
-                    proj_name = parts[1]
-                    proj_name = StringUtils.strip_leading_os_sep(proj_name)
-
-                    # Example #2: ['', '/testproject/commands/testcommand/dummy_test_command.py']
-                    if StringUtils.is_path_multi_component(proj_name):
-                        LOG.debug("Found multiple dirs in project name: %s. "
-                                  "Assuming first dir is the name of the project.", proj_name)
-                        proj_name = StringUtils.get_first_dir_of_path_if_multi_component(proj_name)
-                    LOG.info(f"Determined path: {matched_base_path}, project: {proj_name}")
-                    return matched_base_path, proj_name
-            raise ValueError(f"Cannot determine project! "
-                             f"File of caller: {file_of_caller}\n"
-                             f"Call stack: \n{ProjectUtils.get_stack_human_readable(stack)}")
-
-        def _store_and_return(cls, file_of_caller, path, project):
-            cls.FILES_TO_PROJECT[file_of_caller] = project
-            return path, project
-
+        strategy: StrategyBase = cls.STRATEGIES[cls.project_root_determine_strategy]
         if REPOS_DIR in file_of_caller and cls.project_root_determine_strategy == cls.default_project_determine_strategy:
-            return _store_and_return(cls, file_of_caller, *_determine_project_by_repos_dir(file_of_caller))
-        if cls.project_root_determine_strategy == ProjectRootDeterminationStrategy.COMMON_FILE:
-            return _store_and_return(cls, file_of_caller, *_determine_project_by_common_files(file_of_caller))
-        elif cls.project_root_determine_strategy == ProjectRootDeterminationStrategy.SYS_PATH:
-            return _store_and_return(cls, file_of_caller, *_determine_project_by_sys_path(file_of_caller))
+            strategy = cls.STRATEGIES[ProjectRootDeterminationStrategy.REPOSITORY_DIR]
 
-        raise ValueError(
-            f"Unexpected project execution directory. \n"
-            f"Filename of caller: '{file_of_caller}'\n"
-            f"Printing diagnostic info including call stack + sys.path...\n"
-            f"\nCall stack: \n{ProjectUtils.get_stack_human_readable(stack)}\n"
-            f"\nsys.path: \n{ProjectUtils.get_sys_path_human_readable()}")
+        path, project = strategy.determine_path(file_of_caller, stack)
+        cls.FILES_TO_PROJECT[file_of_caller] = project
+        return path, project
+
+        # TODO Can this happen?
+        # raise ValueError(
+        #     f"Unexpected project execution directory. \n"
+        #     f"Filename of caller: '{file_of_caller}'\n"
+        #     f"Printing diagnostic info including call stack + sys.path...\n"
+        #     f"\nCall stack: \n{get_stack_human_readable(stack)}\n"
+        #     f"\nsys.path: \n{get_sys_path_human_readable()}")
 
     @classmethod
     def get_output_basedir(cls, basedir_name: str,
@@ -410,7 +436,7 @@ class ProjectUtils:
         LOG.debug("Filename of caller: " + file_of_caller)
         if StringUtils.is_dir_name_in_path(file_of_caller, "unittest"):
             message = f"Detected caller as 'unittest'. Current stack frame: {stack_frame}\n" \
-                     f"Stack: {ProjectUtils.get_stack_human_readable(stack)}"
+                     f"Stack: {get_stack_human_readable(stack)}"
             if allow_python_commons_as_project:
                 LOG.warning(message)
                 # Get the previous frame which should belong to pythoncommons
@@ -436,16 +462,8 @@ class ProjectUtils:
             # Walked up the stack and haven't found any frame that is not pythoncommons
             raise ValueError("Walked up the stack but haven't found any frame that does not belong to python-commons. \n"
                              "Printing the stack: \n"
-                             f"{ProjectUtils.get_stack_human_readable(stack)}")
+                             f"{get_stack_human_readable(stack)}")
         return stack[idx], idx
-
-    @classmethod
-    def get_stack_human_readable(cls, stack):
-        return "\n".join([str(f.frame) for f in stack])
-
-    @staticmethod
-    def get_sys_path_human_readable():
-        return "\n".join(sys.path)
 
     @classmethod
     def _get_known_projects_str(cls):
