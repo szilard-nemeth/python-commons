@@ -313,7 +313,7 @@ class FileUtils:
         return path
 
     @staticmethod
-    def find_repo_root_dir_auto(curr_file, files_to_search: List[str] = None):
+    def find_repo_root_dir_auto(curr_file, files_to_search: List[str] = None, raise_error=True):
         def _does_files_exist_in_dir(d):
             if not FileUtils.is_dir(d):
                 return False
@@ -333,6 +333,12 @@ class FileUtils:
             path = FileUtils.get_parent_dir_name(path)
             LOG.debug(f"Finding root dir: Moving up the path, new path is: {path}")
             visited.append(path)
+
+        if raise_error and path == os.sep:
+            raise ValueError(
+                f"Failed to find project root directory starting from path '{orig_path}'. "
+                f"Visited: {visited}")
+
         return path, visited
 
     # TODO rename method

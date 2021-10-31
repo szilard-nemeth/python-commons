@@ -126,7 +126,7 @@ class CommonPathStrategy(StrategyBase):
                   "trying to determine project name with common files strategy. "
                   f"Current sys.path: \n{get_sys_path_human_readable()}"
                   f"Current caller file: {file_of_caller}")
-        project_root_path, visited_paths = FileUtils.find_repo_root_dir_auto(file_of_caller)
+        project_root_path, visited_paths = FileUtils.find_repo_root_dir_auto(file_of_caller, raise_error=False)
         if project_root_path == os.sep:
             orig_path = os.path.realpath(file_of_caller)
             raise ValueError(
