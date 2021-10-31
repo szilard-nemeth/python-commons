@@ -219,6 +219,11 @@ class StringUtils:
         return False
 
     @staticmethod
+    def is_any_of_dir_names_in_path(path, dir_names: List[str]):
+        return any(StringUtils.is_dir_name_in_path(path, dirname) for dirname in dir_names)
+
+
+    @staticmethod
     def get_list_of_components_from_path(path):
         if os.sep in path:
             return path.split(os.sep)

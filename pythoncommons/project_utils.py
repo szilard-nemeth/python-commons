@@ -201,6 +201,7 @@ class ProjectUtils:
     CHILD_DIR_DICT = {}
     CHILD_DIR_TEST_DICT = {}
     FILES_TO_PROJECT = {}
+    FORBIDDEN_DIR_NAMES = ["unittest", "pytest", "_pytest"]
     test_execution: bool = False
     default_project_determine_strategy = ProjectRootDeterminationStrategy.COMMON_FILE
     project_root_determine_strategy = default_project_determine_strategy
@@ -444,7 +445,7 @@ class ProjectUtils:
         stack_frame, idx = cls._find_first_non_pythoncommons_stackframe(stack)
         file_of_caller = stack_frame.filename
         LOG.debug("Filename of caller: " + file_of_caller)
-        if StringUtils.is_dir_name_in_path(file_of_caller, "unittest"):
+        if StringUtils.is_any_of_dir_names_in_path(file_of_caller, cls.FORBIDDEN_DIR_NAMES):
             message = f"Detected caller as 'unittest'. Current stack frame: {stack_frame}\n" \
                      f"Stack: {get_stack_human_readable(stack)}"
             if allow_python_commons_as_project:

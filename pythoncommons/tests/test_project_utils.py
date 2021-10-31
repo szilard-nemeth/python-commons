@@ -20,7 +20,7 @@ REPO_ROOT_DIR = FileUtils.find_repo_root_dir(__file__, REPO_ROOT_DIRNAME)
 
 def get_test_scripts_dir():
     return SimpleProjectUtils.get_project_dir(basedir=REPO_ROOT_DIR,
-                                              parent_dir="tests",
+                                              parent_dir="pythoncommons",
                                               dir_to_find="test-scripts",
                                               find_result_type=FindResultType.DIRS)
 
