@@ -101,6 +101,7 @@ class StrategyBase(ABC):
         # path: '/private/var/folders/nn/mkv5bwbd2fg8v8ztz5swpq980000gn/T/tmpp3k75qk2/python'
         # file_of_caller: '/var/folders/nn/mkv5bwbd2fg8v8ztz5swpq980000gn/T/tmpp3k75qk2/python/hello_world.py'
         is_mac = platform.system() == "Darwin"
+        LOG.debug("Trying to match file '%s' with path '%s' with Mac-specific startswith.", file_of_caller, path)
         if is_mac and StringUtils.is_path_starting_with_dirname(path, MAC_PRIVATE_DIR):
             # WARNING: Cannot use os.path.join here as it removes /private from the path string :(
             extended_file_of_caller = StringUtils.prepend_path(file_of_caller, MAC_PRIVATE_DIR)
@@ -160,9 +161,7 @@ class SysPathStrategy(StrategyBase):
                 continue
             matched_base_path = self.find_common_paths(path, file_of_caller)
             if not matched_base_path:
-                raise ValueError(f"Cannot determine project! "
-                                 f"File of caller: {file_of_caller}\n"
-                                 f"Call stack: \n{get_stack_human_readable(stack)}")
+                continue
 
             matched_base_path = StringUtils.strip_trailing_os_sep(matched_base_path)
             if not matched_base_path.endswith(SITE_PACKAGES_DIRNAME):
@@ -188,6 +187,10 @@ class SysPathStrategy(StrategyBase):
                 proj_name = StringUtils.get_first_dir_of_path_if_multi_component(proj_name)
             LOG.info(f"Determined path: {matched_base_path}, project: {proj_name}")
             return matched_base_path, proj_name
+
+        raise ValueError(f"Cannot determine project! "
+                         f"File of caller: {file_of_caller}\n"
+                         f"Call stack: \n{get_stack_human_readable(stack)}")
 
 
 class ProjectUtils:
