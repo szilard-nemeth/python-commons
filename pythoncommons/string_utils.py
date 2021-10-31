@@ -7,7 +7,7 @@ import unicodedata
 from enum import Enum
 from typing import List
 
-from pythoncommons.file_utils import FileUtils
+import pythoncommons.file_utils as fileutils
 
 LOG = logging.getLogger(__name__)
 
@@ -197,7 +197,7 @@ class StringUtils:
 
     @staticmethod
     def prepend_path(orig_path, prepend_with):
-        return FileUtils.join_path(os.sep, prepend_with, orig_path)
+        return fileutils.FileUtils.join_path(os.sep, prepend_with, orig_path)
 
     @staticmethod
     def get_first_dir_of_path_if_multi_component(path):
