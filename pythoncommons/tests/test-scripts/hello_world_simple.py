@@ -12,6 +12,7 @@ LOG.info("hello world")
 
 LOG.info("sys.path: %s", sys.path)
 ProjectUtils.project_root_determine_strategy = ProjectRootDeterminationStrategy.SYS_PATH
+ProjectUtils.FORCE_SITE_PACKAGES_IN_PATH_NAME = False
 basedir = ProjectUtils.get_output_basedir('test')
 logfilename = ProjectUtils.get_default_log_file('test')
 LOG.info("basedir: " + basedir)

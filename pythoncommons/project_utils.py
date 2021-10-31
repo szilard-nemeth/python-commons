@@ -156,7 +156,7 @@ class SysPathStrategy(StrategyBase):
     def determine_path(self, file_of_caller, stack):
         for path in sys.path:
             LOG.debug("Checking path: '%s' against file_of_caller: '%s'", path, file_of_caller)
-            if SITE_PACKAGES_DIRNAME not in path:
+            if ProjectUtils.FORCE_SITE_PACKAGES_IN_PATH_NAME and SITE_PACKAGES_DIRNAME not in path:
                 LOG.debug("Skipping path: '%s', as '%s' not found in the path", path, SITE_PACKAGES_DIRNAME)
                 continue
             matched_base_path = self.find_common_paths(path, file_of_caller)
@@ -164,7 +164,7 @@ class SysPathStrategy(StrategyBase):
                 continue
 
             matched_base_path = StringUtils.strip_trailing_os_sep(matched_base_path)
-            if not matched_base_path.endswith(SITE_PACKAGES_DIRNAME):
+            if ProjectUtils.FORCE_SITE_PACKAGES_IN_PATH_NAME and not matched_base_path.endswith(SITE_PACKAGES_DIRNAME):
                 LOG.debug("Matched base path does not end with '%s'. Dropping path components after it.",
                           SITE_PACKAGES_DIRNAME)
                 # Need to cut the last dir from the path, so we find the site-packages root
@@ -201,6 +201,7 @@ class ProjectUtils:
     test_execution: bool = False
     default_project_determine_strategy = ProjectRootDeterminationStrategy.COMMON_FILE
     project_root_determine_strategy = default_project_determine_strategy
+    FORCE_SITE_PACKAGES_IN_PATH_NAME = True
     STRATEGIES: Dict[ProjectRootDeterminationStrategy, StrategyBase] = {
         ProjectRootDeterminationStrategy.COMMON_FILE: CommonPathStrategy(),
         ProjectRootDeterminationStrategy.SYS_PATH: SysPathStrategy(),
