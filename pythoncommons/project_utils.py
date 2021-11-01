@@ -465,6 +465,7 @@ class ProjectUtils:
     def _find_first_non_pythoncommons_stackframe(cls, stack):
         idx = 1
         while idx < len(stack):
+            LOG.debug("Inspecting stack frame: %s", stack[idx])
             fname = stack[idx].filename
             if "pythoncommons" not in fname:
                 break
