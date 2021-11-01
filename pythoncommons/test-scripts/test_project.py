@@ -6,7 +6,7 @@ import sys
 from pythoncommons.project_utils import ProjectUtils, ProjectRootDeterminationStrategy
 from testproject.commands.testcommand.dummy_test_command import FakeBranchComparator
 
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, force=True)
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 LOG = logging.getLogger("project_utils")
 LOG.setLevel(logging.DEBUG)
 

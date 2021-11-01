@@ -4,7 +4,7 @@ import sys
 
 from pythoncommons.project_utils import ProjectUtils
 
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, force=True)
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
 

@@ -30,7 +30,7 @@ TEST_SCRIPTS_DIR = get_test_scripts_dir()
 
 class ProjectUtilsTests(unittest.TestCase):
     def setUp(self) -> None:
-        logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, force=True)
+        logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
         root_logger = logging.getLogger()
         root_logger.setLevel(logging.DEBUG)
         testlogger = logging.getLogger(__name__)

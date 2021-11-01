@@ -3,7 +3,7 @@ import sys
 
 from pythoncommons.project_utils import ProjectUtils, ProjectRootDeterminationStrategy
 
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, force=True)
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 LOG = logging.getLogger("project_utils")
 LOG.setLevel(logging.DEBUG)
 
