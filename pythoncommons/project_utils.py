@@ -89,7 +89,7 @@ class StrategyBase(ABC):
         if found_match:
             return path, new_file_of_caller
 
-        return None, None
+        return None, file_of_caller
 
     @staticmethod
     def mac_specific_path_startswith(path, file_of_caller):
