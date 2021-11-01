@@ -212,6 +212,10 @@ class ProjectUtils:
         ProjectRootDeterminationStrategy.REPOSITORY_DIR: RepositoryDirStrategy()}
 
     @classmethod
+    def reset_root_determine_strategy_to_default(cls):
+        cls.project_root_determine_strategy = cls.default_project_determine_strategy
+
+    @classmethod
     def determine_project_and_parent_dir(cls, file_of_caller, stack):
         received_args = locals().copy()
         received_args['stack'] = get_stack_human_readable(stack)

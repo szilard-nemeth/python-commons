@@ -29,3 +29,4 @@ LOG.info("User site: " + python_user_site)
 
 LOG.info("Creating FakeBranchComparator...")
 FakeBranchComparator()
+ProjectUtils.reset_root_determine_strategy_to_default()

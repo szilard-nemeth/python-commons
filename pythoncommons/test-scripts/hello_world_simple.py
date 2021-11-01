@@ -17,3 +17,5 @@ basedir = ProjectUtils.get_output_basedir('test')
 logfilename = ProjectUtils.get_default_log_file('test')
 LOG.info("basedir: " + basedir)
 LOG.info("logfilename: " + logfilename)
+
+ProjectUtils.reset_root_determine_strategy_to_default()
