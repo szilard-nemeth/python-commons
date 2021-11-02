@@ -9,7 +9,17 @@ COLLECTION_PLACEHOLDER = "$$coll$$"
 
 
 class LoggingUtils:
-    pass
+    @staticmethod
+    def print_logger_info(logger):
+        if not logger:
+            return
+        print("Logger name: {}".format(logger.name))
+        print("Logger effective level: {}".format(logger.getEffectiveLevel()))
+        print("Logger handlers: {}".format(logger.handlers))
+        print("Logger disabled: {}".format(logger.disabled))
+        print("Logger propagate: {}".format(logger.propagate))
+        logger.info("here is a test record")
+        LoggingUtils.print_logger_info(logger.parent)
 
 
 class LoggerProperties(Enum):
@@ -78,15 +88,3 @@ class LoggerFactory:
                 debug_msg = f"{msg} {debug_coll_str}"
             self.info(info_msg)
             self.debug(debug_msg)
-
-    @staticmethod
-    def print_logger_info(logger):
-        if not logger:
-            return
-        print("Logger name: {}".format(logger.name))
-        print("Logger effective level: {}".format(logger.getEffectiveLevel()))
-        print("Logger handlers: {}".format(logger.handlers))
-        print("Logger disabled: {}".format(logger.disabled))
-        print("Logger propagate: {}".format(logger.propagate))
-        logger.info("here is a test record")
-        LoggingUtils.print_logger_info(logger.parent)
