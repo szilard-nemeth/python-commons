@@ -423,7 +423,22 @@ class GitWrapper:
         self.repo.config_writer().set_value("user", "email", "").release()
 
     def setup_pull_mode_no_ff(self, global_mode=False):
-        self.repo.config_writer().set_value("pull", "ff", "only").release()
+        config_level = self._get_git_config_level(global_mode)
+        self.repo.config_writer(config_level).set_value("pull", "ff", "only").release()
+
+    def read_config(self, global_mode=False):
+        config_level = self._get_git_config_level(global_mode)
+        conf_reader = self.repo.config_reader(config_level)
+        conf_reader.read()
+        LOG.info("Git config for section '%s'", "pull", conf_reader.items_all("pull"))
+        LOG.info("Git config for section '%s'", "push", conf_reader.items_all("push"))
+
+    @staticmethod
+    def _get_git_config_level(global_mode: bool):
+        config_level = "repository"
+        if global_mode:
+            config_level = "global"
+        return config_level
 
     def add_remote(self, name, url):
         try:
