@@ -21,6 +21,20 @@ class LoggingUtils:
         logger.info("here is a test record")
         LoggingUtils.print_logger_info(logger.parent)
 
+    @staticmethod
+    def ensure_logger_is_on_level(logger: logging.Logger,
+                                  level: int,
+                                  raise_error_if_not_enabled_for=False,
+                                  print_logger_info=False):
+        if not logger:
+            return
+        if print_logger_info:
+            LoggingUtils.print_logger_info(logger)
+        enabled = logger.isEnabledFor(level)
+        if raise_error_if_not_enabled_for and not enabled:
+            raise ValueError("Logger {} is not enabled for level {}. Current effective level is: {}"
+                             .format(logger.name, logging.getLevelName(level), logging.getLevelName(logger.getEffectiveLevel())))
+
 
 class LoggerProperties(Enum):
     COMBINED_COLLECTION_LOGGING = (COLLECTION_PLACEHOLDER, "combined_log")
