@@ -430,8 +430,8 @@ class GitWrapper:
         config_level = self._get_git_config_level(global_mode)
         conf_reader = self.repo.config_reader(config_level)
         conf_reader.read()
-        LOG.info("Git config for section '%s'", "pull", conf_reader.items_all("pull"))
-        LOG.info("Git config for section '%s'", "push", conf_reader.items_all("push"))
+        LOG.info("Git config for section '%s': %s", "pull", conf_reader.items_all("pull"))
+        LOG.info("Git config for section '%s': %s", "push", conf_reader.items_all("push"))
 
     @staticmethod
     def _get_git_config_level(global_mode: bool):
