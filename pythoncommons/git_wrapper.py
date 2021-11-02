@@ -493,6 +493,13 @@ class GitWrapper:
         LOG.debug(f"Adding files to index: {items}")
         self.repo.index.add(items)
 
+    def __str__(self):
+        filtered_dict = dict(filter(lambda elem: elem[0] in ["repo_path"], vars(self).items()))
+        return '%s(%s)' % (
+            type(self).__name__,
+            ', '.join('%s=%s' % item for item in filtered_dict.items())
+        )
+
 
 class ProgressPrinter(RemoteProgress):
     def __init__(self, operation):
