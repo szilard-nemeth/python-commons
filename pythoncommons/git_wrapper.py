@@ -422,6 +422,9 @@ class GitWrapper:
         self.repo.config_writer().set_value("user", "name", "").release()
         self.repo.config_writer().set_value("user", "email", "").release()
 
+    def setup_pull_mode_no_ff(self, global_mode=False):
+        self.repo.config_writer().set_value("pull", "ff", "only").release()
+
     def add_remote(self, name, url):
         try:
             self.repo.create_remote(name, url=url)
