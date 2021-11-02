@@ -424,7 +424,7 @@ class GitWrapper:
 
     def setup_pull_mode_no_ff(self, global_mode=False):
         config_level = self._get_git_config_level(global_mode)
-        self.repo.config_writer(config_level).set_value("pull", "ff", "only").release()
+        self.repo.config_writer(config_level=config_level).set_value("pull", "ff", "only").release()
 
     def read_config(self, global_mode=False):
         config_level = self._get_git_config_level(global_mode)
