@@ -430,8 +430,17 @@ class GitWrapper:
         config_level = self._get_git_config_level(global_mode)
         conf_reader = self.repo.config_reader(config_level)
         conf_reader.read()
-        LOG.info("Git config for section '%s': %s", "pull", conf_reader.items_all("pull"))
-        LOG.info("Git config for section '%s': %s", "push", conf_reader.items_all("push"))
+        self._safe_get_config_section(conf_reader, "pull", config_level)
+        self._safe_get_config_section(conf_reader, "push", config_level)
+
+    @staticmethod
+    def _safe_get_config_section(conf_reader, section_name, config_level):
+        try:
+            conf = conf_reader.items_all(section_name)
+            LOG.info("Git config for section '%s': %s", section_name, conf)
+            return conf
+        except KeyError as ke:
+            LOG.warning("Section '%s' does not exist in Git config. Config mode: %s", section_name, config_level)
 
     @staticmethod
     def _get_git_config_level(global_mode: bool):
