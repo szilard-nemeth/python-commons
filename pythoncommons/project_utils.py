@@ -417,31 +417,38 @@ class ProjectUtils:
         return project_name
 
     @classmethod
+    def get_default_log_file(cls, project_name: str, postfix: str = None, level_name: str = None):
+        return cls._get_log_filename_internal(project_name, postfix, level_name=level_name, prod=True)
+
+    @classmethod
+    def get_default_test_log_file(cls, project_name: str, postfix: str = None, level_name: str = None):
+        return cls._get_log_filename_internal(project_name, postfix, level_name=level_name, prod=False)
+
+    @classmethod
+    def _get_log_filename_internal(cls, project_name: str, postfix: str = None, level_name: str = None, prod: bool = True):
+        if postfix:
+            postfix = "-" + postfix
+        else:
+            postfix = ""
+        if not prod:
+            postfix += "-" + TEST_LOG_FILE_POSTFIX
+
+        if level_name:
+            level_name = "-" + level_name
+        else:
+            level_name = ""
+
+        filename = f"{project_name}{postfix}{level_name}-{DateUtils.get_current_datetime()}"
+        log_dir = cls.get_logs_dir() if prod else cls.get_test_logs_dir()
+        return FileUtils.join_path(log_dir, filename)
+
+    @classmethod
     def get_logs_dir(cls):
         return cls.get_output_child_dir(LOGS_DIR_NAME)
 
     @classmethod
-    def get_default_log_file(cls, project_name: str, postfix: str = None):
-        if postfix:
-            postfix += "-"
-        else:
-            postfix = ""
-
-        filename = f"{project_name}-{postfix}{DateUtils.get_current_datetime()}"
-        log_dir = cls.get_logs_dir()
-        return FileUtils.join_path(log_dir, filename)
-
-    @classmethod
     def get_test_logs_dir(cls):
         return cls.get_test_output_child_dir(LOGS_DIR_NAME)
-
-    @classmethod
-    def get_default_test_log_file(cls, project_name: str, postfix: str = None):
-        if not postfix:
-            postfix = ""
-        filename = f"{project_name}-{TEST_LOG_FILE_POSTFIX}-{postfix}-{DateUtils.get_current_datetime()}"
-        log_dir = cls.get_test_logs_dir()
-        return FileUtils.join_path(log_dir, filename)
 
     @classmethod
     def verify_caller_filename_valid(cls, allow_python_commons_as_project=False):
