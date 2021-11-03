@@ -14,7 +14,7 @@ class LoggingUtils:
         if not logger:
             return
         print("Logger name: {}".format(logger.name))
-        print("Logger effective level: {}".format(logger.getEffectiveLevel()))
+        print("Logger effective level: {}".format(logging.getLevelName(logger.getEffectiveLevel())))
         print("Logger handlers: {}".format(logger.handlers))
         print("Logger disabled: {}".format(logger.disabled))
         print("Logger propagate: {}".format(logger.propagate))
