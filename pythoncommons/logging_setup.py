@@ -28,17 +28,17 @@ def get_root_logger():
 
 
 _ROOT_LOG = get_root_logger()
-
+DEFAULT_LOG_LEVEL = logging.INFO
 
 # TODO this is copied from another project, eliminate duplication later
 class SimpleLoggingSetup:
 
     @staticmethod
     def init_logging(project_name, debug=False, console_debug=False, format_str=None, log_dir=None):
-        file_log_level = logging.DEBUG if debug else logging.INFO
-        console_log_level = logging.DEBUG if debug else logging.INFO
+        file_log_level = logging.DEBUG if debug else DEFAULT_LOG_LEVEL
+        console_log_level = logging.DEBUG if debug else DEFAULT_LOG_LEVEL
         if not console_debug:
-            console_log_level = logging.INFO
+            console_log_level = DEFAULT_LOG_LEVEL
 
         final_format_str = DEFAULT_FORMAT
         if format_str:
@@ -49,8 +49,8 @@ class SimpleLoggingSetup:
         log_dir = os.path.join(os.path.curdir, 'logs')
         handlers = [
             SimpleLoggingSetup._create_console_handler(console_log_level),
-            SimpleLoggingSetup._create_file_handler(project_name, log_dir, logging.INFO, level_str="info"),
-            SimpleLoggingSetup._create_file_handler(project_name, log_dir, logging.DEBUG, level_str="debug")
+            SimpleLoggingSetup._create_file_handler(project_name, log_dir, logging.INFO),
+            SimpleLoggingSetup._create_file_handler(project_name, log_dir, logging.DEBUG)
         ]
 
         for h in handlers:
@@ -66,8 +66,9 @@ class SimpleLoggingSetup:
         return ch
 
     @staticmethod
-    def _create_file_handler(project_name, log_dir, level, level_str=None):
-        log_file = SimpleLoggingSetup.get_log_filename(level_str, log_dir, project_name)
+    def _create_file_handler(project_name, log_dir, level: int):
+        level_name = logging.getLevelName(level)
+        log_file = SimpleLoggingSetup.get_log_filename(level_name, log_dir, project_name)
         fh = TimedRotatingFileHandler(log_file, when='midnight')
         fh.suffix = '%Y_%m_%d.log'
         fh.setLevel(level)
