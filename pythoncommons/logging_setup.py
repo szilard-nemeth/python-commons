@@ -5,7 +5,7 @@ from logging.handlers import TimedRotatingFileHandler
 import logging.config
 from typing import List
 
-from pythoncommons.constants import PROJECT_NAME as PYTHONCOMMONS_PROJECT_NAME
+from pythoncommons.constants import PROJECT_NAME as PYTHONCOMMONS_PROJECT_NAME, ExecutionMode
 from pythoncommons.date_utils import DateUtils
 from pythoncommons.file_utils import FileUtils
 from pythoncommons.project_utils import ProjectUtils
@@ -44,9 +44,8 @@ class SimpleLoggingSetup:
                      debug: bool = False,
                      console_debug: bool = False,
                      format_str: str = None,
-                     log_file_path: str = None,
                      file_postfix: str = None,
-                     prod: bool = True,
+                     execution_mode: bool = ExecutionMode.PRODUCTION,
                      modify_pythoncommons_logger_names: bool = True):
         file_log_level: int = logging.DEBUG if debug else DEFAULT_LOG_LEVEL
         file_log_level_name: str = logging.getLevelName(file_log_level)
@@ -62,12 +61,12 @@ class SimpleLoggingSetup:
         # This will init the root logger to the specified level
         logging.basicConfig(format=final_format_str, level=file_log_level)
 
-        final_log_file_path = SimpleLoggingSetup._determine_log_file_path(file_log_level_name, file_postfix,
-                                                                          log_file_path, prod, project_name)
+        log_file_path = SimpleLoggingSetup._determine_log_file_path(file_log_level_name, file_postfix,
+                                                                          execution_mode, project_name)
         handlers = [
             SimpleLoggingSetup._create_console_handler(console_log_level),
-            SimpleLoggingSetup._create_file_handler(final_log_file_path, logging.INFO),
-            SimpleLoggingSetup._create_file_handler(final_log_file_path, logging.DEBUG)
+            SimpleLoggingSetup._create_file_handler(log_file_path, logging.INFO),
+            SimpleLoggingSetup._create_file_handler(log_file_path, logging.DEBUG)
         ]
 
         for h in handlers:
@@ -78,19 +77,20 @@ class SimpleLoggingSetup:
                                                   modify_pythoncommons_logger_names=modify_pythoncommons_logger_names)
 
     @staticmethod
-    def _determine_log_file_path(file_log_level_name, file_postfix, log_file_path, prod, project_name):
-        if log_file_path:
-            if prod:
-                final_log_file_path = ProjectUtils.get_default_log_file(project_name, postfix=file_postfix,
-                                                                        level_name=file_log_level_name)
-            else:
-                final_log_file_path = ProjectUtils.get_default_test_log_file(project_name, postfix=file_postfix,
-                                                                             level_name=file_log_level_name)
+    def _determine_log_file_path(file_log_level_name, file_postfix, exec_mode, project_name):
+        if exec_mode == ExecutionMode.PRODUCTION:
+            log_file_path = ProjectUtils.get_default_log_file(project_name, postfix=file_postfix,
+                                                              level_name=file_log_level_name)
+        elif exec_mode == ExecutionMode.TEST:
+            log_file_path = ProjectUtils.get_default_test_log_file(project_name, postfix=file_postfix,
+                                                                   level_name=file_log_level_name)
         else:
-            final_log_dir = os.path.join(os.path.curdir, 'logs')
-            final_log_file_path = SimpleLoggingSetup.get_default_log_file_path(file_log_level_name, final_log_dir,
-                                                                               project_name)
-        return final_log_file_path
+            raise ValueError(f"Unknown execution mode: {exec_mode}")
+        # else:
+        #     final_log_dir = os.path.join(os.path.curdir, 'logs')
+        #     final_log_file_path = SimpleLoggingSetup.get_default_log_file_path(file_log_level_name, final_log_dir,
+        #                                                                        project_name)
+        return log_file_path
 
     @staticmethod
     def get_default_log_file_path(level_str, log_dir, project_name):
