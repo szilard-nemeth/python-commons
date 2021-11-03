@@ -3,6 +3,8 @@ import types
 from enum import Enum
 from typing import List, Sized, Callable
 
+from pythoncommons.logging_setup import SimpleLoggingSetup
+
 LOG = logging.getLogger(__name__)
 
 COLLECTION_PLACEHOLDER = "$$coll$$"
@@ -22,28 +24,45 @@ class LoggingUtils:
         LoggingUtils.print_logger_info(logger.parent)
 
     @staticmethod
-    def ensure_loggers_are_on_level(loggers: List[str], level: int):
+    def ensure_loggers_are_on_level(loggers: List[str], level: int, project_name_prefix=None):
         for logger_name in loggers:
             logger = logging.getLogger(logger_name)
             LoggingUtils.ensure_logger_is_on_level(
                 logger, level,
                 raise_error_if_not_enabled_for=True,
-                print_logger_info=True
+                print_logger_info=True,
+                print_additional_details=True,
+                project_name_prefix=project_name_prefix
             )
 
     @staticmethod
     def ensure_logger_is_on_level(logger: logging.Logger,
                                   level: int,
                                   raise_error_if_not_enabled_for=False,
-                                  print_logger_info=False):
+                                  print_logger_info=True,
+                                  print_additional_details=True,
+                                  project_name_prefix=None):
         if not logger:
             return
         if print_logger_info:
             LoggingUtils.print_logger_info(logger)
         enabled = logger.isEnabledFor(level)
         if raise_error_if_not_enabled_for and not enabled:
-            raise ValueError("Logger {} is not enabled for level {}. Current effective level is: {}"
-                             .format(logger.name, logging.getLevelName(level), logging.getLevelName(logger.getEffectiveLevel())))
+            err_message = "Logger {} is not enabled for level {}. Current effective level is: {}" \
+                .format(logger.name,
+                        logging.getLevelName(level),
+                        logging.getLevelName(logger.getEffectiveLevel()))
+
+            if print_additional_details:
+                all_loggers = SimpleLoggingSetup.get_all_loggers_from_loggerdict()
+                pythoncommons_loggers = SimpleLoggingSetup.get_pythoncommons_loggers(all_loggers)
+                error_details = f"ALL LOGGERS: {all_loggers}\n" \
+                                f"PYTHON COMMONS LOGGERS: {pythoncommons_loggers}"
+                if project_name_prefix:
+                    project_specific_loggers = SimpleLoggingSetup.get_project_specific_loggers(all_loggers, project_name_prefix)
+                    error_details += f"\nPROJECT SPECIFIC LOGGERS: {project_specific_loggers}"
+                err_message += f"\n{error_details}"
+            raise ValueError(err_message)
 
 
 class LoggerProperties(Enum):

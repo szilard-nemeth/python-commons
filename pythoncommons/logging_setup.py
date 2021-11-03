@@ -156,10 +156,11 @@ class SimpleLoggingSetup:
             SimpleLoggingSetup._set_level_and_add_handlers_on_loggers(logger, pythoncommons_loggers, handlers, level, logger_names)
 
     @staticmethod
-    def get_all_loggers_from_loggerdict(logger):
+    def get_all_loggers_from_loggerdict(logger=None):
         loggers: List[logging.Logger] = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
         logger_names: List[str] = list(map(lambda x: x.name, loggers))
-        logger.info("Discovered loggers: %s", logger_names)
+        if logger:
+            logger.info("Discovered loggers: %s", logger_names)
         return logger_names, loggers
 
     @staticmethod
