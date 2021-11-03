@@ -69,10 +69,12 @@ class GitWrapper:
         result = remote.pull(progress=progress)
         LOG.debug("Result of git pull: %s", result)
 
-    def checkout_and_pull(self, checkout_ref, remote_to_pull=ORIGIN, no_ff=False):
+    def checkout_and_pull(self, checkout_ref, remote_to_pull=ORIGIN, no_ff=False, ff_only=False):
         pull_kwargs = {}
         if no_ff:
             pull_kwargs["no-ff"] = True
+        if ff_only:
+            pull_kwargs["ff-only"] = True
 
         self.checkout_branch(checkout_ref)
         LOG.info(f"Pulling {remote_to_pull}")
@@ -427,7 +429,7 @@ class GitWrapper:
         self.repo.config_writer().set_value("user", "name", "").release()
         self.repo.config_writer().set_value("user", "email", "").release()
 
-    def setup_pull_mode_no_ff(self, global_mode=False):
+    def setup_pull_mode_ff_only(self, global_mode=False):
         config_level = self._get_git_config_level(global_mode)
         self.repo.config_writer(config_level=config_level).set_value("pull", "ff", "only").release()
 
