@@ -46,7 +46,7 @@ class SimpleLoggingSetup:
                      format_str: str = None,
                      file_postfix: str = None,
                      execution_mode: ExecutionMode = ExecutionMode.PRODUCTION,
-                     modify_pythoncommons_logger_names: bool = True):
+                     modify_pythoncommons_logger_names: bool = True) -> Dict[int, str]:
         specified_file_log_level: int = logging.DEBUG if debug else DEFAULT_LOG_LEVEL
         specified_file_log_level_name: str = logging.getLevelName(specified_file_log_level)
         default_file_log_level_name: str = logging.getLevelName(DEFAULT_LOG_LEVEL)
