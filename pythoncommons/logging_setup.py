@@ -34,7 +34,7 @@ _ROOT_LOG = get_root_logger()
 class SimpleLoggingSetup:
 
     @staticmethod
-    def init_logging(project_name, debug=False, console_debug=False, format_str=None):
+    def init_logging(project_name, debug=False, console_debug=False, format_str=None, log_dir=None):
         file_log_level = logging.DEBUG if debug else logging.INFO
         console_log_level = logging.DEBUG if debug else logging.INFO
         if not console_debug:
@@ -67,20 +67,23 @@ class SimpleLoggingSetup:
 
     @staticmethod
     def _create_file_handler(project_name, log_dir, level, level_str=None):
-        FileUtils.ensure_dir_created(log_dir)
+        log_file = SimpleLoggingSetup.get_log_filename(level_str, log_dir, project_name)
+        fh = TimedRotatingFileHandler(log_file, when='midnight')
+        fh.suffix = '%Y_%m_%d.log'
+        fh.setLevel(level)
+        return fh
 
+    @staticmethod
+    def get_log_filename(level_str, log_dir, project_name):
+        FileUtils.ensure_dir_created(log_dir)
         # Example file name: <project>-info-2020_03_12_01_19_48
         timestamp = _get_timestamp_as_str()
         logfilename = project_name
         if level_str:
             logfilename += "-" + level_str
         logfilename += "-" + timestamp + ".log"
-
         log_file = os.path.join(log_dir, logfilename)
-        fh = TimedRotatingFileHandler(log_file, when='midnight')
-        fh.suffix = '%Y_%m_%d.log'
-        fh.setLevel(level)
-        return fh
+        return log_file
 
     @staticmethod
     def _setup_project_main_logger(project_name, handlers):
