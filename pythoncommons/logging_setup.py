@@ -53,6 +53,8 @@ class SimpleLoggingSetup:
         if format_str:
             final_format_str = format_str
         formatter = logging.Formatter(final_format_str)
+
+        # This will init the root logger to the specified level
         logging.basicConfig(format=final_format_str, level=file_log_level)
 
         final_log_file_path = SimpleLoggingSetup._determine_log_file_path(file_log_level_name, file_postfix,
