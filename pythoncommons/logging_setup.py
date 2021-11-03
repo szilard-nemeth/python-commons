@@ -6,6 +6,8 @@ import logging.config
 from pythoncommons.date_utils import DateUtils
 from pythoncommons.file_utils import FileUtils
 
+DEFAULT_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
 DEFAULT_LOG_YAML_FILENAME = 'logging_default.yaml'
 
 
@@ -32,15 +34,17 @@ _ROOT_LOG = get_root_logger()
 class SimpleLoggingSetup:
 
     @staticmethod
-    def init_logging(project_name, debug=False, console_debug=False):
+    def init_logging(project_name, debug=False, console_debug=False, format_str=None):
         file_log_level = logging.DEBUG if debug else logging.INFO
         console_log_level = logging.DEBUG if debug else logging.INFO
         if not console_debug:
             console_log_level = logging.INFO
 
-        format_str = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        formatter = logging.Formatter(format_str)
-        logging.basicConfig(format=format_str, level=file_log_level)
+        final_format_str = DEFAULT_FORMAT
+        if format_str:
+            final_format_str = format_str
+        formatter = logging.Formatter(final_format_str)
+        logging.basicConfig(format=final_format_str, level=file_log_level)
 
         log_dir = os.path.join(os.path.curdir, 'logs')
         handlers = [
