@@ -32,15 +32,19 @@ _ROOT_LOG = get_root_logger()
 class SimpleLoggingSetup:
 
     @staticmethod
-    def init_logging(project_name, debug=False):
-        level = logging.DEBUG if debug else logging.INFO
+    def init_logging(project_name, debug=False, console_debug=False):
+        file_log_level = logging.DEBUG if debug else logging.INFO
+        console_log_level = logging.DEBUG if debug else logging.INFO
+        if not console_debug:
+            console_log_level = logging.INFO
+
         format_str = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         formatter = logging.Formatter(format_str)
-        logging.basicConfig(format=format_str, level=level)
+        logging.basicConfig(format=format_str, level=file_log_level)
 
         log_dir = os.path.join(os.path.curdir, 'logs')
         handlers = [
-            SimpleLoggingSetup._create_console_handler(level),
+            SimpleLoggingSetup._create_console_handler(console_log_level),
             SimpleLoggingSetup._create_file_handler(project_name, log_dir, logging.INFO, level_str="info"),
             SimpleLoggingSetup._create_file_handler(project_name, log_dir, logging.DEBUG, level_str="debug")
         ]
@@ -49,7 +53,7 @@ class SimpleLoggingSetup:
             h.setFormatter(formatter)
 
         logger = SimpleLoggingSetup._setup_project_main_logger(project_name, handlers)
-        SimpleLoggingSetup._set_level_for_existing_loggers(project_name, level, logger)
+        SimpleLoggingSetup._set_level_for_existing_loggers(project_name, file_log_level, logger)
 
     @staticmethod
     def _create_console_handler(level):
