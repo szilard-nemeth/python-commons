@@ -54,7 +54,7 @@ class LoggingUtils:
                         logging.getLevelName(logger.getEffectiveLevel()))
 
             if print_additional_details:
-                all_loggers = SimpleLoggingSetup.get_all_loggers_from_loggerdict()
+                logger_names, all_loggers = SimpleLoggingSetup.get_all_loggers_from_loggerdict()
                 pythoncommons_loggers = SimpleLoggingSetup.get_pythoncommons_loggers(all_loggers)
                 error_details = f"ALL LOGGERS: {all_loggers}\n" \
                                 f"PYTHON COMMONS LOGGERS: {pythoncommons_loggers}"
