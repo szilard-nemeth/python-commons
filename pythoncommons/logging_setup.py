@@ -3,7 +3,7 @@ import os
 import sys
 from logging.handlers import TimedRotatingFileHandler
 import logging.config
-from typing import List
+from typing import List, Dict
 
 from pythoncommons.constants import PROJECT_NAME as PYTHONCOMMONS_PROJECT_NAME, ExecutionMode
 from pythoncommons.date_utils import DateUtils
@@ -69,6 +69,7 @@ class SimpleLoggingSetup:
         log_file_path_for_specified_level = SimpleLoggingSetup._determine_log_file_path(specified_file_log_level_name,
                                                                                         file_postfix,
                                                                                         execution_mode, project_name)
+        log_file_paths: Dict[int, str] = {DEFAULT_LOG_LEVEL: log_file_path_for_default_level}
         handlers = [
             SimpleLoggingSetup._create_console_handler(console_log_level),
             SimpleLoggingSetup._create_file_handler(log_file_path_for_default_level, DEFAULT_LOG_LEVEL)
@@ -77,6 +78,7 @@ class SimpleLoggingSetup:
         # Example: Default is logging.INFO, specified is logging.DEBUG
         if specified_file_log_level != DEFAULT_LOG_LEVEL:
             SimpleLoggingSetup._create_file_handler(log_file_path_for_specified_level, specified_file_log_level)
+            log_file_paths[specified_file_log_level] = log_file_path_for_specified_level
 
         for h in handlers:
             h.setFormatter(formatter)
@@ -84,6 +86,7 @@ class SimpleLoggingSetup:
         logger = SimpleLoggingSetup._setup_project_main_logger(logger_name_prefix, handlers)
         SimpleLoggingSetup.setup_existing_loggers(logger_name_prefix, specified_file_log_level, logger, handlers,
                                                   modify_pythoncommons_logger_names=modify_pythoncommons_logger_names)
+        return log_file_paths
 
     @staticmethod
     def _determine_log_file_path(file_log_level_name, file_postfix, exec_mode, project_name):
