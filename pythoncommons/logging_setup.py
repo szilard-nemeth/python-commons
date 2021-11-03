@@ -3,6 +3,9 @@ import os
 import sys
 from logging.handlers import TimedRotatingFileHandler
 import logging.config
+from typing import List
+
+from pythoncommons.constants import PROJECT_NAME as PYTHONCOMMONS_PROJECT_NAME
 from pythoncommons.date_utils import DateUtils
 from pythoncommons.file_utils import FileUtils
 from pythoncommons.project_utils import ProjectUtils
@@ -37,12 +40,14 @@ class SimpleLoggingSetup:
 
     @staticmethod
     def init_logging(project_name: str,
-                     debug: bool=False,
-                     console_debug: bool=False,
-                     format_str: str=None,
-                     log_file_path: str=None,
-                     file_postfix: str=None,
-                     prod: bool = True):
+                     logger_name_prefix: str,
+                     debug: bool = False,
+                     console_debug: bool = False,
+                     format_str: str = None,
+                     log_file_path: str = None,
+                     file_postfix: str = None,
+                     prod: bool = True,
+                     modify_pythoncommons_logger_names: bool = True):
         file_log_level: int = logging.DEBUG if debug else DEFAULT_LOG_LEVEL
         file_log_level_name: str = logging.getLevelName(file_log_level)
         console_log_level: int = logging.DEBUG if debug else DEFAULT_LOG_LEVEL
@@ -68,8 +73,9 @@ class SimpleLoggingSetup:
         for h in handlers:
             h.setFormatter(formatter)
 
-        logger = SimpleLoggingSetup._setup_project_main_logger(project_name, handlers)
-        SimpleLoggingSetup._set_level_for_existing_loggers(project_name, file_log_level, logger)
+        logger = SimpleLoggingSetup._setup_project_main_logger(logger_name_prefix, handlers)
+        SimpleLoggingSetup.setup_existing_loggers(logger_name_prefix, file_log_level, logger, handlers,
+                                                  modify_pythoncommons_logger_names=modify_pythoncommons_logger_names)
 
     @staticmethod
     def _determine_log_file_path(file_log_level_name, file_postfix, log_file_path, prod, project_name):
@@ -112,20 +118,46 @@ class SimpleLoggingSetup:
         return fh
 
     @staticmethod
-    def _setup_project_main_logger(project_name, handlers):
-        logger = logging.getLogger(project_name)
+    def _setup_project_main_logger(logger_name_prefix, handlers):
+        logger = logging.getLogger(logger_name_prefix)
         logger.propagate = False
-        logger.setLevel(logging.DEBUG)
-        for h in handlers:
-            logger.addHandler(h)
+        SimpleLoggingSetup._set_level_and_add_handlers(logger, handlers, logging.DEBUG)
         return logger
 
     @staticmethod
-    def _set_level_for_existing_loggers(project_name, level, logger):
-        loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
-        logger_names = list(map(lambda x: x.name, loggers))
+    def setup_existing_loggers(logger_name_prefix: str,
+                               level: int, logger: logging.Logger,
+                               handlers: List[logging.Handler],
+                               modify_pythoncommons_logger_names: bool = True):
+        level_name: str = logging.getLevelName(level)
+        loggers: List[logging.Logger] = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+        logger_names: List[str] = list(map(lambda x: x.name, loggers))
         logger.info("Discovered loggers: %s", logger_names)
-        project_specific_loggers = list(filter(lambda x: x.name.startswith(project_name + "."), loggers))
-        logger.info("Setting logging level to '%s' on the following project-specific loggers: %s.", level, logger_names)
-        for logger in project_specific_loggers:
-            logger.setLevel(level)
+        project_specific_loggers: List[logging.Logger] = list(filter(lambda x: x.name.startswith(logger_name_prefix + "."), loggers))
+        if not project_specific_loggers:
+            print("Cannot find any project specific loggers with project name '%s', found loggers: %s", logger_name_prefix, logger_names)
+        else:
+            logger.info("Setting logging level to '%s' on the following project-specific loggers: %s.", level_name,
+                        logger_names)
+            SimpleLoggingSetup._set_level_and_add_handlers_on_loggers(logger, project_specific_loggers, handlers, level, logger_names)
+
+        if modify_pythoncommons_logger_names:
+            pythoncommons_loggers = list(filter(lambda x: x.name.startswith(PYTHONCOMMONS_PROJECT_NAME + "."), loggers))
+            SimpleLoggingSetup._set_level_and_add_handlers_on_loggers(logger, pythoncommons_loggers, handlers, level, logger_names)
+
+    @staticmethod
+    def _set_level_and_add_handlers_on_loggers(logger: logging.Logger,
+                                               loggers: List[logging.Logger],
+                                               handlers: List[logging.Handler],
+                                               level: int,
+                                               logger_names: List[str]):
+        level_name = logging.getLevelName(level)
+        for logger in loggers:
+            SimpleLoggingSetup._set_level_and_add_handlers(logger, handlers, level)
+        logger.info("Set level to '%s' on these discovered loggers: %s", level_name, logger_names)
+
+    @staticmethod
+    def _set_level_and_add_handlers(logger: logging.Logger, handlers: List[logging.Handler], level: int):
+        logger.setLevel(level)
+        for h in handlers:
+            logger.addHandler(h)
