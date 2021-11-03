@@ -142,10 +142,8 @@ class SimpleLoggingSetup:
                                handlers: List[logging.Handler],
                                modify_pythoncommons_logger_names: bool = True):
         level_name: str = logging.getLevelName(level)
-        loggers: List[logging.Logger] = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
-        logger_names: List[str] = list(map(lambda x: x.name, loggers))
-        logger.info("Discovered loggers: %s", logger_names)
-        project_specific_loggers: List[logging.Logger] = list(filter(lambda x: x.name.startswith(logger_name_prefix + "."), loggers))
+        logger_names, loggers = SimpleLoggingSetup._get_all_loggers_from_loggerdict(logger)
+        project_specific_loggers = SimpleLoggingSetup._get_project_specific_loggers(loggers, logger_name_prefix)
         if not project_specific_loggers:
             print("Cannot find any project specific loggers with project name '%s', found loggers: %s", logger_name_prefix, logger_names)
         else:
@@ -154,8 +152,26 @@ class SimpleLoggingSetup:
             SimpleLoggingSetup._set_level_and_add_handlers_on_loggers(logger, project_specific_loggers, handlers, level, logger_names)
 
         if modify_pythoncommons_logger_names:
-            pythoncommons_loggers = list(filter(lambda x: x.name.startswith(PYTHONCOMMONS_PROJECT_NAME + "."), loggers))
+            pythoncommons_loggers = SimpleLoggingSetup._get_pythoncommons_loggers(loggers)
             SimpleLoggingSetup._set_level_and_add_handlers_on_loggers(logger, pythoncommons_loggers, handlers, level, logger_names)
+
+    @staticmethod
+    def _get_all_loggers_from_loggerdict(logger):
+        loggers: List[logging.Logger] = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+        logger_names: List[str] = list(map(lambda x: x.name, loggers))
+        logger.info("Discovered loggers: %s", logger_names)
+        return logger_names, loggers
+
+    @staticmethod
+    def _get_project_specific_loggers(loggers, logger_name_prefix):
+        project_specific_loggers: List[logging.Logger] = list(
+            filter(lambda x: x.name.startswith(logger_name_prefix + "."), loggers))
+        return project_specific_loggers
+
+    @staticmethod
+    def _get_pythoncommons_loggers(loggers):
+        pythoncommons_loggers = list(filter(lambda x: x.name.startswith(PYTHONCOMMONS_PROJECT_NAME + "."), loggers))
+        return pythoncommons_loggers
 
     @staticmethod
     def _set_level_and_add_handlers_on_loggers(logger: logging.Logger,
