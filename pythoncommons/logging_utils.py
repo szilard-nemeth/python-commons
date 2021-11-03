@@ -22,6 +22,16 @@ class LoggingUtils:
         LoggingUtils.print_logger_info(logger.parent)
 
     @staticmethod
+    def ensure_loggers_are_on_level(loggers: List[str], level: int):
+        for logger_name in loggers:
+            logger = logging.getLogger(logger_name)
+            LoggingUtils.ensure_logger_is_on_level(
+                logger, level,
+                raise_error_if_not_enabled_for=True,
+                print_logger_info=True
+            )
+
+    @staticmethod
     def ensure_logger_is_on_level(logger: logging.Logger,
                                   level: int,
                                   raise_error_if_not_enabled_for=False,
