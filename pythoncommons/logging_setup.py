@@ -36,7 +36,7 @@ class SimpleLoggingSetup:
         level = logging.DEBUG if debug else logging.INFO
         format_str = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         formatter = logging.Formatter(format_str)
-        logging.basicConfig(format=format_str)
+        logging.basicConfig(format=format_str, level=level)
 
         log_dir = os.path.join(os.path.curdir, 'logs')
         handlers = [
