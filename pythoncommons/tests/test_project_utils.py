@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 
+from pythoncommons.constants import REPO_ROOT_DIRNAME, PROJECT_NAME
 from pythoncommons.file_utils import FileUtils, FindResultType
 from pythoncommons.process import SubprocessCommandRunner
 from pythoncommons.project_utils import SimpleProjectUtils
@@ -13,14 +14,12 @@ from pythoncommons.string_utils import StringUtils
 TEST_PROJECT_NAME = "testproject"
 
 LOG = logging.getLogger(__name__)
-PROJECT_NAME = "pythoncommons"
-REPO_ROOT_DIRNAME = "python-commons"
 REPO_ROOT_DIR = FileUtils.find_repo_root_dir(__file__, REPO_ROOT_DIRNAME)
 
 
 def get_test_scripts_dir():
     return SimpleProjectUtils.get_project_dir(basedir=REPO_ROOT_DIR,
-                                              parent_dir="pythoncommons",
+                                              parent_dir=PROJECT_NAME,
                                               dir_to_find="test-scripts",
                                               find_result_type=FindResultType.DIRS)
 

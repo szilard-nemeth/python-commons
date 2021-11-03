@@ -21,6 +21,7 @@ class GitWrapper:
         self.repo_path = base_path
         self.repo = Repo(self.repo_path)
 
+    # TODO Similar functionality here: yarndevtools.yarn_dev_tools.Setup._setup_gitpython_log
     @property
     def is_enabled_git_cmd_logging(self):
         return self.repo.git.GIT_PYTHON_TRACE is not False

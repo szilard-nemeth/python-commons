@@ -8,6 +8,7 @@ from os.path import expanduser
 import inspect
 from typing import Dict
 
+from pythoncommons.constants import PROJECT_NAME
 from pythoncommons.date_utils import DateUtils
 from pythoncommons.file_utils import FileUtils, FindResultType
 from pythoncommons.string_utils import StringUtils
@@ -478,7 +479,7 @@ class ProjectUtils:
         while idx < len(stack):
             LOG.debug("Inspecting stack frame: %s", stack[idx])
             fname = stack[idx].filename
-            if "pythoncommons" not in fname:
+            if PROJECT_NAME not in fname:
                 break
             idx += 1
         if idx == len(stack):
