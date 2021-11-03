@@ -69,10 +69,14 @@ class GitWrapper:
         result = remote.pull(progress=progress)
         LOG.debug("Result of git pull: %s", result)
 
-    def checkout_and_pull(self, checkout_ref, remote_to_pull=ORIGIN):
+    def checkout_and_pull(self, checkout_ref, remote_to_pull=ORIGIN, no_ff=False):
+        pull_kwargs = {}
+        if no_ff:
+            pull_kwargs["no-ff"] = True
+
         self.checkout_branch(checkout_ref)
         LOG.info(f"Pulling {remote_to_pull}")
-        self.repo.remotes[remote_to_pull].pull()
+        self.repo.remotes[remote_to_pull].pull(**pull_kwargs)
 
     def fetch(self, repo_url=None, remote_name=None, all=False):
         progress = ProgressPrinter("fetch")
