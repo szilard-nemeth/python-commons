@@ -62,11 +62,16 @@ class GitWrapper:
             return False
         return True
 
-    def pull(self, remote_name):
+    def pull(self, remote_name, ff_only=False):
         progress = ProgressPrinter("pull")
         remote = self.repo.remote(name=remote_name)
         LOG.info("Pulling remote: %s", remote_name)
-        result = remote.pull(progress=progress)
+
+        kwargs = {}
+        if ff_only:
+            kwargs["ff-only"] = True
+
+        result = remote.pull(progress=progress, **kwargs)
         LOG.debug("Result of git pull: %s", result)
 
     def checkout_and_pull(self, checkout_ref, remote_to_pull=ORIGIN, no_ff=False, ff_only=False):
