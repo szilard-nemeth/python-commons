@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+from dataclasses import dataclass
 from logging.handlers import TimedRotatingFileHandler
 import logging.config
 from typing import List, Dict
@@ -35,6 +36,19 @@ _ROOT_LOG = get_root_logger()
 DEFAULT_LOG_LEVEL: int = logging.INFO
 
 
+@dataclass
+class SimpleLoggingSetupConfig:
+    project_name: str
+    execution_mode: ExecutionMode
+    file_log_level_name: str
+    console_log_level_name: str
+    formatter: str
+    console_handler: logging.StreamHandler
+    file_handlers: List[logging.FileHandler]
+    main_project_logger: logging.Logger
+    log_file_paths: Dict[int, str]
+
+
 # TODO this is copied from another project, eliminate duplication later
 class SimpleLoggingSetup:
 
@@ -46,7 +60,7 @@ class SimpleLoggingSetup:
                      format_str: str = None,
                      file_postfix: str = None,
                      execution_mode: ExecutionMode = ExecutionMode.PRODUCTION,
-                     modify_pythoncommons_logger_names: bool = True) -> Dict[int, str]:
+                     modify_pythoncommons_logger_names: bool = True) -> SimpleLoggingSetupConfig:
         specified_file_log_level: int = logging.DEBUG if debug else DEFAULT_LOG_LEVEL
         specified_file_log_level_name: str = logging.getLevelName(specified_file_log_level)
         default_file_log_level_name: str = logging.getLevelName(DEFAULT_LOG_LEVEL)
@@ -70,8 +84,9 @@ class SimpleLoggingSetup:
                                                                                         file_postfix,
                                                                                         execution_mode, project_name)
         log_file_paths: Dict[int, str] = {DEFAULT_LOG_LEVEL: log_file_path_for_default_level}
+        console_handler = SimpleLoggingSetup._create_console_handler(console_log_level)
         handlers = [
-            SimpleLoggingSetup._create_console_handler(console_log_level),
+            console_handler,
             SimpleLoggingSetup._create_file_handler(log_file_path_for_default_level, DEFAULT_LOG_LEVEL)
         ]
         # Only add a second file handler if default logging level is different than specified.
@@ -86,7 +101,17 @@ class SimpleLoggingSetup:
         logger = SimpleLoggingSetup._setup_project_main_logger(logger_name_prefix, handlers)
         SimpleLoggingSetup.setup_existing_loggers(logger_name_prefix, specified_file_log_level, logger, handlers,
                                                   modify_pythoncommons_logger_names=modify_pythoncommons_logger_names)
-        return log_file_paths
+        config = SimpleLoggingSetupConfig(project_name=project_name,
+                                          execution_mode=execution_mode,
+                                          file_log_level_name=specified_file_log_level_name,
+                                          console_log_level_name=logging.getLevelName(console_log_level),
+                                          formatter=final_format_str,
+                                          console_handler=console_handler,
+                                          file_handlers=list(
+                                              filter(lambda h: isinstance(h, logging.FileHandler), handlers)),
+                                          main_project_logger=logger,
+                                          log_file_paths=log_file_paths)
+        return config
 
     @staticmethod
     def _determine_log_file_path(file_log_level_name, file_postfix, exec_mode, project_name):
