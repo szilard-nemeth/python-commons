@@ -115,7 +115,8 @@ class SimpleLoggingSetup:
         # Only add a second file handler if default logging level is different than specified.
         # Example: Default is logging.INFO, specified is logging.DEBUG
         if specified_file_log_level != DEFAULT_LOG_LEVEL:
-            SimpleLoggingSetup._create_file_handler(log_file_path_for_specified_level, specified_file_log_level)
+            handler = SimpleLoggingSetup._create_file_handler(log_file_path_for_specified_level, specified_file_log_level)
+            handlers.append(handler)
             log_file_paths[specified_file_log_level] = log_file_path_for_specified_level
 
         for h in handlers:
