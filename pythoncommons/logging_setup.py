@@ -101,6 +101,7 @@ class SimpleLoggingSetup:
 
         project_main_logger = SimpleLoggingSetup._setup_project_main_logger(logger_name_prefix, handlers)
         SimpleLoggingSetup.setup_existing_loggers(logger_name_prefix, specified_file_log_level, project_main_logger, handlers,
+                                                  execution_mode,
                                                   modify_pythoncommons_logger_names=modify_pythoncommons_logger_names,
                                                   remove_existing_handlers=remove_existing_handlers)
         config = SimpleLoggingSetupConfig(project_name=project_name,
@@ -168,6 +169,7 @@ class SimpleLoggingSetup:
                                level: int,
                                project_main_logger: logging.Logger,
                                handlers: List[logging.Handler],
+                               execution_mode: ExecutionMode,
                                modify_pythoncommons_logger_names: bool = True,
                                remove_existing_handlers: bool = True):
         level_name: str = logging.getLevelName(level)
@@ -179,11 +181,12 @@ class SimpleLoggingSetup:
             project_main_logger.info("Setting logging level to '%s' on the following project-specific loggers: %s.", level_name,
                         logger_names)
             SimpleLoggingSetup._set_level_and_add_handlers_on_loggers(project_main_logger, project_specific_loggers, handlers, level, logger_names,
+                                                                      execution_mode,
                                                                       remove_existing_handlers=remove_existing_handlers)
 
         if modify_pythoncommons_logger_names:
             pythoncommons_loggers = SimpleLoggingSetup.get_pythoncommons_loggers(loggers)
-            SimpleLoggingSetup._set_level_and_add_handlers_on_loggers(project_main_logger, pythoncommons_loggers, handlers, level, logger_names)
+            SimpleLoggingSetup._set_level_and_add_handlers_on_loggers(project_main_logger, pythoncommons_loggers, handlers, level, logger_names, execution_mode,)
 
     @staticmethod
     def get_all_loggers_from_loggerdict(logger=None):
@@ -210,25 +213,31 @@ class SimpleLoggingSetup:
                                                handlers: List[logging.Handler],
                                                level: int,
                                                logger_names: List[str],
+                                               execution_mode: ExecutionMode,
                                                remove_existing_handlers: bool = True):
         level_name = logging.getLevelName(level)
         for logger in loggers:
-            SimpleLoggingSetup._set_level_and_add_handlers(logger, handlers, level, remove_existing_handlers=remove_existing_handlers)
+            SimpleLoggingSetup._set_level_and_add_handlers(project_main_logger, logger, handlers, level, execution_mode, remove_existing_handlers=remove_existing_handlers)
         project_main_logger.info("Set level to '%s' on these discovered loggers: %s", level_name, logger_names)
 
     @staticmethod
-    def _set_level_and_add_handlers(logger: logging.Logger,
+    def _set_level_and_add_handlers(project_main_logger: logging.Logger,
+                                    logger: logging.Logger,
                                     handlers: List[logging.Handler],
                                     level: int,
+                                    execution_mode: ExecutionMode,
                                     remove_existing_handlers: bool = True):
         if remove_existing_handlers:
             existing_handlers = logger.handlers
-            logger.debug("Removing existing handlers from logger: %s, handlers: %s", logger, existing_handlers)
-            for h in existing_handlers:
-                logger.removeHandler(h)
+            project_main_logger.debug("Removing existing handlers from logger: %s, handlers: %s", logger, existing_handlers)
+            for handler in existing_handlers:
+                # If we are in TEST mode and the handler is a FileHandler, keep it
+                if execution_mode == ExecutionMode.TEST and not isinstance(handler, logging.FileHandler):
+                    project_main_logger.info("Removing handler '%s' from logger '%s'", handler, logger)
+                    logger.removeHandler(handler)
 
-        logger.debug("Setting log level to '%s' on logger '%s'", logging.getLevelName(level), logger)
+        project_main_logger.debug("Setting log level to '%s' on logger '%s'", logging.getLevelName(level), logger)
         logger.setLevel(level)
-        for h in handlers:
-            logger.debug("Adding handler '%s' to logger '%s'", h, logger)
-            logger.addHandler(h)
+        for handler in handlers:
+            project_main_logger.debug("Adding handler '%s' to logger '%s'", handler, logger)
+            logger.addHandler(handler)
