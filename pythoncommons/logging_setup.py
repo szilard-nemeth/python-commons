@@ -99,7 +99,7 @@ class SimpleLoggingSetup:
         for h in handlers:
             h.setFormatter(formatter)
 
-        project_main_logger = SimpleLoggingSetup._setup_project_main_logger(logger_name_prefix, handlers)
+        project_main_logger = SimpleLoggingSetup._setup_project_main_logger(logger_name_prefix, handlers, execution_mode)
         SimpleLoggingSetup.setup_existing_loggers(logger_name_prefix, specified_file_log_level, project_main_logger, handlers,
                                                   execution_mode,
                                                   modify_pythoncommons_logger_names=modify_pythoncommons_logger_names,
@@ -158,10 +158,10 @@ class SimpleLoggingSetup:
         return fh
 
     @staticmethod
-    def _setup_project_main_logger(logger_name_prefix, handlers):
+    def _setup_project_main_logger(logger_name_prefix, handlers, execution_mode):
         logger = logging.getLogger(logger_name_prefix)
         logger.propagate = False
-        SimpleLoggingSetup._set_level_and_add_handlers(logger, handlers, logging.DEBUG)
+        SimpleLoggingSetup._set_level_and_add_handlers(logger, logger, handlers, logging.DEBUG, execution_mode)
         return logger
 
     @staticmethod
