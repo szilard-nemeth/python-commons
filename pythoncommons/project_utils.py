@@ -220,7 +220,8 @@ class ProjectUtils:
     def determine_project_and_parent_dir(cls, file_of_caller, stack):
         received_args = locals().copy()
         received_args['stack'] = get_stack_human_readable(stack)
-        LOG.debug(f"Determining project name. Received args: {received_args}. \n"
+        LOG.debug(f"Determining project name with strategy '{cls.project_root_determine_strategy}'. "
+                  f"Received args: {received_args}. \n"
                   f"{cls._get_known_projects_str()}\n")
 
         if file_of_caller in cls.FILES_TO_PROJECT:
@@ -231,7 +232,6 @@ class ProjectUtils:
         strategy: StrategyBase = cls.STRATEGIES[cls.project_root_determine_strategy]
         if REPOS_DIR in file_of_caller and cls.project_root_determine_strategy == cls.default_project_determine_strategy:
             strategy = cls.STRATEGIES[ProjectRootDeterminationStrategy.REPOSITORY_DIR]
-
         path, project = strategy.determine_path(file_of_caller, stack)
         cls.FILES_TO_PROJECT[file_of_caller] = project
         return path, project
