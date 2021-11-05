@@ -78,8 +78,9 @@ class SimpleLoggingSetup:
                      file_postfix: str = None,
                      execution_mode: ExecutionMode = ExecutionMode.PRODUCTION,
                      modify_pythoncommons_logger_names: bool = True,
-                     remove_existing_handlers: bool = True) -> SimpleLoggingSetupConfig:
-        input_config = SimpleLoggingSetupInputConfig(project_name, logger_name_prefix, debug, console_debug,
+                     remove_existing_handlers: bool = True,
+                     sanity_check_number_of_handlers: bool = True) -> SimpleLoggingSetupConfig:
+        conf = SimpleLoggingSetupInputConfig(project_name, logger_name_prefix, debug, console_debug,
                                                      format_str, file_postfix, execution_mode,
                                                      modify_pythoncommons_logger_names,
                                                      remove_existing_handlers)
@@ -121,13 +122,27 @@ class SimpleLoggingSetup:
             h.setFormatter(formatter)
 
         # Add fields to input config
-        input_config.specified_file_log_level = specified_file_log_level
-        input_config.handlers = handlers
-        project_main_logger = SimpleLoggingSetup._setup_project_main_logger(input_config)
+        conf.specified_file_log_level = specified_file_log_level
+        conf.handlers = handlers
+        project_main_logger = SimpleLoggingSetup._setup_project_main_logger(conf)
 
-        loggers: List[logging.Logger] = SimpleLoggingSetup.setup_existing_loggers(input_config)
+        loggers: List[logging.Logger] = SimpleLoggingSetup.setup_existing_loggers(conf)
+
         logger_to_handler_count_dict = {l.name: len(l.handlers) for l in loggers}
         project_main_logger.debug("Number of handlers on existing loggers: %s", logger_to_handler_count_dict)
+        if sanity_check_number_of_handlers:
+            wrong_number_of_handlers: Dict[str, List[logging.Handler]] = {}
+            expected_no_of_handlers = len(handlers)
+            for logger in loggers:
+                logger_name = logger.name
+                if logger_name.startswith(PYTHONCOMMONS_PROJECT_NAME) or logger_name.startswith(conf.logger_name_prefix):
+                    if len(logger.handlers) != expected_no_of_handlers:
+                        wrong_number_of_handlers[logger_name] = logger.handlers
+
+            if len(wrong_number_of_handlers) > 0:
+                raise ValueError("Unexpected number of handlers on loggers. "
+                                 f"Expected: {expected_no_of_handlers}, "
+                                 f"These loggers are having wrong number of handlers: {wrong_number_of_handlers}")
 
         config = SimpleLoggingSetupConfig(project_name=project_name,
                                           execution_mode=execution_mode,
