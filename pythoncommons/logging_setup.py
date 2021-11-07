@@ -13,10 +13,8 @@ from pythoncommons.file_utils import FileUtils
 from pythoncommons.project_utils import ProjectUtils
 
 DEFAULT_CONSOLE_STREAM = sys.stdout
-
-DEFAULT_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-
 DEFAULT_LOG_YAML_FILENAME = 'logging_default.yaml'
+DEFAULT_FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
 
 
 def _get_timestamp_as_str():
@@ -75,6 +73,48 @@ class SimpleLoggingSetupInputConfig:
 
 # TODO this is copied from another project, eliminate duplication later
 class SimpleLoggingSetup:
+    @staticmethod
+    def init_logger(
+            project_name: str,
+            logger_name_prefix: str,
+            execution_mode: ExecutionMode,
+            console_debug=False,
+            postfix: str = None,
+            repos=None,
+            verbose_git_log=False,
+            format_str=None,
+    ) -> SimpleLoggingSetupConfig:
+        if not project_name:
+            raise ValueError("Project name must be specified!")
+        if not logger_name_prefix:
+            raise ValueError("Logger name prefix must be specified!")
+
+        final_format_str = DEFAULT_FORMAT
+        if format_str:
+            final_format_str = format_str
+        logging_config: SimpleLoggingSetupConfig = SimpleLoggingSetup.init_logging(
+            project_name=project_name,
+            logger_name_prefix=logger_name_prefix,
+            debug=True,
+            console_debug=console_debug,
+            format_str=final_format_str,
+            file_postfix=postfix,
+            execution_mode=execution_mode,
+        )
+        SimpleLoggingSetup._setup_gitpython_log(repos, verbose_git_log)
+        return logging_config
+
+    @staticmethod
+    def _setup_gitpython_log(repos, verbose_git_log):
+        # https://gitpython.readthedocs.io/en/stable/tutorial.html#git-command-debugging-and-customization
+        # THIS WON'T WORK BECAUSE GITPYTHON MODULE IS LOADED BEFORE THIS CALL
+        # os.environ["GIT_PYTHON_TRACE"] = "1"
+        # https://github.com/gitpython-developers/GitPython/issues/222#issuecomment-68597780
+        logging.getLogger().warning("Cannot enable GIT_PYTHON_TRACE because repos list is empty!")
+        if repos:
+            for repo in repos:
+                val = "full" if verbose_git_log else "1"
+                type(repo.git).GIT_PYTHON_TRACE = val
 
     @staticmethod
     def init_logging(project_name: str,
