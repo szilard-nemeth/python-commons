@@ -74,6 +74,8 @@ class SimpleLoggingSetupInputConfig:
 
 # TODO this is copied from another project, eliminate duplication later
 class SimpleLoggingSetup:
+    _ALL_LOG_FILES = []
+
     @staticmethod
     def init_logger(
             project_name: str,
@@ -168,6 +170,7 @@ class SimpleLoggingSetup:
             handler = SimpleLoggingSetup._create_file_handler(log_file_path_for_specified_level, specified_file_log_level)
             handlers.append(handler)
             log_file_paths[specified_file_log_level] = log_file_path_for_specified_level
+        SimpleLoggingSetup._ALL_LOG_FILES.extend(log_file_paths.keys())
 
         for h in handlers:
             h.setFormatter(formatter)
@@ -408,3 +411,7 @@ class SimpleLoggingSetup:
         cmd_logger.addHandler(cmd_log_handler)
         cmd_log_handler.setFormatter(logging.Formatter("%(message)s"))
         return cmd_logger
+
+    @classmethod
+    def get_all_log_files(cls):
+        return cls._ALL_LOG_FILES
