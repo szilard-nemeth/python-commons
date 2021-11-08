@@ -393,3 +393,12 @@ class SimpleLoggingSetup:
             return list(filter(lambda h: isinstance(h, logging.FileHandler), handlers))
         elif type == HandlerType.CONSOLE:
             return list(filter(lambda h: isinstance(h, logging.StreamHandler) and h.stream == DEFAULT_CONSOLE_STREAM, handlers))
+
+    @staticmethod
+    def create_command_logger(name: str):
+        cmd_logger = logging.getLogger(name)
+        cmd_log_handler = logging.StreamHandler(stream=sys.stdout)
+        cmd_logger.propagate = False
+        cmd_logger.addHandler(cmd_log_handler)
+        cmd_log_handler.setFormatter(logging.Formatter("%(message)s"))
+        return cmd_logger
