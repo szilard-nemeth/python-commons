@@ -77,10 +77,9 @@ class GitWrapper:
             LOG.exception("Failed to execute git command. Printing some diagnostic info...", exc_info=True)
             branch = self.get_current_branch_name()
             LOG.error("Current branch: %s", branch)
-            git = self.repo.git.Git(self.repo_path)
             branch_tup = GitWrapper._get_branch_tuple(branch)
             git_branches_arg = "{}..{}".format(branch_tup[0], branch_tup[1])
-            git_log_out = git.execute(["git", "log", git_branches_arg])
+            git_log_out = self.repo.git.execute(["git", "log", git_branches_arg])
             LOG.error("Git commit diff between branches: %s: %s", git_branches_arg, git_log_out)
 
     @staticmethod
