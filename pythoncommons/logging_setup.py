@@ -65,6 +65,7 @@ class SimpleLoggingSetupInputConfig:
     execution_mode: ExecutionMode = ExecutionMode.PRODUCTION
     modify_pythoncommons_logger_names: bool = True
     remove_existing_handlers: bool = True
+    disable_propagation: bool = True
     # Dynamic fields
     specified_file_log_level: int or None = None
     handlers: List[logging.Handler] = field(default_factory=list)
@@ -126,11 +127,13 @@ class SimpleLoggingSetup:
                      execution_mode: ExecutionMode = ExecutionMode.PRODUCTION,
                      modify_pythoncommons_logger_names: bool = True,
                      remove_existing_handlers: bool = True,
-                     sanity_check_number_of_handlers: bool = True) -> SimpleLoggingSetupConfig:
+                     sanity_check_number_of_handlers: bool = True,
+                     disable_propagation: bool = True) -> SimpleLoggingSetupConfig:
         conf = SimpleLoggingSetupInputConfig(project_name, logger_name_prefix, debug, console_debug,
                                                      format_str, file_postfix, execution_mode,
                                                      modify_pythoncommons_logger_names,
-                                                     remove_existing_handlers)
+                                                     remove_existing_handlers,
+                                                     disable_propagation)
         specified_file_log_level: int = logging.DEBUG if debug else DEFAULT_LOG_LEVEL
         specified_file_log_level_name: str = logging.getLevelName(specified_file_log_level)
         default_file_log_level_name: str = logging.getLevelName(DEFAULT_LOG_LEVEL)
@@ -298,6 +301,9 @@ class SimpleLoggingSetup:
         level_name = logging.getLevelName(level)
         for logger in loggers:
             SimpleLoggingSetup._set_level_and_add_handlers(conf, logger, recursive=recursive)
+            if conf.disable_propagation and logger.propagate:
+                conf.project_main_logger.info("Disabling propagate on logger: %s", logger.name)
+                logger.propagate = False
         conf.project_main_logger.info("Set level to '%s' on these discovered loggers: %s", level_name, logger_names)
 
     @staticmethod
