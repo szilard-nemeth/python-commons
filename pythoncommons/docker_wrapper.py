@@ -132,10 +132,13 @@ class DockerDiagnosticCommand:
 
 
 class DockerTestSetup:
-    def __init__(self, image_name, create_image=False, dockerfile_location=None, logger=None):
+    def __init__(self, image_name, create_image=False, dockerfile_location=None, dockerfile=None, logger=None):
         self.image_name = image_name
         if create_image:
-            self.create_image(dockerfile_location=dockerfile_location)
+            if dockerfile_location:
+                self.create_image(dockerfile_location=dockerfile_location)
+            elif dockerfile:
+                DockerWrapper.create_image_from_dockerfile(dockerfile, tag=self.image_name)
 
         if logger:
             self.CMD_LOG = logger
