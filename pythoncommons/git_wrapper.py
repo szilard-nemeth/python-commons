@@ -70,9 +70,23 @@ class GitWrapper:
         kwargs = {}
         if ff_only:
             kwargs["ff-only"] = True
+        try:
+            result = remote.pull(progress=progress, **kwargs)
+            LOG.debug("Result of git pull: %s", result)
+        except GitCommandError as e:
+            LOG.error("Failed to execute git command. Printing some diagnostic info...", e)
+            branch = self.get_current_branch_name()
+            LOG.error("Current branch: %s", branch)
+            git = self.repo.git.Git(self.repo_path)
+            branch_tup = GitWrapper._get_branch_tuple(branch)
+            git_branches_arg = "{}..{}".format(branch_tup[0], branch_tup[1])
+            git_log_out = git.execute(["git", "log", git_branches_arg])
+            LOG.error("Git commit diff between branches: %s: %s", git_branches_arg, git_log_out)
 
-        result = remote.pull(progress=progress, **kwargs)
-        LOG.debug("Result of git pull: %s", result)
+    @staticmethod
+    def _get_branch_tuple(branch):
+        remote_br = ORIGIN + "/" + branch
+        return branch, remote_br
 
     def checkout_and_pull(self, checkout_ref, remote_to_pull=ORIGIN, no_ff=False, ff_only=False):
         pull_kwargs = {}
