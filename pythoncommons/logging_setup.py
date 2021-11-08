@@ -170,7 +170,7 @@ class SimpleLoggingSetup:
             handler = SimpleLoggingSetup._create_file_handler(log_file_path_for_specified_level, specified_file_log_level)
             handlers.append(handler)
             log_file_paths[specified_file_log_level] = log_file_path_for_specified_level
-        SimpleLoggingSetup._ALL_LOG_FILES.extend(log_file_paths.keys())
+        SimpleLoggingSetup._ALL_LOG_FILES.extend(log_file_paths.values())
 
         for h in handlers:
             h.setFormatter(formatter)
