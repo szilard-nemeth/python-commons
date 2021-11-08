@@ -74,7 +74,7 @@ class GitWrapper:
             result = remote.pull(progress=progress, **kwargs)
             LOG.debug("Result of git pull: %s", result)
         except GitCommandError as e:
-            LOG.error("Failed to execute git command. Printing some diagnostic info...", e)
+            LOG.exception("Failed to execute git command. Printing some diagnostic info...", exc_info=True)
             branch = self.get_current_branch_name()
             LOG.error("Current branch: %s", branch)
             git = self.repo.git.Git(self.repo_path)
