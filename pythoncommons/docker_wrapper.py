@@ -24,24 +24,24 @@ class DockerWrapper:
         pass
 
     @classmethod
-    def create_image_from_dir(cls, dockerfile_dir_path, tag=None, build_args=None):
-        cls._build_image_internal(dockerfile_dir_path, DEFAULT_DOCKERFILE_NAME, tag=tag, build_args=build_args)
+    def create_image_from_dir(cls, dockerfile_parent_dir_path, tag=None, build_args=None):
+        cls._build_image_internal(dockerfile_parent_dir_path, tag=tag, build_args=build_args)
 
     @classmethod
-    def create_image_from_dockerfile(cls, docker_file_name, tag=None, build_args=None):
-        parent_dir_of_dockerfile = os.path.dirname(docker_file_name)
-        docker_file_name = os.path.basename(docker_file_name)
-        cls._build_image_internal(parent_dir_of_dockerfile, docker_file_name, tag=tag, build_args=build_args)
+    def create_image_from_dockerfile(cls, dockerfile_name, tag=None, build_args=None):
+        dockerfile_parent_dir_path = os.path.dirname(dockerfile_name)
+        dockerfile_name = os.path.basename(dockerfile_name)
+        cls._build_image_internal(dockerfile_parent_dir_path, dockerfile_name=dockerfile_name, tag=tag, build_args=build_args)
 
     @classmethod
-    def _build_image_internal(cls, dockerfile_dir_path, dockerfile_name, tag=None, build_args=None):
+    def _build_image_internal(cls, dockerfile_parent_dir_path, dockerfile_name=DEFAULT_DOCKERFILE_NAME, tag=None, build_args=None):
         if not build_args:
             build_args = {}
         LOG.info(f"Starting to build Docker image from Dockerfile: %s, based on parent dir path: %s",
-                 dockerfile_name, dockerfile_dir_path)
+                 dockerfile_name, dockerfile_parent_dir_path)
         cls._fix_path_for_macos()
         response = [line for line in cls.client.build(
-            path=dockerfile_dir_path,
+            path=dockerfile_parent_dir_path,
             dockerfile=dockerfile_name,
             rm=True,
             tag=tag,
@@ -140,11 +140,11 @@ class DockerDiagnosticCommand:
 
 
 class DockerTestSetup:
-    def __init__(self, image_name, create_image=False, dockerfile_location=None, dockerfile=None, logger=None):
+    def __init__(self, image_name, create_image=False, dockerfile_parent_dir_path=None, dockerfile=None, logger=None):
         self.image_name = image_name
         if create_image:
-            if dockerfile_location:
-                self.create_image(dockerfile_location=dockerfile_location)
+            if dockerfile_parent_dir_path:
+                self.create_image(dockerfile_parent_dir_path=dockerfile_parent_dir_path)
             elif dockerfile:
                 DockerWrapper.create_image_from_dockerfile(dockerfile, tag=self.image_name)
 
@@ -166,14 +166,12 @@ class DockerTestSetup:
     def cleanup(self):
         self._reinit()
 
-    def create_image(self, dockerfile_location=None):
-        if dockerfile_location:
-            location = dockerfile_location
-        else:
-            location = os.getcwd()
+    def create_image(self, dockerfile_parent_dir_path=None):
+        if not dockerfile_parent_dir_path:
+            dockerfile_parent_dir_path = os.getcwd()
             LOG.warning(f"Dockerfile location was not specified. "
-                        f"Trying to create image from current working directory: {location}")
-        DockerWrapper.create_image_from_dir(location, tag=self.image_name)
+                        f"Trying to create image from current working directory: {dockerfile_parent_dir_path}")
+        DockerWrapper.create_image_from_dir(dockerfile_parent_dir_path, tag=self.image_name)
 
     def mount_dir(self, host_dir, container_dir, mode=MOUNT_MODE_RW):
         self.mounts.append(DockerMount(host_dir, container_dir, mode=mode))
