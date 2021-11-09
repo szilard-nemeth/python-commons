@@ -11,6 +11,8 @@ from pythoncommons.file_utils import FileUtils
 from pythoncommons.process import SubprocessCommandRunner
 from pythoncommons.string_utils import auto_str
 
+DEFAULT_DOCKERFILE_NAME = "Dockerfile"
+
 MOUNT_MODE_RW = "rw"
 LOG = logging.getLogger(__name__)
 
@@ -23,22 +25,28 @@ class DockerWrapper:
 
     @classmethod
     def create_image_from_dir(cls, dockerfile_dir_path, tag=None, build_args=None):
-        cls._build_image_internal(dockerfile_dir_path, "Dockerfile", tag=tag, build_args=build_args)
+        cls._build_image_internal(dockerfile_dir_path, DEFAULT_DOCKERFILE_NAME, tag=tag, build_args=build_args)
 
     @classmethod
-    def create_image_from_dockerfile(cls, docker_file, tag=None, build_args=None):
-        parent_dir = os.path.dirname(docker_file)
-        docker_file = os.path.basename(docker_file)
-        cls._build_image_internal(parent_dir, docker_file, tag=tag, build_args=build_args)
+    def create_image_from_dockerfile(cls, docker_file_name, tag=None, build_args=None):
+        parent_dir_of_dockerfile = os.path.dirname(docker_file_name)
+        docker_file_name = os.path.basename(docker_file_name)
+        cls._build_image_internal(parent_dir_of_dockerfile, docker_file_name, tag=tag, build_args=build_args)
 
     @classmethod
     def _build_image_internal(cls, dockerfile_dir_path, dockerfile_name, tag=None, build_args=None):
         if not build_args:
             build_args = {}
-        LOG.info(f"Starting to build Docker image from Dockerfile: {dockerfile_name}, based on parent dir path.")
+        LOG.info(f"Starting to build Docker image from Dockerfile: %s, based on parent dir path: %s",
+                 dockerfile_name, dockerfile_dir_path)
         cls._fix_path_for_macos()
         response = [line for line in cls.client.build(
-            path=dockerfile_dir_path, dockerfile=dockerfile_name, rm=True, tag=tag, buildargs=build_args, network_mode='host')]
+            path=dockerfile_dir_path,
+            dockerfile=dockerfile_name,
+            rm=True,
+            tag=tag,
+            buildargs=build_args,
+            network_mode='host')]
         errors = cls.log_response(response)
         if errors:
             raise ValueError(f"Failed to build Docker image from Dockerfile: {dockerfile_name}. "
