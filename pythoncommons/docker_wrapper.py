@@ -23,25 +23,25 @@ class DockerWrapper:
 
     @classmethod
     def create_image_from_dir(cls, dockerfile_dir_path, tag=None, build_args=None):
-        dockerfile_path = FileUtils.join_path(dockerfile_dir_path, "Dockerfile")
-        cls._build_image_internal(dockerfile_dir_path, dockerfile_path, tag=tag, build_args=build_args)
+        cls._build_image_internal(dockerfile_dir_path, "Dockerfile", tag=tag, build_args=build_args)
 
     @classmethod
     def create_image_from_dockerfile(cls, docker_file, tag=None, build_args=None):
         parent_dir = os.path.dirname(docker_file)
+        docker_file = os.path.basename(docker_file)
         cls._build_image_internal(parent_dir, docker_file, tag=tag, build_args=build_args)
 
     @classmethod
-    def _build_image_internal(cls, dockerfile_dir_path, dockerfile_path, tag=None, build_args=None):
+    def _build_image_internal(cls, dockerfile_dir_path, dockerfile_name, tag=None, build_args=None):
         if not build_args:
             build_args = {}
-        LOG.info(f"Starting to build Docker image from Dockerfile: {dockerfile_path}, based on parent dir path.")
+        LOG.info(f"Starting to build Docker image from Dockerfile: {dockerfile_name}, based on parent dir path.")
         cls._fix_path_for_macos()
         response = [line for line in cls.client.build(
-            path=dockerfile_dir_path, rm=True, tag=tag, buildargs=build_args, network_mode='host')]
+            path=dockerfile_dir_path, dockerfile=dockerfile_name, rm=True, tag=tag, buildargs=build_args, network_mode='host')]
         errors = cls.log_response(response)
         if errors:
-            raise ValueError(f"Failed to build Docker image from Dockerfile: {dockerfile_path}. "
+            raise ValueError(f"Failed to build Docker image from Dockerfile: {dockerfile_name}. "
                              f"Error messages: {errors}")
 
     @classmethod
