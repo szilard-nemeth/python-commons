@@ -86,6 +86,7 @@ class SimpleLoggingSetup:
             repos=None,
             verbose_git_log=False,
             format_str=None,
+            sanity_check_number_of_handlers=True
     ) -> SimpleLoggingSetupConfig:
         if not project_name:
             raise ValueError("Project name must be specified!")
@@ -103,6 +104,7 @@ class SimpleLoggingSetup:
             format_str=final_format_str,
             file_postfix=postfix,
             execution_mode=execution_mode,
+            sanity_check_number_of_handlers=sanity_check_number_of_handlers
         )
         SimpleLoggingSetup._setup_gitpython_log(repos, verbose_git_log)
         return logging_config
