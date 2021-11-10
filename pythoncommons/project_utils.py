@@ -24,6 +24,7 @@ def determine_project_basedir():
     user_home = expanduser("~")
     override_user_home = OsUtils.get_env_value(ProjectUtilsEnvVar.OVERRIDE_USER_HOME_DIR.value)
     if override_user_home:
+        LOG.info("Overriding user home dir with: %s", override_user_home)
         user_home = override_user_home
     return FileUtils.join_path(user_home, PROJECTS_BASEDIR_NAME)
 
