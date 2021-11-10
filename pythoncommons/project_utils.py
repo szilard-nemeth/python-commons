@@ -521,3 +521,7 @@ class ProjectUtils:
     @classmethod
     def _get_known_projects_str(cls):
         return f"Known projects are: {list(cls.PROJECT_BASEDIR_DICT.keys())}"
+
+    @classmethod
+    def get_all_project_basedirs(cls):
+        return cls.PROJECT_BASEDIR_DICT.values()
