@@ -175,6 +175,8 @@ class DockerTestSetup:
 
     def mount_dir(self, host_dir, container_dir, mode=MOUNT_MODE_RW):
         self.mounts.append(DockerMount(host_dir, container_dir, mode=mode))
+
+    def print_mounts(self):
         LOG.info("Docker mounts: %s", self.mounts)
 
     def add_diagnostics(self, diags: List[DockerDiagnosticCommand]):
