@@ -131,7 +131,8 @@ class CommonPathStrategy(StrategyBase):
         if project_root_path == os.sep:
             orig_path = os.path.realpath(file_of_caller)
             err_message = f"Failed to find project root directory starting from path '{orig_path}'. " \
-                          f"Visited: {visited_paths}"
+                          f"Visited: {visited_paths}" \
+                          f"Strategy: {self.__name__}"
             if project_name_hint:
                 LOG.error(err_message + " Returning project name from hint: " + project_name_hint)
                 return file_of_caller, project_name_hint
@@ -198,7 +199,8 @@ class SysPathStrategy(StrategyBase):
 
         err_message = f"Cannot determine project! " \
                       f"File of caller: {file_of_caller}\n" \
-                      f"Call stack: \n{get_stack_human_readable(stack)}"
+                      f"Call stack: \n{get_stack_human_readable(stack)}" \
+                      f"Strategy: {self.__name__}"
         if project_name_hint:
             LOG.error(err_message + " Returning project name from hint: " + project_name_hint)
             return file_of_caller, project_name_hint
