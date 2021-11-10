@@ -77,7 +77,7 @@ class SimpleProjectUtils:
 
 class StrategyBase(ABC):
     @abstractmethod
-    def determine_path(self, caller_file, stack):
+    def determine_path(self, caller_file, stack, project_name_hint=None):
         pass
 
     def find_common_paths(self, path, file_of_caller):
@@ -122,7 +122,7 @@ class StrategyBase(ABC):
 
 
 class CommonPathStrategy(StrategyBase):
-    def determine_path(self, file_of_caller, stack):
+    def determine_path(self, file_of_caller, stack, project_name_hint=None):
         LOG.debug("Execution environment is not local, "
                   "trying to determine project name with common files strategy. "
                   f"Current sys.path: \n{get_sys_path_human_readable()}"
@@ -130,9 +130,13 @@ class CommonPathStrategy(StrategyBase):
         project_root_path, visited_paths = FileUtils.find_repo_root_dir_auto(file_of_caller, raise_error=False)
         if project_root_path == os.sep:
             orig_path = os.path.realpath(file_of_caller)
-            raise ValueError(
-                f"Failed to find project root directory starting from path '{orig_path}'. "
-                f"Visited: {visited_paths}")
+            err_message = f"Failed to find project root directory starting from path '{orig_path}'. " \
+                          f"Visited: {visited_paths}"
+            if project_name_hint:
+                LOG.error(err_message + " Returning project name from hint: " + project_name_hint)
+                return file_of_caller, project_name_hint
+            else:
+                raise ValueError(err_message)
 
         LOG.debug(f"Found project root: {project_root_path}")
         comps = FileUtils.get_path_components(project_root_path)
@@ -143,7 +147,7 @@ class CommonPathStrategy(StrategyBase):
 
 
 class RepositoryDirStrategy(StrategyBase):
-    def determine_path(self, file_of_caller, stack):
+    def determine_path(self, file_of_caller, stack, project_name_hint=None):
         LOG.debug("Trying to determine project name with repository dir strategy. "
                   f"Current sys.path: \n{get_sys_path_human_readable()}")
         filename = file_of_caller[len(REPOS_DIR):]
@@ -156,7 +160,7 @@ class RepositoryDirStrategy(StrategyBase):
 
 
 class SysPathStrategy(StrategyBase):
-    def determine_path(self, file_of_caller, stack):
+    def determine_path(self, file_of_caller, stack, project_name_hint=None):
         for path in sys.path:
             LOG.debug("Checking path: '%s' against file_of_caller: '%s'", path, file_of_caller)
             if ProjectUtils.FORCE_SITE_PACKAGES_IN_PATH_NAME and SITE_PACKAGES_DIRNAME not in path:
@@ -192,9 +196,14 @@ class SysPathStrategy(StrategyBase):
             LOG.info(f"Determined path: {matched_base_path}, project: {proj_name}")
             return matched_base_path, proj_name
 
-        raise ValueError(f"Cannot determine project! "
-                         f"File of caller: {file_of_caller}\n"
-                         f"Call stack: \n{get_stack_human_readable(stack)}")
+        err_message = f"Cannot determine project! " \
+                      f"File of caller: {file_of_caller}\n" \
+                      f"Call stack: \n{get_stack_human_readable(stack)}"
+        if project_name_hint:
+            LOG.error(err_message + " Returning project name from hint: " + project_name_hint)
+            return file_of_caller, project_name_hint
+        else:
+            raise ValueError(err_message)
 
 
 class ProjectUtils:
@@ -221,7 +230,7 @@ class ProjectUtils:
         cls.project_root_determine_strategy = strategy
 
     @classmethod
-    def determine_project_and_parent_dir(cls, file_of_caller, stack):
+    def determine_project_and_parent_dir(cls, file_of_caller, stack, project_name_hint=None):
         received_args = locals().copy()
         received_args['stack'] = get_stack_human_readable(stack)
         LOG.debug(f"Determining project name with strategy '{cls.project_root_determine_strategy}'. "
@@ -236,7 +245,7 @@ class ProjectUtils:
         strategy: StrategyBase = cls.STRATEGIES[cls.project_root_determine_strategy]
         if REPOS_DIR in file_of_caller and cls.project_root_determine_strategy == cls.default_project_determine_strategy:
             strategy = cls.STRATEGIES[ProjectRootDeterminationStrategy.REPOSITORY_DIR]
-        path, project = strategy.determine_path(file_of_caller, stack)
+        path, project = strategy.determine_path(file_of_caller, stack, project_name_hint=project_name_hint)
         cls.FILES_TO_PROJECT[file_of_caller] = project
         return path, project
 
@@ -295,10 +304,10 @@ class ProjectUtils:
         return FileUtils.join_path(proj_basedir, TEST_OUTPUT_DIR_NAME)
 
     @classmethod
-    def get_output_child_dir(cls, dir_name: str, ensure_created=True):
+    def get_output_child_dir(cls, dir_name: str, ensure_created=True, project_name_hint=None):
         if not dir_name:
             raise ValueError("Dir name should be specified!")
-        project_name = cls._validate_project_for_child_dir_creation()
+        project_name = cls._validate_project_for_child_dir_creation(project_name_hint=project_name_hint)
 
         if project_name in cls.CHILD_DIR_DICT and dir_name in cls.CHILD_DIR_DICT[project_name]:
             stored_dir = cls.CHILD_DIR_DICT[project_name][dir_name]
@@ -317,10 +326,10 @@ class ProjectUtils:
         return new_child_dir
 
     @classmethod
-    def get_test_output_child_dir(cls, dir_name: str, ensure_created=True, special_parent_dir=None):
+    def get_test_output_child_dir(cls, dir_name: str, ensure_created=True, special_parent_dir=None, project_name_hint=None):
         if not dir_name:
             raise ValueError("Dir name should be specified!")
-        project_name = cls._validate_project_for_child_dir_creation()
+        project_name = cls._validate_project_for_child_dir_creation(project_name_hint=project_name_hint)
 
         if project_name in cls.CHILD_DIR_TEST_DICT and dir_name in cls.CHILD_DIR_TEST_DICT[project_name]:
             stored_dir = cls.CHILD_DIR_TEST_DICT[project_name][dir_name]
@@ -412,8 +421,8 @@ class ProjectUtils:
         return new_dir
 
     @classmethod
-    def _validate_project_for_child_dir_creation(cls):
-        project_name = cls.verify_caller_filename_valid()
+    def _validate_project_for_child_dir_creation(cls, project_name_hint=None):
+        project_name = cls.verify_caller_filename_valid(project_name_hint=project_name_hint)
         if project_name not in cls.PROJECT_BASEDIR_DICT:
             raise ValueError(f"Project '{project_name}' is unknown. "
                              f"{cls._get_known_projects_str()}\n"
@@ -444,19 +453,19 @@ class ProjectUtils:
             level_name = ""
 
         filename = f"{project_name}{postfix}{level_name}-{DateUtils.get_current_datetime()}"
-        log_dir = cls.get_logs_dir() if prod else cls.get_test_logs_dir()
+        log_dir = cls.get_logs_dir(project_name_hint=project_name) if prod else cls.get_test_logs_dir(project_name_hint=project_name)
         return FileUtils.join_path(log_dir, filename)
 
     @classmethod
-    def get_logs_dir(cls):
-        return cls.get_output_child_dir(LOGS_DIR_NAME)
+    def get_logs_dir(cls, project_name_hint=None):
+        return cls.get_output_child_dir(LOGS_DIR_NAME, project_name_hint=project_name_hint)
 
     @classmethod
-    def get_test_logs_dir(cls):
-        return cls.get_test_output_child_dir(LOGS_DIR_NAME)
+    def get_test_logs_dir(cls, project_name_hint=None):
+        return cls.get_test_output_child_dir(LOGS_DIR_NAME, project_name_hint=project_name_hint)
 
     @classmethod
-    def verify_caller_filename_valid(cls, allow_python_commons_as_project=False):
+    def verify_caller_filename_valid(cls, allow_python_commons_as_project=False, project_name_hint=None):
         stack = inspect.stack()
         stack_frame, idx = cls._find_first_non_pythoncommons_stackframe(stack)
         file_of_caller = stack_frame.filename
@@ -474,7 +483,7 @@ class ProjectUtils:
                                "Please set 'allow_python_commons_as_project' to True " \
                                "to the ProjectUtils method that initiated the call."
                 raise ValueError(message)
-        path, project = cls.determine_project_and_parent_dir(file_of_caller, stack)
+        path, project = cls.determine_project_and_parent_dir(file_of_caller, stack, project_name_hint=project_name_hint)
         return project
 
     @classmethod
