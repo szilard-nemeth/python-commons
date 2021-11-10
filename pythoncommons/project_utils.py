@@ -11,14 +11,25 @@ from typing import Dict
 from pythoncommons.constants import PROJECT_NAME
 from pythoncommons.date_utils import DateUtils
 from pythoncommons.file_utils import FileUtils, FindResultType
+from pythoncommons.os_utils import OsUtils
 from pythoncommons.string_utils import StringUtils
+LOG = logging.getLogger(__name__)
+
+
+class ProjectUtilsEnvVar(Enum):
+    OVERRIDE_USER_HOME_DIR = "OVERRIDE_USER_HOME_DIR"
+
+
+def determine_project_basedir():
+    user_home = expanduser("~")
+    override_user_home = OsUtils.get_env_value(ProjectUtilsEnvVar.OVERRIDE_USER_HOME_DIR.value)
+    if override_user_home:
+        user_home = override_user_home
+    return FileUtils.join_path(user_home, PROJECTS_BASEDIR_NAME)
 
 MAC_PRIVATE_DIR = "private"
-
-LOG = logging.getLogger(__name__)
 PROJECTS_BASEDIR_NAME = "snemeth-dev-projects"
-PROJECTS_BASEDIR = FileUtils.join_path(expanduser("~"), PROJECTS_BASEDIR_NAME)
-PROJECTS_BASEDIR_CDSW = FileUtils.join_path(os.sep, "home", "cdsw", PROJECTS_BASEDIR_NAME)
+PROJECTS_BASEDIR = determine_project_basedir()
 REPOS_DIR = FileUtils.join_path(expanduser("~"), "development", "my-repos")
 LOGS_DIR_NAME = "logs"
 TEST_OUTPUT_DIR_NAME = "test"
