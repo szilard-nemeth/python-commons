@@ -18,6 +18,7 @@ MAC_PRIVATE_DIR = "private"
 LOG = logging.getLogger(__name__)
 PROJECTS_BASEDIR_NAME = "snemeth-dev-projects"
 PROJECTS_BASEDIR = FileUtils.join_path(expanduser("~"), PROJECTS_BASEDIR_NAME)
+PROJECTS_BASEDIR_CDSW = FileUtils.join_path(os.sep, "home", "cdsw", PROJECTS_BASEDIR_NAME)
 REPOS_DIR = FileUtils.join_path(expanduser("~"), "development", "my-repos")
 LOGS_DIR_NAME = "logs"
 TEST_OUTPUT_DIR_NAME = "test"
@@ -262,13 +263,14 @@ class ProjectUtils:
     @classmethod
     def get_output_basedir(cls, basedir_name: str,
                            ensure_created=True,
-                           allow_python_commons_as_project=False):
+                           allow_python_commons_as_project=False,
+                           basedir=PROJECTS_BASEDIR):
         if not basedir_name:
             raise ValueError("Basedir name should be specified!")
 
         project_name = cls.verify_caller_filename_valid(
             allow_python_commons_as_project=allow_python_commons_as_project)
-        proj_basedir = FileUtils.join_path(PROJECTS_BASEDIR, basedir_name)
+        proj_basedir = FileUtils.join_path(basedir, basedir_name)
         if project_name in cls.PROJECT_BASEDIR_DICT:
             old_basedir = cls.PROJECT_BASEDIR_DICT[project_name]
             if old_basedir != proj_basedir:
