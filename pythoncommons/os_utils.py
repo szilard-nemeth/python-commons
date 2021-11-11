@@ -1,17 +1,24 @@
+import logging
 import os
 import sys
 
 # TODO rename to SystemUtils?
 PASSWORD_PREFIX = "password "
+LOG = logging.getLogger(__name__)
 
 
 class OsUtils:
     @staticmethod
-    def get_env_value(env_name, default_value=None):
+    def get_env_value(env_name, default_value=None, suppress=False):
         if env_name in os.environ:
-            return os.environ[env_name]
+            env_value = os.environ[env_name]
+            if not suppress:
+                LOG.debug("Value of env variable '%s': %s", env_name, env_value)
         else:
-            return default_value
+            env_value = default_value
+            if not suppress:
+                LOG.debug("Value of env variable '%s' is not defined, using default value of: %s", env_name, env_value)
+        return env_value
 
     @staticmethod
     def determine_full_command():
