@@ -525,3 +525,7 @@ class ProjectUtils:
     @classmethod
     def get_all_project_basedirs(cls):
         return cls.PROJECT_BASEDIR_DICT.values()
+
+    @classmethod
+    def get_project_basedirs_dict(cls):
+        return cls.PROJECT_BASEDIR_DICT
