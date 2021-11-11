@@ -21,6 +21,17 @@ class OsUtils:
         return env_value
 
     @staticmethod
+    def set_env_value(env_name, env_value, suppress=False):
+        if env_name in os.environ:
+            old_value = os.environ[env_name]
+            if not suppress:
+                LOG.debug("Setting value of env variable '%s' to : %s. Old value was: %s", env_name, env_value, old_value)
+        else:
+            if not suppress:
+                LOG.debug("Setting value of env variable '%s' to : %s", env_name, env_value)
+        os.environ[env_name] = env_value
+
+    @staticmethod
     def determine_full_command():
         return " ".join(sys.argv)
 
