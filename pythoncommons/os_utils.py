@@ -3,13 +3,32 @@ import os
 import sys
 
 # TODO rename to SystemUtils?
+from typing import Dict
+
 PASSWORD_PREFIX = "password "
 LOG = logging.getLogger(__name__)
 
 
 class OsUtils:
-    @staticmethod
-    def get_env_value(env_name, default_value=None, suppress=False):
+    ENV_UPDATES: Dict[str, str] = {}
+    TRACK_UPDATES = False
+
+    @classmethod
+    def track_env_updates(cls):
+        cls.TRACK_UPDATES = True
+
+    @classmethod
+    def stop_tracking_updates(cls, clear_updates_dict=False):
+        cls.TRACK_UPDATES = False
+        if clear_updates_dict:
+            cls.ENV_UPDATES.clear()
+
+    @classmethod
+    def get_tracked_updates(cls) -> Dict[str, str]:
+        return cls.ENV_UPDATES
+
+    @classmethod
+    def get_env_value(cls, env_name, default_value=None, suppress=False):
         if env_name in os.environ:
             env_value = os.environ[env_name]
             if not suppress:
@@ -20,8 +39,8 @@ class OsUtils:
                 LOG.debug("Value of env variable '%s' is not defined, using default value of: %s", env_name, env_value)
         return env_value
 
-    @staticmethod
-    def set_env_value(env_name, env_value, suppress=False):
+    @classmethod
+    def set_env_value(cls, env_name, env_value, suppress=False):
         if env_name in os.environ:
             old_value = os.environ[env_name]
             if not suppress:
@@ -29,6 +48,8 @@ class OsUtils:
         else:
             if not suppress:
                 LOG.debug("Setting value of env variable '%s' to : %s", env_name, env_value)
+        if cls.TRACK_UPDATES:
+            cls.ENV_UPDATES[env_name] = env_value
         os.environ[env_name] = env_value
 
     @staticmethod
