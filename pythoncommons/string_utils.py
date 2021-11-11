@@ -65,6 +65,11 @@ class StringUtils:
         return multi_line_str.split("\n")[line_number]
 
     @staticmethod
+    def replace_last(s, to_replace, replace_with, count):
+        split = s.rsplit(to_replace, count)
+        return replace_with.join(split)
+
+    @staticmethod
     def replace_special_chars(unistr):
         if not isinstance(unistr, str):
             LOG.warning("Object expected to be unicode: " + str(unistr))
