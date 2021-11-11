@@ -105,7 +105,7 @@ class ZipFileUtils:
             dir_path_from_src_dir = dir_path_from_src_dir[1:]
 
         path_in_zip = FileUtils.join_path(dir_path_from_src_dir, filename)
-        LOG.debug(f"Writing to zip: File full path: {file_full_path}, path in zip file: {path_in_zip}")
+        LOG.debug(f"Writing to zip file {zip}. File full path: {file_full_path}, path in zip file: {path_in_zip}")
         zip.write(file_full_path, path_in_zip)
 
     @staticmethod
