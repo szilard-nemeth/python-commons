@@ -18,8 +18,8 @@ class ZipFileUtils:
         return ZipFileUtils._create_zip_file(src_files, tmp_file, compress=compress)
 
     @staticmethod
-    def create_zip_file(src_files: List[str], filename: str, compress=False):
-        return ZipFileUtils._create_zip_file(src_files, open(filename, mode="wb"), compress=compress)
+    def create_zip_file(src_files: List[str], filename: str, compress=False, ignore_files: List[str] = None):
+        return ZipFileUtils._create_zip_file(src_files, open(filename, mode="wb"), compress=compress, ignore_files=ignore_files)
 
     @staticmethod
     def extract_zip_file(file: str, path: str):
@@ -44,16 +44,21 @@ class ZipFileUtils:
         return filename, suffix
 
     @staticmethod
-    def _create_zip_file(src_files, file, compress=False):
+    def _create_zip_file(src_files, file, compress=False, ignore_files: List[str] = None):
         kwargs = {}
         if compress:
             kwargs["compression"] = zipfile.ZIP_DEFLATED
             kwargs["compresslevel"] = Z_DEFAULT_COMPRESSION # https://docs.python.org/3/library/zlib.html#zlib.compress
+        if not ignore_files:
+            ignore_files = []
         zip_file = zipfile.ZipFile(file, "w", **kwargs)
         LOG.info(f"Creating zip file. Target file: {zip_file.filename}, Input files: {src_files}")
         for src_file in src_files:
+            if ignore_files:
+                if ZipFileUtils._is_file_ignored(src_file, ignore_files):
+                    continue
             if FileUtils.is_dir(src_file):
-                ZipFileUtils._add_dir_to_zip(src_file, zip_file)
+                ZipFileUtils._add_dir_to_zip(src_file, zip_file, ignore_files=ignore_files)
             else:
                 LOG.debug(f"Adding file '{src_file}' to zip file '${zip_file.filename}'")
                 zip_file.write(src_file, FileUtils.basename(src_file))
@@ -62,11 +67,21 @@ class ZipFileUtils:
         return file
 
     @staticmethod
-    def _add_dir_to_zip(src_dir, zip_file):
+    def _is_file_ignored(input_file, ignore_files):
+        for ignore in ignore_files:
+            if ignore in input_file:
+                LOG.debug("Ignoring file while zipping: %s", input_file)
+                return True
+        return False
+
+    @staticmethod
+    def _add_dir_to_zip(src_dir, zip_file, ignore_files: List[str] = None):
         # Iterate over all the files in directory
         LOG.debug(f"Adding directory '{src_dir}' to zip file '${zip_file.filename}'")
         for dirpath, dirnames, filenames in os.walk(src_dir):
             LOG.debug(f"[os.walk] dirpath: {dirpath}, dirnames: {dirnames}, filenames: {filenames}")
+            if ZipFileUtils._is_file_ignored(dirpath, ignore_files):
+                continue
             for filename in filenames:
                 ZipFileUtils._add_file_to_zip(zip_file, dirpath, filename, src_dir)
 
