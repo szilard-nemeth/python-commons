@@ -4,7 +4,7 @@ from contextlib import closing
 from typing import List
 from zlib import Z_DEFAULT_COMPRESSION
 
-from pythoncommons.file_utils import FileUtils
+from pythoncommons.file_utils import FileUtils, FileFinder
 import tempfile
 import zipfile
 LOG = logging.getLogger(__name__)
@@ -74,16 +74,28 @@ class ZipFileUtils:
                 return True
         return False
 
+    # TODO duplicated os.walk code from FileFinder --> Migrate
     @staticmethod
     def _add_dir_to_zip(src_dir, zip_file, ignore_files: List[str] = None):
         # Iterate over all the files in directory
         LOG.debug(f"Adding directory '{src_dir}' to zip file '${zip_file.filename}'")
-        for dirpath, dirnames, filenames in os.walk(src_dir):
+        for dirpath, dirnames, filenames in os.walk(src_dir, **FileFinder._get_os_walk_kwargs(ignore_files)):
             LOG.debug(f"[os.walk] dirpath: {dirpath}, dirnames: {dirnames}, filenames: {filenames}")
-            if ZipFileUtils._is_file_ignored(dirpath, ignore_files):
-                continue
+            dirnames[:] = ZipFileUtils._handle_dir_exclusions(dirnames, ignore_files)
             for filename in filenames:
                 ZipFileUtils._add_file_to_zip(zip_file, dirpath, filename, src_dir)
+
+    # TODO duplicated code from FileFinder --> Migrate
+    @classmethod
+    def _handle_dir_exclusions(cls, dirs, exclude_files):
+        if exclude_files:
+            # Not enough to check against basename(root) as all other dirs underneath will be walked on the next
+            # invocation of the walk generator with the loop statement
+            orig_dirs = dirs.copy()
+            dirs[:] = [d for d in dirs if d not in exclude_files]
+            if len(orig_dirs) != len(dirs):
+                LOG.debug(f"Excluded dirs: {list(set(orig_dirs) - set(dirs))}")
+        return dirs
 
     @staticmethod
     def _add_file_to_zip(zip, dirpath, filename, src_dir):

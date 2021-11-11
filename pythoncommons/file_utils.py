@@ -58,8 +58,8 @@ class FileFinder:
             return False
         return True
 
-    @classmethod
-    def _get_os_walk_kwargs(cls, exclude_dirs):
+    @staticmethod
+    def _get_os_walk_kwargs(exclude_dirs):
         oswalk_kwargs: Dict[str, Any] = {}
         if exclude_dirs:
             # When topdown is True, the caller can modify the dirnames list in-place
@@ -120,7 +120,7 @@ class FileFinder:
         cls.debug = debug
         find_criteria: FileFinderCriteria = cls._get_criteria_from_args(exclude_dirs, extension, regex, parent_dir, full_path_result)
         result_files: List[str] = []
-        for root, dirs, files in os.walk(basedir, **cls._get_os_walk_kwargs(exclude_dirs)):
+        for root, dirs, files in os.walk(basedir, **FileFinder._get_os_walk_kwargs(exclude_dirs)):
             cls._smartlog(f"Processing root: {root}, dirs: {dirs}")
             dirs[:] = cls._handle_dir_exclusions(dirs, exclude_dirs)
             if find_type == FindResultType.FILES:
