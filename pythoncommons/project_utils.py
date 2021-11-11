@@ -144,8 +144,9 @@ class CommonPathStrategy(StrategyBase):
         if project_root_path == os.sep:
             orig_path = os.path.realpath(file_of_caller)
             err_message = f"Failed to find project root directory starting from path '{orig_path}'. " \
-                          f"Visited: {visited_paths}" \
-                          f"Strategy: {type(self).__name__}"
+                          f"Visited: {visited_paths}\n" \
+                          f"Strategy: {type(self).__name__}\n" \
+                          f"Caller file: {file_of_caller}"
             if project_name_hint:
                 LOG.error(err_message + " Returning project name from hint: " + project_name_hint)
                 return file_of_caller, project_name_hint
