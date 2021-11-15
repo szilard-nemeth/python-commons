@@ -18,6 +18,7 @@ LOG = logging.getLogger(__name__)
 
 class ProjectUtilsEnvVar(Enum):
     OVERRIDE_USER_HOME_DIR = "OVERRIDE_USER_HOME_DIR"
+    PROJECT_DETERMINATION_STRATEGY = "PYTHONCOMMONS_PROJECTUTILS_PROJECT_DETERMINATION_STRATEGY"
 
 
 def determine_project_basedir():
@@ -258,9 +259,7 @@ class ProjectUtils:
             LOG.debug(f"Found cached project name '{project}', file was already a caller: {file_of_caller}")
             return file_of_caller, project
 
-        strategy: StrategyBase = cls.STRATEGIES[cls.project_root_determine_strategy]
-        if REPOS_DIR in file_of_caller and cls.project_root_determine_strategy == cls.default_project_determine_strategy:
-            strategy = cls.STRATEGIES[ProjectRootDeterminationStrategy.REPOSITORY_DIR]
+        strategy: StrategyBase = cls._determine_strategy(file_of_caller)
         path, project = strategy.determine_path(file_of_caller, stack, project_name_hint=project_name_hint)
         cls.FILES_TO_PROJECT[file_of_caller] = project
         return path, project
@@ -272,6 +271,18 @@ class ProjectUtils:
         #     f"Printing diagnostic info including call stack + sys.path...\n"
         #     f"\nCall stack: \n{get_stack_human_readable(stack)}\n"
         #     f"\nsys.path: \n{get_sys_path_human_readable()}")
+
+    @classmethod
+    def _determine_strategy(cls, file_of_caller) -> StrategyBase:
+        strategy_env_var = OsUtils.get_env_value(ProjectUtilsEnvVar.PROJECT_DETERMINATION_STRATEGY.value)
+        if strategy_env_var:
+            strat = ProjectRootDeterminationStrategy[strategy_env_var.upper()]
+            LOG.info("Using strategy '%s' based on env var", strat)
+            return cls.STRATEGIES[strat]
+        strategy: StrategyBase = cls.STRATEGIES[cls.project_root_determine_strategy]
+        if REPOS_DIR in file_of_caller and cls.project_root_determine_strategy == cls.default_project_determine_strategy:
+            strategy = cls.STRATEGIES[ProjectRootDeterminationStrategy.REPOSITORY_DIR]
+        return strategy
 
     @classmethod
     def get_output_basedir(cls, basedir_name: str,
