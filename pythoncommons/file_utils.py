@@ -441,8 +441,15 @@ class FileUtils:
                 print('Failed to delete %s. Reason: %s' % (file_path, e))
 
     @classmethod
-    def remove_dir(cls, dir):
-        os.rmdir(dir)
+    def remove_dir(cls, dir, force=False):
+        protected_dirs = ("/", '~')
+        if dir in protected_dirs:
+            LOG.warning("Remove dir was invoked with directory: %s, which is in the protected dirs: %s", dir, protected_dirs)
+            return
+        if force:
+            shutil.rmtree(dir, ignore_errors=True)
+        else:
+            os.rmdir(dir)
 
     @staticmethod
     def copy_files_to_dir(files: List[str], dst_dir: str, cut_path: str = None, cut_basedir: bool = False):
