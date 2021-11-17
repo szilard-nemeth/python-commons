@@ -43,8 +43,8 @@ class NetworkUtils:
             codec = ourl.info().get_param("charset")
             content = ourl.read().decode(codec)
         except urllib.error.HTTPError as e:
-            if e.code in do_not_raise_http_statuses:
-                if e.code in http_callbacks:
+            if do_not_raise_http_statuses and e.code in do_not_raise_http_statuses:
+                if http_callbacks and e.code in http_callbacks:
                     http_callbacks[e.code]()
                 return {}
             else:
