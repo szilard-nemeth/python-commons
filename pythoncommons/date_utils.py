@@ -4,6 +4,7 @@ import time
 
 LOG = logging.getLogger(__name__)
 
+DATEFORMAT_DASH_COLON = "%Y-%m-%d %H:%M:%S"
 
 # https://medium.com/pythonhive/python-decorator-to-measure-the-execution-time-of-methods-fa04cb6bb36d
 def timeit(method):
@@ -73,6 +74,15 @@ class DateUtils:
     @classmethod
     def now(cls):
         return datetime.datetime.now()
+
+    @classmethod
+    def create_datetime_from_timestamp(cls, timestamp: int):
+        return datetime.datetime.fromtimestamp(timestamp)
+
+    @classmethod
+    def format_unix_timestamp(cls, timestamp: int):
+        dt = DateUtils.create_datetime_from_timestamp(timestamp)
+        return DateUtils.convert_datetime_to_str(dt, DATEFORMAT_DASH_COLON)
 
     @classmethod
     def add_microseconds_to_win_epoch(cls, microseconds):
