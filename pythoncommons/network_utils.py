@@ -39,6 +39,7 @@ class NetworkUtils:
                    http_callbacks: Dict[int, Callable] = None):
         """ Load data from specified url """
         try:
+            LOG.debug("Making request to URL: %s", url)
             ourl = urllib.request.urlopen(url)
             codec = ourl.info().get_param("charset")
             content = ourl.read().decode(codec)
