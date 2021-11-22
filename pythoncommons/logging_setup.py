@@ -132,7 +132,8 @@ class SimpleLoggingSetup:
                      modify_pythoncommons_logger_names: bool = True,
                      remove_existing_handlers: bool = True,
                      sanity_check_number_of_handlers: bool = True,
-                     disable_propagation: bool = True) -> SimpleLoggingSetupConfig:
+                     disable_propagation: bool = True,
+                     disable_logging_setup_debug_details: bool = False) -> SimpleLoggingSetupConfig:
         conf = SimpleLoggingSetupInputConfig(project_name, logger_name_prefix, debug, console_debug,
                                                      format_str, file_postfix, execution_mode,
                                                      modify_pythoncommons_logger_names,
@@ -181,6 +182,10 @@ class SimpleLoggingSetup:
         conf.specified_file_log_level = specified_file_log_level
         conf.handlers = handlers
         project_main_logger = SimpleLoggingSetup._setup_project_main_logger(conf)
+        if disable_logging_setup_debug_details:
+            project_main_logger.info("Disabling debug logs of initial LoggingSetup. Logger: %s", project_main_logger)
+            project_main_logger.setLevel(DEFAULT_LOG_LEVEL)
+
 
         loggers: List[logging.Logger] = SimpleLoggingSetup.setup_existing_loggers(conf)
 
@@ -199,6 +204,11 @@ class SimpleLoggingSetup:
                 raise ValueError("Unexpected number of handlers on loggers. "
                                  f"Expected: {expected_no_of_handlers}, "
                                  f"These loggers are having wrong number of handlers: {wrong_number_of_handlers}")
+
+        if disable_logging_setup_debug_details:
+            logger = project_main_logger
+            project_main_logger.info("Resetting log level on logger: %s, as initial logging setup has been completed.", logger)
+            SimpleLoggingSetup._set_level_on_logger(conf.specified_file_log_level, logger, logger)
 
         config = SimpleLoggingSetupConfig(project_name=project_name,
                                           execution_mode=execution_mode,
@@ -269,7 +279,7 @@ class SimpleLoggingSetup:
         if not project_specific_loggers:
             print("Cannot find any project specific loggers with project name '%s', found loggers: %s", conf.logger_name_prefix, logger_names)
         else:
-            conf.project_main_logger.info("Setting logging level to '%s' on the following project-specific loggers: %s.", level_name,
+            conf.project_main_logger.debug("Setting logging level to '%s' on the following project-specific loggers: %s.", level_name,
                         logger_names)
             SimpleLoggingSetup._set_level_and_add_handlers_on_loggers(conf, project_specific_loggers, logger_names)
 
@@ -283,7 +293,7 @@ class SimpleLoggingSetup:
         loggers: List[logging.Logger] = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
         logger_names: List[str] = list(map(lambda x: x.name, loggers))
         if logger:
-            logger.info("Discovered loggers: %s", logger_names)
+            logger.debug("Discovered loggers: %s", logger_names)
         return logger_names, loggers
 
     @staticmethod
@@ -307,7 +317,7 @@ class SimpleLoggingSetup:
         for logger in loggers:
             SimpleLoggingSetup._set_level_and_add_handlers(conf, logger, recursive=recursive)
             if conf.disable_propagation and logger.propagate:
-                conf.project_main_logger.info("Disabling propagate on logger: %s", logger.name)
+                conf.project_main_logger.debug("Disabling propagate on logger: %s", logger.name)
                 logger.propagate = False
         conf.project_main_logger.info("Set level to '%s' on these discovered loggers: %s", level_name, logger_names)
 
@@ -377,7 +387,7 @@ class SimpleLoggingSetup:
         filtered_handlers = SimpleLoggingSetup._filter_handlers_by_type(existing_handlers, type)
         for handler in filtered_handlers:
             if (callback and callback(handler)) or not callback:
-                project_main_logger.info("Removing handler '%s' from logger '%s'", handler, logger)
+                project_main_logger.debug("Removing handler '%s' from logger '%s'", handler, logger)
                 logger.removeHandler(handler)
 
     @staticmethod
