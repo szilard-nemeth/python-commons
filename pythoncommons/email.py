@@ -37,7 +37,10 @@ class EmailService:
     def send_mail(self, sender: str, subject: str, body: str, recipients: List[str],
                   attachment_file=None,
                   override_attachment_filename: str = None,
-                  body_mimetype: EmailMimeType = EmailMimeType.PLAIN):
+                  body_mimetype: EmailMimeType = EmailMimeType.PLAIN,
+                  with_retries: bool = True,
+                  retry_count: int = 3,
+                  log_exception_when_retried: bool = True):
         self._validate_config(recipients)
 
         email_msg = None
@@ -54,9 +57,13 @@ class EmailService:
         else:
             email_msg = MIMEText(str(body))
         recipients_comma_separated = self._add_common_email_data(email_msg, recipients, sender, subject)
-        self._connect_to_server_and_send(email_msg, recipients, recipients_comma_separated, sender)
+        self._connect_to_server_and_send(email_msg, recipients, recipients_comma_separated, sender,
+                                         with_retries=with_retries,
+                                         retry_count=retry_count,
+                                         log_exception_when_retried=log_exception_when_retried)
 
-    def _add_common_email_data(self, email_msg, recipients, sender, subject):
+    @staticmethod
+    def _add_common_email_data(email_msg, recipients, sender, subject):
         recipients_comma_separated = ', '.join(recipients)
         email_msg['From'] = sender
         email_msg['To'] = recipients_comma_separated
@@ -77,13 +84,37 @@ class EmailService:
         if not self.conf.email_account.password:
             raise ValueError(f"Wrong email server config. Password must be set!")
 
-    def _connect_to_server_and_send(self, email_msg, recipients, recipients_comma_separated, sender):
+    def _connect_to_server_and_send(self,
+                                    email_msg,
+                                    recipients,
+                                    recipients_comma_separated,
+                                    sender,
+                                    with_retries: bool = True,
+                                    retry_count: int = 3,
+                                    log_exception_when_retried: bool = True
+                                    ):
         server = smtplib.SMTP_SSL(self.conf.smtp_server, self.conf.smtp_port)
-        LOG.info('Sending mail to recipients: %s', recipients_comma_separated)
-        server.ehlo()
-        server.login(self.conf.email_account.user, self.conf.email_account.password)
-        server.sendmail(sender, recipients, email_msg.as_string())
-        server.quit()
+        if with_retries:
+            all_try_count: int = retry_count + 1
+        else:
+            all_try_count: int = 1
+
+        for i in range(all_try_count):
+            attempt = i + 1
+            LOG.info('Sending mail to recipients: %s. Attempt number: %d / %d',
+                     recipients_comma_separated, attempt, all_try_count)
+            try:
+                server.ehlo()
+                server.login(self.conf.email_account.user, self.conf.email_account.password)
+                server.sendmail(sender, recipients, email_msg.as_string())
+                server.quit()
+                return
+            except smtplib.SMTPServerDisconnected as e:
+                if not with_retries:
+                    raise e
+                elif log_exception_when_retried:
+                    LOG.exception("Failed to send email.", exc_info=True)
+
 
     @staticmethod
     def _create_attachment(file_path: str, attachment_name: str = None):
