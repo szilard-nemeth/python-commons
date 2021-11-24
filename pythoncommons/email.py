@@ -110,7 +110,8 @@ class EmailService:
                 server.quit()
                 return
             except smtplib.SMTPServerDisconnected as e:
-                if not with_retries:
+                if attempt == all_try_count:
+                    # Raise if we reached max retries or we just tried once without retries and it failed
                     raise e
                 elif log_exception_when_retried:
                     LOG.exception("Failed to send email.", exc_info=True)
