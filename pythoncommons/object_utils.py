@@ -11,6 +11,10 @@ class ObjUtils:
             LOG.info("%s: %s", prop, value)
 
     @staticmethod
+    def get_properties(obj):
+        return [(prop, value) for prop, value in vars(obj).items()]
+
+    @staticmethod
     def get_static_fields(clazz):
         return [v for v, m in vars(clazz).items() if not (v.startswith('_') or callable(m))]
 
