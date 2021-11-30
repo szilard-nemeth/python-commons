@@ -28,38 +28,41 @@ class LoggingUtils:
         for logger_name in loggers:
             logger = logging.getLogger(logger_name)
             LoggingUtils.ensure_logger_is_on_level(
-                logger, level,
+                logger,
+                level,
                 raise_error_if_not_enabled_for=True,
                 print_logger_info=True,
                 print_additional_details=True,
-                project_name_prefix=project_name_prefix
+                project_name_prefix=project_name_prefix,
             )
 
     @staticmethod
-    def ensure_logger_is_on_level(logger: logging.Logger,
-                                  level: int,
-                                  raise_error_if_not_enabled_for=False,
-                                  print_logger_info=True,
-                                  print_additional_details=True,
-                                  project_name_prefix=None):
+    def ensure_logger_is_on_level(
+        logger: logging.Logger,
+        level: int,
+        raise_error_if_not_enabled_for=False,
+        print_logger_info=True,
+        print_additional_details=True,
+        project_name_prefix=None,
+    ):
         if not logger:
             return
         if print_logger_info:
             LoggingUtils.print_logger_info(logger)
         enabled = logger.isEnabledFor(level)
         if raise_error_if_not_enabled_for and not enabled:
-            err_message = "Logger {} is not enabled for level {}. Current effective level is: {}" \
-                .format(logger.name,
-                        logging.getLevelName(level),
-                        logging.getLevelName(logger.getEffectiveLevel()))
+            err_message = "Logger {} is not enabled for level {}. Current effective level is: {}".format(
+                logger.name, logging.getLevelName(level), logging.getLevelName(logger.getEffectiveLevel())
+            )
 
             if print_additional_details:
                 logger_names, all_loggers = SimpleLoggingSetup.get_all_loggers_from_loggerdict()
                 pythoncommons_loggers = SimpleLoggingSetup.get_pythoncommons_loggers(all_loggers)
-                error_details = f"ALL LOGGERS: {all_loggers}\n" \
-                                f"PYTHON COMMONS LOGGERS: {pythoncommons_loggers}"
+                error_details = f"ALL LOGGERS: {all_loggers}\n" f"PYTHON COMMONS LOGGERS: {pythoncommons_loggers}"
                 if project_name_prefix:
-                    project_specific_loggers = SimpleLoggingSetup.get_project_specific_loggers(all_loggers, project_name_prefix)
+                    project_specific_loggers = SimpleLoggingSetup.get_project_specific_loggers(
+                        all_loggers, project_name_prefix
+                    )
                     error_details += f"\nPROJECT SPECIFIC LOGGERS: {project_specific_loggers}"
                 err_message += f"\n{error_details}"
             raise ValueError(err_message)
@@ -85,35 +88,44 @@ class LoggerFactory:
             setattr(logger, prop.func, types.MethodType(real_func, logger))
         return logger
 
-    def combined_log(self: logging.Logger, msg: str,
-                     coll: Sized = None,
-                     info_coll: Sized = None,
-                     debug_coll: Sized = None,
-                     info_coll_func: Callable[[Sized], str] = len,
-                     debug_coll_func: Callable[[Sized], str] = str,
-                     show_warnings: bool = False):
+    def combined_log(
+        self: logging.Logger,
+        msg: str,
+        coll: Sized = None,
+        info_coll: Sized = None,
+        debug_coll: Sized = None,
+        info_coll_func: Callable[[Sized], str] = len,
+        debug_coll_func: Callable[[Sized], str] = str,
+        show_warnings: bool = False,
+    ):
         if not any(e is not None for e in [coll, info_coll, debug_coll]):
-            raise ValueError("Wrong collection configuration, one of coll, info_coll or debug_coll should not be None!"
-                             "Please verify arguments!")
-        if not info_coll:
+            raise ValueError(
+                "Wrong collection configuration, one of coll, info_coll or debug_coll should not be None!"
+                "Please verify arguments!"
+            )
+        if coll is not None and not info_coll:
             info_coll = coll
-        if not debug_coll:
+        if coll is not None and not debug_coll:
             debug_coll = coll
         if not all([info_coll is not None, debug_coll is not None]):
-            raise ValueError("Wrong collection configuration, one of info_coll or debug_coll is None! "
-                             "Please verify arguments!")
+            raise ValueError(
+                "Wrong collection configuration, one of info_coll or debug_coll is None! " "Please verify arguments!"
+            )
 
         level = self.getEffectiveLevel()
         # if self.level != logging.NOTSET and self.level not in [logging.INFO, logging.DEBUG]:
         if level not in [logging.INFO, logging.DEBUG]:
             LOG.error(
-                f"Logger level was not among: {[logging.getLevelName(logging.INFO), logging.getLevelName(logging.DEBUG)]}")
+                f"Logger level was not among: {[logging.getLevelName(logging.INFO), logging.getLevelName(logging.DEBUG)]}"
+            )
             return
 
         replace = True
         if COLLECTION_PLACEHOLDER not in msg:
             if show_warnings:
-                LOG.warning(f"Placeholder not found in message: {msg}. Will append collection to the end of the message.")
+                LOG.warning(
+                    f"Placeholder not found in message: {msg}. Will append collection to the end of the message."
+                )
             replace = False
 
         len_info_coll = str(info_coll_func(info_coll))
