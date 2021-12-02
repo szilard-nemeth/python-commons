@@ -211,7 +211,7 @@ class DockerTestSetup:
         DockerWrapper.create_image_from_dir(dockerfile_parent_dir_path, tag=self.image_name)
 
     def mount_dir(self, host_dir, container_dir, mode=DockerMountMode.READ_WRITE):
-        self.mounts.append(DockerMount(host_dir, container_dir, mode=mode))
+        self.mounts.append(DockerMount(host_dir, container_dir, mode=mode.value))
 
     def print_mounts(self):
         LOG.info("Docker mounts: %s", self.mounts)
