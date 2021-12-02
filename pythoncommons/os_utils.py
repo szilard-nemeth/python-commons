@@ -25,7 +25,7 @@ class OsUtils:
 
     @classmethod
     def get_tracked_updates(cls) -> Dict[str, str]:
-        return cls.ENV_UPDATES
+        return dict(cls.ENV_UPDATES)
 
     @classmethod
     def get_env_value(cls, env_name, default_value=None, suppress=False):
@@ -44,7 +44,9 @@ class OsUtils:
         if env_name in os.environ:
             old_value = os.environ[env_name]
             if not suppress:
-                LOG.debug("Setting value of env variable '%s' to : %s. Old value was: %s", env_name, env_value, old_value)
+                LOG.debug(
+                    "Setting value of env variable '%s' to : %s. Old value was: %s", env_name, env_value, old_value
+                )
         else:
             if not suppress:
                 LOG.debug("Setting value of env variable '%s' to : %s", env_name, env_value)
