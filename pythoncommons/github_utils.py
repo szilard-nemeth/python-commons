@@ -5,6 +5,7 @@ from pythoncommons.os_utils import OsUtils
 
 LOG = logging.getLogger(__name__)
 
+
 class GithubActionsEnvVar(Enum):
     CI_EXECUTION = "CI"
     GITHUB_ACTIONS = "GITHUB_ACTIONS"
@@ -17,7 +18,8 @@ class GitHubUtils:
         is_github_ci_exec = OsUtils.get_env_value(GithubActionsEnvVar.GITHUB_ACTIONS.value)
         if is_github_ci_exec:
             LOG.debug("Identified Github Actions CI execution")
-        return is_github_ci_exec
+            return True
+        return False
 
     @staticmethod
     def get_workspace_path() -> str:
