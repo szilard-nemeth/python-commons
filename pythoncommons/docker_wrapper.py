@@ -18,7 +18,7 @@ LOG = logging.getLogger(__name__)
 
 
 class DockerWrapper:
-    client = APIClient(base_url='unix://var/run/docker.sock')
+    client = APIClient(base_url="unix://var/run/docker.sock")
 
     def __init__(self):
         pass
@@ -31,26 +31,38 @@ class DockerWrapper:
     def create_image_from_dockerfile(cls, dockerfile_name, tag=None, build_args=None):
         dockerfile_parent_dir_path = os.path.dirname(dockerfile_name)
         dockerfile_name = os.path.basename(dockerfile_name)
-        cls._build_image_internal(dockerfile_parent_dir_path, dockerfile_name=dockerfile_name, tag=tag, build_args=build_args)
+        cls._build_image_internal(
+            dockerfile_parent_dir_path, dockerfile_name=dockerfile_name, tag=tag, build_args=build_args
+        )
 
     @classmethod
-    def _build_image_internal(cls, dockerfile_parent_dir_path, dockerfile_name=DEFAULT_DOCKERFILE_NAME, tag=None, build_args=None):
+    def _build_image_internal(
+        cls, dockerfile_parent_dir_path, dockerfile_name=DEFAULT_DOCKERFILE_NAME, tag=None, build_args=None
+    ):
         if not build_args:
             build_args = {}
-        LOG.info(f"Starting to build Docker image from Dockerfile: %s, based on parent dir path: %s",
-                 dockerfile_name, dockerfile_parent_dir_path)
+        LOG.info(
+            "Starting to build Docker image from Dockerfile: %s, based on parent dir path: %s",
+            dockerfile_name,
+            dockerfile_parent_dir_path,
+        )
         cls._fix_path_for_macos()
-        response = [line for line in cls.client.build(
-            path=dockerfile_parent_dir_path,
-            dockerfile=dockerfile_name,
-            rm=True,
-            tag=tag,
-            buildargs=build_args,
-            network_mode='host')]
+        response = [
+            line
+            for line in cls.client.build(
+                path=dockerfile_parent_dir_path,
+                dockerfile=dockerfile_name,
+                rm=True,
+                tag=tag,
+                buildargs=build_args,
+                network_mode="host",
+            )
+        ]
         errors = cls.log_response(response)
         if errors:
-            raise ValueError(f"Failed to build Docker image from Dockerfile: {dockerfile_name}. "
-                             f"Error messages: {errors}")
+            raise ValueError(
+                f"Failed to build Docker image from Dockerfile: {dockerfile_name}. " f"Error messages: {errors}"
+            )
 
     @classmethod
     def _fix_path_for_macos(cls):
@@ -75,19 +87,19 @@ class DockerWrapper:
     def log_response(cls, response):
         errors = []
         for r in response:
-            lines = r.decode().split('\r\n')
+            lines = r.decode().split("\r\n")
             for line in lines:
                 if line:
                     line_dict = json.loads(line)
-                    log_value = line_dict['stream'] if 'stream' in line_dict else None
-                    err_detail = line_dict['errorDetail'] if 'errorDetail' in line_dict else None
+                    log_value = line_dict["stream"] if "stream" in line_dict else None
+                    err_detail = line_dict["errorDetail"] if "errorDetail" in line_dict else None
                     if err_detail:
                         err_message = err_detail["message"]
                         errors.append(err_message)
                         LOG.error("[BUILD] %s", err_message)
                     if log_value and "ERROR" in log_value:
                         errors.append(log_value)
-                    if log_value and (log_value != '\n'):
+                    if log_value and (log_value != "\n"):
                         LOG.info("[BUILD] %s", log_value)
         return errors
 
@@ -112,10 +124,16 @@ class DockerDiagnosticPhase(Enum):
 
 @auto_str
 class DockerDiagnosticCommand:
-    def __init__(self, mode, phase, command, expected_exit_code=0,
-                 expected_output=None,
-                 expected_output_fragments=None,
-                 strip=False):
+    def __init__(
+        self,
+        mode,
+        phase,
+        command,
+        expected_exit_code=0,
+        expected_output=None,
+        expected_output_fragments=None,
+        strip=False,
+    ):
         self.phase = phase
         self.mode = mode
         self.command = command
@@ -126,17 +144,30 @@ class DockerDiagnosticCommand:
 
     @classmethod
     def create_exact_match(cls, phase, command, expected_output, expected_exit_code=0, strip=False):
-        return cls(DockerDiagnosticStdoutAssertionMode.EXACT_MATCH, phase, command,
-                   expected_exit_code=expected_exit_code,
-                   expected_output=expected_output,
-                   strip=strip)
+        return cls(
+            DockerDiagnosticStdoutAssertionMode.EXACT_MATCH,
+            phase,
+            command,
+            expected_exit_code=expected_exit_code,
+            expected_output=expected_output,
+            strip=strip,
+        )
 
     @classmethod
     def create_substring_match(cls, phase, command, expected_output_fragments, expected_exit_code=0, strip=False):
-        return cls(DockerDiagnosticStdoutAssertionMode.SUBSTRING_MATCH, phase, command,
-                   expected_exit_code=expected_exit_code,
-                   expected_output_fragments=expected_output_fragments,
-                   strip=strip)
+        return cls(
+            DockerDiagnosticStdoutAssertionMode.SUBSTRING_MATCH,
+            phase,
+            command,
+            expected_exit_code=expected_exit_code,
+            expected_output_fragments=expected_output_fragments,
+            strip=strip,
+        )
+
+
+class CreatePathMode(Enum):
+    FULL_PATH = "FULL_PATH"
+    PARENT_PATH = "PARENT_PATH"
 
 
 class DockerTestSetup:
@@ -169,8 +200,10 @@ class DockerTestSetup:
     def create_image(self, dockerfile_parent_dir_path=None):
         if not dockerfile_parent_dir_path:
             dockerfile_parent_dir_path = os.getcwd()
-            LOG.warning(f"Dockerfile location was not specified. "
-                        f"Trying to create image from current working directory: {dockerfile_parent_dir_path}")
+            LOG.warning(
+                f"Dockerfile location was not specified. "
+                f"Trying to create image from current working directory: {dockerfile_parent_dir_path}"
+            )
         DockerWrapper.create_image_from_dir(dockerfile_parent_dir_path, tag=self.image_name)
 
     def mount_dir(self, host_dir, container_dir, mode=MOUNT_MODE_RW):
@@ -208,7 +241,7 @@ class DockerTestSetup:
         # Convert DockerMount objects to volumes dictionary
         volumes_dict = {}
         for mount in self.mounts:
-            volumes_dict[mount.host_dir] = {'bind': mount.container_dir, 'mode': mount.mode}
+            volumes_dict[mount.host_dir] = {"bind": mount.container_dir, "mode": mount.mode}
         return volumes_dict
 
     def _run_pre_diagnostic_commands(self):
@@ -218,9 +251,9 @@ class DockerTestSetup:
         self._run_diagnostic_command(DockerDiagnosticPhase.POST)
 
     def _run_diagnostic_command(self, phase):
-        diag_command_objs: List[DockerDiagnosticCommand] = self.pre_diagnostics \
-            if phase == DockerDiagnosticPhase.PRE else \
-            self.post_diagnostics
+        diag_command_objs: List[DockerDiagnosticCommand] = (
+            self.pre_diagnostics if phase == DockerDiagnosticPhase.PRE else self.post_diagnostics
+        )
         LOG.debug("Running diagnostic commands in '%s' phase: %s", phase.value, diag_command_objs)
         for diag in diag_command_objs:
             if diag.mode == DockerDiagnosticStdoutAssertionMode.EXACT_MATCH:
@@ -229,26 +262,34 @@ class DockerTestSetup:
                 self.exec_command_and_grep_in_stdout(diag)
 
     def exec_diagnostic_command(self, diag: DockerDiagnosticCommand):
+        # TODO Seems like stdout is not returned anymore :(
         exit_code, stdout = self.exec_cmd_in_container(diag.command, strip=diag.strip)
-        self.test_instance.assertEqual(diag.expected_exit_code, exit_code,
-                                       msg="Exit code of command is not the expected. "
-                                           f"Command details: {diag}")
+        self.test_instance.assertEqual(
+            diag.expected_exit_code,
+            exit_code,
+            msg="Exit code of command is not the expected. " f"Command details: {diag}",
+        )
         if diag.strip:
             diag.expected_output = diag.expected_output.strip()
-        self.test_instance.assertEqual(diag.expected_output, stdout,
-                                       msg="Stdout of command is not the expected. "
-                                           f"Command details: {diag}")
+        self.test_instance.assertEqual(
+            diag.expected_output, stdout, msg="Stdout of command is not the expected. " f"Command details: {diag}"
+        )
 
     def exec_command_and_grep_in_stdout(self, diag: DockerDiagnosticCommand):
+        # TODO Seems like stdout is not returned anymore :(
         exit_code, stdout = self.exec_cmd_in_container(diag.command, strip=diag.strip)
-        self.test_instance.assertEqual(diag.expected_exit_code, exit_code,
-                                       msg="Exit code of command is not the expected."
-                                           f"Command details: {diag}")
+        self.test_instance.assertEqual(
+            diag.expected_exit_code,
+            exit_code,
+            msg="Exit code of command is not the expected." f"Command details: {diag}",
+        )
 
         for fragment in diag.expected_output_fragments:
-            self.test_instance.assertTrue(fragment in stdout,
-                                          msg="Cannot find expected fragment in stdout. "
-                                              f"Fragment: {fragment}, stdout: {stdout}, Command details: '{diag}'")
+            self.test_instance.assertTrue(
+                fragment in stdout,
+                msg="Cannot find expected fragment in stdout. "
+                f"Fragment: {fragment}, stdout: {stdout}, Command details: '{diag}'",
+            )
 
     def generate_dummy_text_files_in_container_dirs(self, dir_and_no_of_files: List[Tuple[str, int]]):
         for dir_files in dir_and_no_of_files:
@@ -266,14 +307,21 @@ class DockerTestSetup:
             # Simple redirect did not work: self._exec_cmd_in_container(cmd)
             # See: https://github.com/docker/docker-py/issues/1637
             # Use this as a workaround
-            self.exec_cmd_in_container(['sh', '-c', cmd])
+            self.exec_cmd_in_container(["sh", "-c", cmd])
 
-    def exec_cmd_in_container(self, cmd, charset="utf-8", strip=True, fail_on_error=True,
-                               stdin=False,
-                               tty=False,
-                               env: Dict[str, str] = None,
-                               detach=False,
-                               callback=None, stream=True):
+    def exec_cmd_in_container(
+        self,
+        cmd,
+        charset="utf-8",
+        strip=True,
+        fail_on_error=True,
+        stdin=False,
+        tty=False,
+        env: Dict[str, str] = None,
+        detach=False,
+        callback=None,
+        stream=True,
+    ):
         if not env:
             env = {}
 
@@ -306,13 +354,72 @@ class DockerTestSetup:
             except UnicodeDecodeError:
                 LOG.error(f"Error while decoding string: {output.decode('cp437')}")
 
-        exit_code = DockerWrapper.client.exec_inspect(exec_handler['Id']).get('ExitCode')
+        exit_code = DockerWrapper.client.exec_inspect(exec_handler["Id"]).get("ExitCode")
         if fail_on_error and exit_code != 0:
-            raise ValueError(f"Command '{cmd}' returned with non-zero exit code: {exit_code}. See logs above for more details.")
+            raise ValueError(
+                f"Command '{cmd}' returned with non-zero exit code: {exit_code}. See logs above for more details."
+            )
         return exit_code
 
     def inspect_container(self, container_id: str):
         return DockerWrapper.inspect_container(container_id)
+
+    def docker_cp_from_container(self, container_path, local_target_path):
+        command = f"docker cp {self.container.id}:{container_path} {local_target_path}"
+        LOG.info(
+            "Copying container directory '%s' to local directory '%s' (container id: %s). Command was: %s",
+            container_path,
+            local_target_path,
+            self.container.id,
+            command,
+        )
+        SubprocessCommandRunner.run_and_follow_stdout_stderr(command)
+
+    def docker_cp_to_container(
+        self,
+        container_target_path,
+        local_src_file,
+        create_container_path_mode: CreatePathMode = None,
+        double_check_with_ls: bool = False,
+    ):
+        # run mkdir -p if dir not exist
+        self.create_directories_in_container(container_target_path, create_container_path_mode)
+        command = f"docker cp {local_src_file} {self.container.id}:{container_target_path}"
+        LOG.info(
+            "Copying local directory '%s' to container directory '%s' (container id: %s). Command was: %s",
+            local_src_file,
+            container_target_path,
+            self.container.id,
+            command,
+        )
+        SubprocessCommandRunner.run_and_follow_stdout_stderr(command)
+        if double_check_with_ls:
+            self.exec_cmd_in_container(f"ls -la {container_target_path}")
+
+    def create_directories_in_container(self, container_target_path: str, create_container_path_mode: CreatePathMode):
+        if not create_container_path_mode:
+            LOG.warning("Will not create directories as create_container_path_mode=%s", create_container_path_mode)
+            return
+        if create_container_path_mode:
+            if create_container_path_mode == CreatePathMode.PARENT_PATH:
+                path_to_create = FileUtils.basename(container_target_path)
+                exit_code = self.exec_cmd_in_container(f"ls {path_to_create}", fail_on_error=False)
+            elif create_container_path_mode == CreatePathMode.FULL_PATH:
+                path_to_create = container_target_path
+                exit_code = self.exec_cmd_in_container(f"ls {path_to_create}", fail_on_error=False)
+            else:
+                raise ValueError("Unknown create path mode: {}".format(create_container_path_mode))
+
+            if exit_code != 0:
+                self.create_dirs_in_container(path_to_create)
+
+    def create_dirs_in_container(self, path_to_create):
+        LOG.debug("Creating directories (recursive) '%s' in container '%s'", path_to_create, self.container.id)
+        exit_code = self.exec_cmd_in_container(f"mkdir -p {path_to_create}")
+        if exit_code != 0:
+            raise ValueError(
+                "Failed to create directories '{}' in container {}".format(path_to_create, self.container.id)
+            )
 
 
 class DockerFileReplacer:
@@ -322,10 +429,10 @@ class DockerFileReplacer:
     @classmethod
     def replace_all_vars(cls, input, vars_to_replace, default=None, skip_escaped=False):
         """Expand environment variables of form $var and ${var}.
-           If parameter 'skip_escaped' is True, all escaped variable references
-           (i.e. preceded by backslashes) are skipped.
-           Unknown variables are set to 'default'. If 'default' is None,
-           they are left unchanged.
+        If parameter 'skip_escaped' is True, all escaped variable references
+        (i.e. preceded by backslashes) are skipped.
+        Unknown variables are set to 'default'. If 'default' is None,
+        they are left unchanged.
         """
         cls.vars_to_replace = vars_to_replace
 
@@ -334,8 +441,9 @@ class DockerFileReplacer:
             # m.group(1) -> '{VAR}'
             # m.group(2) -> 'VAR'
             varname = m.group(2) or m.group(1)
-            replaced_name = DockerFileReplacer.vars_to_replace[
-                varname] if varname in DockerFileReplacer.vars_to_replace else None
+            replaced_name = (
+                DockerFileReplacer.vars_to_replace[varname] if varname in DockerFileReplacer.vars_to_replace else None
+            )
             if not replaced_name:
                 if default:
                     replaced_name = default
@@ -344,7 +452,7 @@ class DockerFileReplacer:
 
             return replaced_name
 
-        pattern = (r'(?<!\\)' if skip_escaped else '') + r'\$(\w+|\{([^}]*)\})'
+        pattern = (r"(?<!\\)" if skip_escaped else "") + r"\$(\w+|\{([^}]*)\})"
         result = re.sub(pattern, replace_var, input)
         cls.vars_to_replace = {}
 
@@ -360,7 +468,7 @@ class DockerFileReplacer:
             if line.startswith("FROM"):
                 mod_lines.append(line)
                 mod_lines.append("ARG {var}".format(var=var_name))
-                mod_lines.append("RUN echo \"{var} = ${var}\"".format(var=var_name))
+                mod_lines.append('RUN echo "{var} = ${var}"'.format(var=var_name))
             else:
                 mod_lines.append(line)
 
@@ -376,8 +484,14 @@ class DockerCompose:
             profile = "-" + profile
         compose_file = DockerCompose.COMPOSE_FILE_TEMPLATE.format(profile=profile)
         command = "docker-compose -f {cfile} up -d".format(cfile=compose_file)
-        SubprocessCommandRunner.run(command, working_dir=working_dir, log_command_result=True, fail_on_error=True,
-                          wait_after=10, wait_message="for docker compose command")
+        SubprocessCommandRunner.run(
+            command,
+            working_dir=working_dir,
+            log_command_result=True,
+            fail_on_error=True,
+            wait_after=10,
+            wait_message="for docker compose command",
+        )
 
     @staticmethod
     def logs(working_dir):
