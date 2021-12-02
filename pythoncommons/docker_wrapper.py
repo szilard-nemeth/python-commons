@@ -13,7 +13,6 @@ from pythoncommons.string_utils import auto_str
 
 DEFAULT_DOCKERFILE_NAME = "Dockerfile"
 
-MOUNT_MODE_RW = "rw"
 LOG = logging.getLogger(__name__)
 
 
@@ -104,9 +103,14 @@ class DockerWrapper:
         return errors
 
 
+class DockerMountMode(Enum):
+    READ_WRITE = "rw"
+    READ_ONLY = "ro"
+
+
 @auto_str
 class DockerMount:
-    def __init__(self, host_dir, container_dir, mode=MOUNT_MODE_RW):
+    def __init__(self, host_dir, container_dir, mode=DockerMountMode.READ_WRITE):
         self.host_dir = host_dir
         self.container_dir = container_dir
         self.mode = mode
@@ -206,7 +210,7 @@ class DockerTestSetup:
             )
         DockerWrapper.create_image_from_dir(dockerfile_parent_dir_path, tag=self.image_name)
 
-    def mount_dir(self, host_dir, container_dir, mode=MOUNT_MODE_RW):
+    def mount_dir(self, host_dir, container_dir, mode=DockerMountMode.READ_WRITE):
         self.mounts.append(DockerMount(host_dir, container_dir, mode=mode))
 
     def print_mounts(self):
