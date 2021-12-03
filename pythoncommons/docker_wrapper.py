@@ -339,17 +339,23 @@ class DockerTestSetup:
         exec_handler = DockerWrapper.client.exec_create(self.container.id, cmd, environment=env, stdin=stdin, tty=tty)
         ret = DockerWrapper.client.exec_start(exec_handler, stream=stream, detach=detach)
 
-        exit_code: int = self._get_exit_code(cmd, exec_handler, stream)
-        if fail_on_error and exit_code != 0:
-            _ = self._get_output_of_cmd(cmd, ret, callback, charset, strip, stream)
-            raise ValueError(
-                f"Command '{cmd}' returned with non-zero exit code: {exit_code}. See logs above for more details."
-            )
+        # If stream=True, the execution will stay in _get_output_of_cmd until there's data to read from the output.
+        # This means that when the loop that reads the output ends, the process is finished.
+        # Therefore, handle stream mode separately.
+        if not stream:
+            exit_code: int = self._get_exit_code(cmd, exec_handler, stream)
+            if fail_on_error and exit_code != 0:
+                _ = self._get_output_of_cmd(cmd, ret, callback, charset, strip, stream)
+                raise ValueError(
+                    f"Command '{cmd}' returned with non-zero exit code: {exit_code}. See logs above for more details."
+                )
 
         if detach:
+            exit_code: int = self._get_exit_code(cmd, exec_handler, stream)
             return exit_code, None
 
         decoded_stdout = self._get_output_of_cmd(cmd, ret, callback, charset, strip, stream)
+        exit_code: int = self._get_exit_code(cmd, exec_handler, stream)
         return exit_code, decoded_stdout
 
     def _get_output_of_cmd(self, cmd, ret, callback, charset, strip, stream):
@@ -364,7 +370,7 @@ class DockerTestSetup:
                     return decoded_stdout.strip()
                 return decoded_stdout
             else:
-                LOG.warning("Return value was None")
+                LOG.warning("Output was None")
                 return None
 
         for output in ret:
@@ -380,7 +386,7 @@ class DockerTestSetup:
         return decoded_stdout
 
     @staticmethod
-    def _get_exit_code(cmd: str, exec_handler, stream: bool, max_wait_seconds: int = 5):
+    def _get_exit_code(cmd: str, exec_handler, max_wait_seconds: int = 5):
         """
         client.exec_inspect(exec_handler["Id"]).get("ExitCode") does not immediately returns the exit code.
         Try to wait for it for some time.
@@ -388,9 +394,6 @@ class DockerTestSetup:
         :return:
         """
         slept_seconds = 0
-        if stream:
-            return DockerWrapper.client.exec_inspect(exec_handler["Id"]).get("ExitCode")
-
         while True:
             exit_code: int = DockerWrapper.client.exec_inspect(exec_handler["Id"]).get("ExitCode")
             LOG.debug("Command: '%s', exit code: %s", cmd, exit_code)
