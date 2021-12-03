@@ -346,7 +346,10 @@ class DockerTestSetup:
 
         if not stream:
             if ret:
-                return exit_code, ret.decode(charset)
+                decoded_stdout = ret.decode(charset)
+                if strip:
+                    decoded_stdout = decoded_stdout.strip()
+                return exit_code, decoded_stdout
             else:
                 LOG.warning("Return value was None")
                 return exit_code, None
