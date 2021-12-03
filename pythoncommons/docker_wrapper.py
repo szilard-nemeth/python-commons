@@ -337,7 +337,12 @@ class DockerTestSetup:
         LOG.info(f"Running command '{cmd}' in container: '{self.container}'")
         exec_handler = DockerWrapper.client.exec_create(self.container.id, cmd, environment=env, stdin=stdin, tty=tty)
         ret = DockerWrapper.client.exec_start(exec_handler, stream=stream, detach=detach)
+
         exit_code: int = self._get_exit_code(exec_handler)
+        if fail_on_error and exit_code != 0:
+            raise ValueError(
+                f"Command '{cmd}' returned with non-zero exit code: {exit_code}. See logs above for more details."
+            )
 
         if not stream:
             if ret:
@@ -363,10 +368,6 @@ class DockerTestSetup:
             except UnicodeDecodeError:
                 LOG.error(f"Error while decoding string: {output.decode('cp437')}")
 
-        if fail_on_error and exit_code != 0:
-            raise ValueError(
-                f"Command '{cmd}' returned with non-zero exit code: {exit_code}. See logs above for more details."
-            )
         return exit_code, decoded_stdout
 
     @staticmethod
