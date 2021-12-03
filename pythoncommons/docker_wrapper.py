@@ -341,26 +341,32 @@ class DockerTestSetup:
 
         exit_code: int = self._get_exit_code(cmd, exec_handler, stream)
         if fail_on_error and exit_code != 0:
+            _ = self._get_output_of_cmd(cmd, ret, callback, charset, strip, stream)
             raise ValueError(
                 f"Command '{cmd}' returned with non-zero exit code: {exit_code}. See logs above for more details."
             )
+
+        if detach:
+            return exit_code, None
+
+        decoded_stdout = self._get_output_of_cmd(cmd, ret, callback, charset, strip, stream)
+        return exit_code, decoded_stdout
+
+    def _get_output_of_cmd(self, cmd, ret, callback, charset, strip, stream):
+        LOG.info(f"Listing stdout of cmd: {cmd}...")
+        short_cmd = os.path.basename(cmd).rstrip()
+        decoded_stdout = None
 
         if not stream:
             if ret:
                 decoded_stdout = ret.decode(charset)
                 if strip:
-                    decoded_stdout = decoded_stdout.strip()
-                return exit_code, decoded_stdout
+                    return decoded_stdout.strip()
+                return decoded_stdout
             else:
                 LOG.warning("Return value was None")
-                return exit_code, None
+                return None
 
-        if detach:
-            return exit_code, None
-
-        LOG.info(f"Listing stdout of cmd: {cmd}...")
-        short_cmd = os.path.basename(cmd).rstrip()
-        decoded_stdout = None
         for output in ret:
             try:
                 decoded_stdout = output.decode(charset)
@@ -371,8 +377,7 @@ class DockerTestSetup:
                     callback(cmd, decoded_stdout, self)
             except UnicodeDecodeError:
                 LOG.error(f"Error while decoding string: {output.decode('cp437')}")
-
-        return exit_code, decoded_stdout
+        return decoded_stdout
 
     @staticmethod
     def _get_exit_code(cmd: str, exec_handler, stream: bool, max_wait_seconds: int = 5):
