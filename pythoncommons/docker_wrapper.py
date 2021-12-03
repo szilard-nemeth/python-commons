@@ -195,7 +195,7 @@ class DockerTestSetup:
         self.pre_diagnostics: List[DockerDiagnosticCommand] = []
         self.post_diagnostics: List[DockerDiagnosticCommand] = []
         self.test_instance = None
-        self.mounts = []
+        self.mounts: List[DockerMount] = []
         self.container = None
 
     def cleanup(self):
@@ -211,7 +211,10 @@ class DockerTestSetup:
         DockerWrapper.create_image_from_dir(dockerfile_parent_dir_path, tag=self.image_name)
 
     def mount_dir(self, host_dir, container_dir, mode=DockerMountMode.READ_WRITE):
-        self.mounts.append(DockerMount(host_dir, container_dir, mode=mode.value))
+        self.mounts.append(DockerMount(host_dir, container_dir, mode=mode))
+
+    def apply_mounts(self, docker_mounts: List[DockerMount]):
+        self.mounts.extend(docker_mounts)
 
     def print_mounts(self):
         LOG.info("Docker mounts: %s", self.mounts)
@@ -245,7 +248,7 @@ class DockerTestSetup:
         # Convert DockerMount objects to volumes dictionary
         volumes_dict = {}
         for mount in self.mounts:
-            volumes_dict[mount.host_dir] = {"bind": mount.container_dir, "mode": mount.mode}
+            volumes_dict[mount.host_dir] = {"bind": mount.container_dir, "mode": mount.mode.value}
         return volumes_dict
 
     def _run_pre_diagnostic_commands(self):
