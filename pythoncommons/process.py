@@ -16,22 +16,29 @@ import tty
 from pythoncommons.file_utils import FileUtils
 from pythoncommons.string_utils import auto_str, StringUtils
 
-#TODO consolidate methods
+
+# TODO consolidate methods
 class CommandRunner:
-    
     def __init__(self, log):
         self.LOG = log
-    
-    def run_sync(self, cmd: str, fail_on_error: bool = False, single_result=True,
-                 _out: str = None, _err: str = None, _tee: bool = False):
+
+    def run_sync(
+        self,
+        cmd: str,
+        fail_on_error: bool = False,
+        single_result=True,
+        _out: str = None,
+        _err: str = None,
+        _tee: bool = False,
+    ):
         def _prepare_kwargs(_err, _out, _tee):
             kwargs = {}
             if _out:
-                kwargs['_out'] = _out
+                kwargs["_out"] = _out
             if _err:
-                kwargs['_err'] = _err
+                kwargs["_err"] = _err
             if _tee:
-                kwargs['_tee'] = True
+                kwargs["_tee"] = True
             return kwargs
 
         self.LOG.info("Running command: {}".format(cmd))
@@ -61,9 +68,9 @@ class CommandRunner:
 
         return output, exit_code
 
-    def run_async(self, cmd: str,
-                  stdout_callback: Callable[[str], str] = None,
-                  stderr_callback: Callable[[str], str] = None) -> Popen:
+    def run_async(
+        self, cmd: str, stdout_callback: Callable[[str], str] = None, stderr_callback: Callable[[str], str] = None
+    ) -> Popen:
         self.LOG.info("Running command async: {}".format(cmd))
 
         _stdout_callback = stdout_callback
@@ -96,20 +103,24 @@ class CommandRunner:
         return RegularCommandResult(command, args2, proc.stdout, proc.stderr, proc.returncode)
 
     @staticmethod
-    def egrep_with_cli(git_log_result: List[str], file: str, grep_for: str,
-                       escape_single_quotes=True,
-                       escape_double_quotes=True,
-                       fail_on_empty_output=True,
-                       fail_on_error=True):
+    def egrep_with_cli(
+        git_log_result: List[str],
+        file: str,
+        grep_for: str,
+        escape_single_quotes=True,
+        escape_double_quotes=True,
+        fail_on_empty_output=True,
+        fail_on_error=True,
+    ):
         FileUtils.save_to_file(file, StringUtils.list_to_multiline_string(git_log_result))
         if escape_single_quotes or escape_double_quotes:
-            grep_for = StringUtils.escape_str(grep_for,
-                                              escape_single_quotes=escape_single_quotes,
-                                              escape_double_quotes=escape_double_quotes)
-        cli_command = f"cat {file} | egrep \"{grep_for}\""
-        return CommandRunner.run_cli_command(cli_command,
-                                             fail_on_empty_output=fail_on_empty_output,
-                                             fail_on_error=fail_on_error)
+            grep_for = StringUtils.escape_str(
+                grep_for, escape_single_quotes=escape_single_quotes, escape_double_quotes=escape_double_quotes
+            )
+        cli_command = f'cat {file} | egrep "{grep_for}"'
+        return CommandRunner.run_cli_command(
+            cli_command, fail_on_empty_output=fail_on_empty_output, fail_on_error=fail_on_error
+        )
 
     @staticmethod
     def execute_script(script: str, args: str, working_dir: str = None, output_file: str = None, use_tee=False):
@@ -159,16 +170,18 @@ class RegularCommandResult:
 
 class SubprocessCommandRunner:
     @classmethod
-    def run(cls,
-            command,
-            working_dir=None,
-            log_stdout=False,
-            log_stderr=False,
-            log_command_result=False,
-            fail_on_error=False,
-            fail_message="",
-            wait_after=0,
-            wait_message=""):
+    def run(
+        cls,
+        command,
+        working_dir=None,
+        log_stdout=False,
+        log_stderr=False,
+        log_command_result=False,
+        fail_on_error=False,
+        fail_message="",
+        wait_after=0,
+        wait_message="",
+    ):
         if working_dir:
             FileUtils.change_cwd(working_dir)
 
@@ -197,10 +210,10 @@ class SubprocessCommandRunner:
             time.sleep(wait_after)
 
     @classmethod
-    def run_and_follow_stdout_stderr(cls, cmd, log_file=FileUtils.get_temp_file_name(),
-                                     stdout_logger=None,
-                                     exit_on_nonzero_exitcode=False):
-        #TODO stderr is not logged at all
+    def run_and_follow_stdout_stderr(
+        cls, cmd, log_file=FileUtils.get_temp_file_name(), stdout_logger=None, exit_on_nonzero_exitcode=False
+    ):
+        # TODO stderr is not logged at all
         if not stdout_logger:
             stdout_logger = LOG
         args = shlex.split(cmd)
@@ -209,14 +222,16 @@ class SubprocessCommandRunner:
         LOG.info(f"Config: Logging stderr to stdout, and stdout to logger. The logger is: {stdout_logger}")
         LOG.info(f"Config: Also logging to file: {log_file}")
 
-        with open(log_file, 'w') as f:
+        with open(log_file, "w") as f:
             # Redirect stderr to stdout
             process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             LOG.info(f"Returned process from subprocess.Popen: {process}")
-            for line in io.TextIOWrapper(process.stdout, encoding="utf-8"):
+            stdout_wrapper = io.TextIOWrapper(process.stdout, encoding="utf-8")
+            for line in stdout_wrapper:
                 line = line.strip()
                 stdout_logger.info(line)
                 f.write(line + os.linesep)
+            stdout_wrapper.close()
             while process.poll() is None:
                 LOG.info("Waiting for process to terminate...")
                 time.sleep(2)
@@ -228,7 +243,7 @@ class SubprocessCommandRunner:
             return process
 
 
-#TODO Warning: untested
+# TODO Warning: untested
 class InteractiveCommandRunner:
     # https://intellij-support.jetbrains.com/hc/en-us/community/posts/360003383619-Pycharm-2019-termios-error-25-Inappropriate-ioctl-for-device-
     # In PyCharm, in Run configurations, this must be enabled: Emulate terminal in output console
@@ -249,12 +264,15 @@ class InteractiveCommandRunner:
 
         # use os.setsid() make it run in a new process group, or bash job control will not be enabled
 
-        p = subprocess.Popen(command,
-                             preexec_fn=os.setsid,
-                             stdin=slave_fd,
-                             stdout=slave_fd,
-                             stderr=slave_fd,
-                             universal_newlines=True, shell=True)
+        p = subprocess.Popen(
+            command,
+            preexec_fn=os.setsid,
+            stdin=slave_fd,
+            stdout=slave_fd,
+            stderr=slave_fd,
+            universal_newlines=True,
+            shell=True,
+        )
 
         while p.poll() is None:
             r, w, e = select.select([sys.stdin, master_fd], [], [])
