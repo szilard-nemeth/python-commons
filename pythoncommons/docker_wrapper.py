@@ -340,16 +340,17 @@ class DockerTestSetup:
 
         if not stream:
             if ret:
-                return ret.decode(charset)
+                return 0, ret.decode(charset)
             else:
                 LOG.warning("Return value was None")
-                return None
+                return 0, None
 
         if detach:
-            return None
+            return 0, None
 
         LOG.info(f"Listing stdout of cmd: {cmd}...")
         short_cmd = os.path.basename(cmd).rstrip()
+        decoded_stdout = None
         for output in ret:
             try:
                 decoded_stdout = output.decode(charset)
@@ -366,7 +367,7 @@ class DockerTestSetup:
             raise ValueError(
                 f"Command '{cmd}' returned with non-zero exit code: {exit_code}. See logs above for more details."
             )
-        return exit_code
+        return exit_code, decoded_stdout
 
     def inspect_container(self, container_id: str):
         return DockerWrapper.inspect_container(container_id)
@@ -410,10 +411,10 @@ class DockerTestSetup:
         if create_container_path_mode:
             if create_container_path_mode == CreatePathMode.PARENT_PATH:
                 path_to_create = FileUtils.basename(container_target_path)
-                exit_code = self.exec_cmd_in_container(f"ls {path_to_create}", fail_on_error=False)
+                exit_code, _ = self.exec_cmd_in_container(f"ls {path_to_create}", fail_on_error=False)
             elif create_container_path_mode == CreatePathMode.FULL_PATH:
                 path_to_create = container_target_path
-                exit_code = self.exec_cmd_in_container(f"ls {path_to_create}", fail_on_error=False)
+                exit_code, _ = self.exec_cmd_in_container(f"ls {path_to_create}", fail_on_error=False)
             else:
                 raise ValueError("Unknown create path mode: {}".format(create_container_path_mode))
 
@@ -422,7 +423,7 @@ class DockerTestSetup:
 
     def create_dirs_in_container(self, path_to_create):
         LOG.debug("Creating directories (recursive) '%s' in container '%s'", path_to_create, self.container.id)
-        exit_code = self.exec_cmd_in_container(f"mkdir -p {path_to_create}")
+        exit_code, _ = self.exec_cmd_in_container(f"mkdir -p {path_to_create}")
         if exit_code != 0:
             raise ValueError(
                 "Failed to create directories '{}' in container {}".format(path_to_create, self.container.id)
