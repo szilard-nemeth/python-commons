@@ -329,9 +329,15 @@ class DockerTestSetup:
         detach=False,
         callback=None,
         stream=False,
+        strict: bool = True,
     ):
         if not env:
             env = {}
+        if strict:
+            if not stream and callback:
+                raise ValueError(
+                    "Callback is specified but streaming mode is not enabled! Callback only makes sense if streaming mode is active!"
+                )
 
         # https://stackoverflow.com/questions/29663459/python-app-does-not-print-anything-when-running-detached-in-docker
         env["PYTHONUNBUFFERED"] = "1"
@@ -367,7 +373,8 @@ class DockerTestSetup:
             if ret:
                 decoded_stdout = ret.decode(charset)
                 if strip:
-                    return decoded_stdout.strip()
+                    decoded_stdout = decoded_stdout.strip()
+                self.CMD_LOG.info(f"[{short_cmd}] {decoded_stdout}")
                 return decoded_stdout
             else:
                 LOG.warning("Output was None")
