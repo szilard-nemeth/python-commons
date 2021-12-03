@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import time
 from enum import Enum
 from typing import List, Tuple, Dict
 
@@ -327,7 +328,7 @@ class DockerTestSetup:
         env: Dict[str, str] = None,
         detach=False,
         callback=None,
-        stream=True,
+        stream=False,
     ):
         if not env:
             env = {}
@@ -338,7 +339,7 @@ class DockerTestSetup:
         exec_handler = DockerWrapper.client.exec_create(self.container.id, cmd, environment=env, stdin=stdin, tty=tty)
         ret = DockerWrapper.client.exec_start(exec_handler, stream=stream, detach=detach)
 
-        exit_code: int = self._get_exit_code(exec_handler)
+        exit_code: int = self._get_exit_code(cmd, exec_handler, stream)
         if fail_on_error and exit_code != 0:
             raise ValueError(
                 f"Command '{cmd}' returned with non-zero exit code: {exit_code}. See logs above for more details."
@@ -374,8 +375,28 @@ class DockerTestSetup:
         return exit_code, decoded_stdout
 
     @staticmethod
-    def _get_exit_code(exec_handler):
-        return DockerWrapper.client.exec_inspect(exec_handler["Id"]).get("ExitCode")
+    def _get_exit_code(cmd: str, exec_handler, stream: bool, max_wait_seconds: int = 5):
+        """
+        client.exec_inspect(exec_handler["Id"]).get("ExitCode") does not immediately returns the exit code.
+        Try to wait for it for some time.
+        :param exec_handler:
+        :return:
+        """
+        slept_seconds = 0
+        if stream:
+            return DockerWrapper.client.exec_inspect(exec_handler["Id"]).get("ExitCode")
+
+        while True:
+            exit_code: int = DockerWrapper.client.exec_inspect(exec_handler["Id"]).get("ExitCode")
+            LOG.debug("Command: '%s', exit code: %s", cmd, exit_code)
+            if exit_code is not None:
+                return exit_code
+            else:
+                LOG.debug("Commnand: '%s', exit code is still None. Sleeping 1s...")
+                time.sleep(1)
+                slept_seconds += 1
+            if slept_seconds == max_wait_seconds:
+                return None
 
     def inspect_container(self, container_id: str):
         return DockerWrapper.inspect_container(container_id)
