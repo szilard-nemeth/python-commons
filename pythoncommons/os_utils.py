@@ -48,6 +48,8 @@ class OsUtils:
                     "Setting value of env variable '%s' to : %s. Old value was: %s", env_name, env_value, old_value
                 )
         else:
+            if isinstance(env_value, bool):
+                env_value = str(env_value)
             if not suppress:
                 LOG.debug("Setting value of env variable '%s' to : %s", env_name, env_value)
         if cls.TRACK_UPDATES:
