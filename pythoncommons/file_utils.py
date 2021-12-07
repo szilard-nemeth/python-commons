@@ -16,7 +16,6 @@ from stat import ST_MTIME
 import humanize
 
 from pythoncommons.date_utils import timeit
-from pythoncommons.string_utils import RegexUtils
 
 LOG = logging.getLogger(__name__)
 
@@ -52,9 +51,11 @@ class FileFinder:
 
     @classmethod
     def _is_file_matches_criteria(cls, file, parent_dir, criteria: FileFinderCriteria):
-        if (criteria.extension and not file.endswith("." + criteria.extension)) or \
-                (criteria.regex_pattern and not criteria.regex_pattern.match(file)) or \
-                (criteria.parent_dir and not criteria.parent_dir == parent_dir):
+        if (
+            (criteria.extension and not file.endswith("." + criteria.extension))
+            or (criteria.regex_pattern and not criteria.regex_pattern.match(file))
+            or (criteria.parent_dir and not criteria.parent_dir == parent_dir)
+        ):
             return False
         return True
 
@@ -107,18 +108,23 @@ class FileFinder:
         return result
 
     @classmethod
-    def find_files(cls, basedir: str,
-                   find_type: FindResultType,
-                   regex: str = None,
-                   parent_dir: str = None,
-                   single_level=False,
-                   full_path_result=False,
-                   extension=None,
-                   debug=False,
-                   exclude_dirs: List[str] = None):
+    def find_files(
+        cls,
+        basedir: str,
+        find_type: FindResultType,
+        regex: str = None,
+        parent_dir: str = None,
+        single_level=False,
+        full_path_result=False,
+        extension=None,
+        debug=False,
+        exclude_dirs: List[str] = None,
+    ):
         cls.old_debug = cls.debug
         cls.debug = debug
-        find_criteria: FileFinderCriteria = cls._get_criteria_from_args(exclude_dirs, extension, regex, parent_dir, full_path_result)
+        find_criteria: FileFinderCriteria = cls._get_criteria_from_args(
+            exclude_dirs, extension, regex, parent_dir, full_path_result
+        )
         result_files: List[str] = []
         for root, dirs, files in os.walk(basedir, **FileFinder._get_os_walk_kwargs(exclude_dirs)):
             cls._smartlog(f"Processing root: {root}, dirs: {dirs}")
@@ -151,17 +157,17 @@ class FileFinder:
 class FileUtils:
     previous_cwd = None
 
-    #TODO consolidate with save_to_file
+    # TODO consolidate with save_to_file
     @classmethod
     def write_to_file(cls, file_path, data):
-        f = open(file_path, 'w')
+        f = open(file_path, "w")
         f.write(data)
         f.close()
 
     @classmethod
     def write_to_tempfile(cls, contents):
         tmp = tempfile.NamedTemporaryFile(delete=False)
-        with open(tmp.name, 'w') as f:
+        with open(tmp.name, "w") as f:
             f.write(contents)
         return tmp.name
 
@@ -183,15 +189,15 @@ class FileUtils:
         dirname = os.path.dirname(path)
         if not os.path.exists(dirname):
             os.makedirs(dirname)
-        file = open(path, 'a')
+        file = open(path, "a")
         file.write(data)
         file.close()
 
     @classmethod
     def ensure_dir_created(cls, dirname, log_exception=False):
         """
-    Ensure that a named directory exists; if it does not, attempt to create it.
-    """
+        Ensure that a named directory exists; if it does not, attempt to create it.
+        """
         try:
             os.makedirs(dirname)
         except OSError as e:
@@ -307,8 +313,9 @@ class FileUtils:
             path = FileUtils.get_parent_dir_name(path)
             visited.append(path)
         if path == os.sep:
-            message = "Failed to find directory '{}' starting from path '{}'. " \
-                              "Visited: {}".format(root_dir_name, orig_path, visited)
+            message = "Failed to find directory '{}' starting from path '{}'. " "Visited: {}".format(
+                root_dir_name, orig_path, visited
+            )
             if raise_error:
                 raise ValueError(message)
             else:
@@ -339,37 +346,39 @@ class FileUtils:
 
         if raise_error and path == os.sep:
             raise ValueError(
-                f"Failed to find project root directory starting from path '{orig_path}'. "
-                f"Visited: {visited}")
+                f"Failed to find project root directory starting from path '{orig_path}'. " f"Visited: {visited}"
+            )
 
         return path, visited
 
     # TODO rename method
     @classmethod
-    def find_files(cls, basedir,
-                   find_type: FindResultType = FindResultType.FILES,
-                   regex: str = None,
-                   parent_dir: str = None,
-                   single_level=False,
-                   full_path_result=False,
-                   extension=None,
-                   debug=False,
-                   exclude_dirs: List[str] = None):
+    def find_files(
+        cls,
+        basedir,
+        find_type: FindResultType = FindResultType.FILES,
+        regex: str = None,
+        parent_dir: str = None,
+        single_level=False,
+        full_path_result=False,
+        extension=None,
+        debug=False,
+        exclude_dirs: List[str] = None,
+    ):
         args = locals().copy()
         del args["cls"]
         return FileFinder.find_files(**args)
 
     @staticmethod
     def list_files_in_dir(dir, pattern=None):
-        LOG.info('Listing files in dir: ' + dir)
+        LOG.info("Listing files in dir: " + dir)
         if not pattern:
             result = [f for f in os.listdir(dir) if os.path.isfile(os.path.join(dir, f))]
         else:
             result = []
             for f in os.listdir(dir):
                 file_path = os.path.join(dir, f)
-                if os.path.isfile(file_path) and \
-                        FileUtils.does_filename_match(f, pattern, FileMatchType.fnmatch):
+                if os.path.isfile(file_path) and FileUtils.does_filename_match(f, pattern, FileMatchType.fnmatch):
                     result.append(file_path)
         return result
 
@@ -395,6 +404,8 @@ class FileUtils:
 
     @classmethod
     def remove_files(cls, dir, pattern):
+        from pythoncommons.string_utils import RegexUtils
+
         if not FileUtils.does_file_exist(dir):
             LOG.warning("Directory does not exist: %s", dir)
             return
@@ -438,13 +449,15 @@ class FileUtils:
                 # elif os.path.isdir(file_path):
                 #     shutil.rmtree(file_path)
             except Exception as e:
-                print('Failed to delete %s. Reason: %s' % (file_path, e))
+                print("Failed to delete %s. Reason: %s" % (file_path, e))
 
     @classmethod
     def remove_dir(cls, dir, force=False):
-        protected_dirs = ("/", '~')
+        protected_dirs = ("/", "~")
         if dir in protected_dirs:
-            LOG.warning("Remove dir was invoked with directory: %s, which is in the protected dirs: %s", dir, protected_dirs)
+            LOG.warning(
+                "Remove dir was invoked with directory: %s, which is in the protected dirs: %s", dir, protected_dirs
+            )
             return
         if force:
             shutil.rmtree(dir, ignore_errors=True)
@@ -542,7 +555,7 @@ class FileUtils:
         dirname = os.path.dirname(path)
         if not os.path.exists(dirname):
             os.makedirs(dirname)
-        file = open(path, 'w')
+        file = open(path, "w")
         file.close()
 
     @classmethod
@@ -602,9 +615,7 @@ class FileUtils:
 
     @classmethod
     def join_path(cls, *components):
-        if components and components[0] and \
-                not components[0].startswith(os.sep) and \
-                not components[0].startswith("~"):
+        if components and components[0] and not components[0].startswith(os.sep) and not components[0].startswith("~"):
             lst = list(components)
             lst[0] = os.sep + components[0]
             components = tuple(lst)
@@ -613,9 +624,13 @@ class FileUtils:
     @classmethod
     def make_path(cls, basedir, dirs):
         if not isinstance(dirs, list):
-            LOG.warning("%s was called with wrong argument type for 'dirs', "
-                        "list is expected. Value of parameter: %s. "
-                        "Converting parameter to a list!", FileUtils.make_path, dirs)
+            LOG.warning(
+                "%s was called with wrong argument type for 'dirs', "
+                "list is expected. Value of parameter: %s. "
+                "Converting parameter to a list!",
+                FileUtils.make_path,
+                dirs,
+            )
             dirs = [dirs]
         return os.path.join(basedir, *dirs)
 
@@ -630,7 +645,7 @@ class FileUtils:
         dir_path_parts = Path(dir).parts
         try:
             idx = dir_path_parts.index(parent_path_parts[0])
-        except ValueError as e:
+        except ValueError:
             # Do not log anything
             return False
 
@@ -642,7 +657,6 @@ class FileUtils:
     @classmethod
     def get_path_components(cls, path):
         return path.rsplit(os.sep)
-
 
     @classmethod
     def get_mod_dates_of_files(cls, basedir, *files):
@@ -671,7 +685,7 @@ class FileUtils:
         for f in files:
             src_path = os.path.join(src, f)
             dst_path = os.path.join(dst, f)
-            LOG.info('Moving: {} --> {}', src_path, dst_path)
+            LOG.info("Moving: {} --> {}", src_path, dst_path)
             os.rename(src_path, dst_path)
 
     @classmethod
@@ -712,7 +726,7 @@ class FileUtils:
     @classmethod
     def hash_file(cls, f):
         blocksize = 65536
-        with open(f, 'rb') as file:
+        with open(f, "rb") as file:
             hasher = hashlib.md5()
             buf = file.read(blocksize)
             while len(buf) > 0:
@@ -743,16 +757,16 @@ class FileUtils:
     def get_unique_filepath(cls, dest_file):
         while FileUtils.does_path_exist(dest_file):
             file_path, ext = os.path.splitext(dest_file)
-            dest_file = file_path + '_1' + ext
+            dest_file = file_path + "_1" + ext
         return dest_file
 
     @classmethod
     def read_file(cls, f):
-        return open(f, 'r').read()
+        return open(f, "r").read()
 
     @classmethod
     def read_file_to_list(cls, f):
-        return open(f, 'r').read().splitlines()
+        return open(f, "r").read().splitlines()
 
     @classmethod
     def does_file_contain_str(cls, file, string):
@@ -762,9 +776,9 @@ class FileUtils:
             return False
 
     @classmethod
-    def create_symlink_path_dir(cls, link_name, linked_path, dest_dir,
-                                remove_link_if_exists=True,
-                                remove_linked_file_if_exists=False):
+    def create_symlink_path_dir(
+        cls, link_name, linked_path, dest_dir, remove_link_if_exists=True, remove_linked_file_if_exists=False
+    ):
         link_src = linked_path
         link_dest = FileUtils.join_path(dest_dir, link_name)
         if remove_link_if_exists:
@@ -819,8 +833,8 @@ class JsonFileUtils:
             raise ValueError("Should have a dir in path, not a file: {}".format(dirname))
 
         LOG.info("Starting to write to file: %s", path)
-        with open(path, 'w') as file:
-            kwargs = {'sort_keys': True}
+        with open(path, "w") as file:
+            kwargs = {"sort_keys": True}
             if pretty:
                 kwargs["indent"] = 4
             json.dump(data, file, **kwargs)
@@ -829,8 +843,9 @@ class JsonFileUtils:
     @classmethod
     def load_data_from_json_file(cls, file):
         import json
+
         try:
-            with open(file, 'r') as f:
+            with open(file, "r") as f:
                 return json.load(f)
         except FileNotFoundError:
             LOG.exception("Error during opening file: %s", file)
@@ -853,10 +868,10 @@ class CsvFileUtils:
 
         new_file = True if not os.path.exists(path) else False
 
-        with open(path, 'a', newline='') as csvfile:
+        with open(path, "a", newline="") as csvfile:
             import csv
-            csv_writer = csv.writer(csvfile, delimiter=';',
-                                    quotechar='|', quoting=csv.QUOTE_MINIMAL)
+
+            csv_writer = csv.writer(csvfile, delimiter=";", quotechar="|", quoting=csv.QUOTE_MINIMAL)
             if new_file and header:
                 csv_writer.writerow(header)
             csv_writer.writerow(data)
