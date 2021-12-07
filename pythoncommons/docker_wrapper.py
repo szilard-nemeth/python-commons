@@ -349,20 +349,26 @@ class DockerTestSetup:
         # This means that when the loop that reads the output ends, the process is finished.
         # Therefore, handle stream mode separately.
         if not stream:
-            exit_code: int = self._get_exit_code(cmd, exec_handler, stream)
-            if fail_on_error and exit_code != 0:
-                _ = self._get_output_of_cmd(cmd, ret, callback, charset, strip, stream)
-                raise ValueError(
-                    f"Command '{cmd}' returned with non-zero exit code: {exit_code}. See logs above for more details."
-                )
+            self._get_and_verify_exit_code(callback, charset, cmd, exec_handler, fail_on_error, ret, stream, strip)
 
         if detach:
             exit_code: int = self._get_exit_code(cmd, exec_handler, stream)
             return exit_code, None
 
         decoded_stdout = self._get_output_of_cmd(cmd, ret, callback, charset, strip, stream)
-        exit_code: int = self._get_exit_code(cmd, exec_handler, stream)
+        exit_code = self._get_and_verify_exit_code(
+            callback, charset, cmd, exec_handler, fail_on_error, ret, stream, strip
+        )
         return exit_code, decoded_stdout
+
+    def _get_and_verify_exit_code(self, callback, charset, cmd, exec_handler, fail_on_error, ret, stream, strip):
+        exit_code: int = self._get_exit_code(cmd, exec_handler, stream)
+        if fail_on_error and exit_code != 0:
+            _ = self._get_output_of_cmd(cmd, ret, callback, charset, strip, stream)
+            raise ValueError(
+                f"Command '{cmd}' returned with non-zero exit code: {exit_code}. See logs above for more details."
+            )
+        return exit_code
 
     def _get_output_of_cmd(self, cmd, ret, callback, charset, strip, stream):
         LOG.info(f"Listing stdout of cmd: {cmd}...")
