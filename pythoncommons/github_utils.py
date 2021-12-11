@@ -17,7 +17,7 @@ class GitHubUtils:
     def is_github_ci_execution() -> bool:
         is_github_ci_exec = OsUtils.get_env_value(GithubActionsEnvVar.GITHUB_ACTIONS.value)
         if is_github_ci_exec:
-            LOG.debug("Identified Github Actions CI execution")
+            LOG.debug("Detected Github Actions CI execution")
             return True
         return False
 
@@ -25,5 +25,5 @@ class GitHubUtils:
     def get_workspace_path() -> str:
         github_ws_path = OsUtils.get_env_value(GithubActionsEnvVar.GITHUB_WORKSPACE.value)
         if github_ws_path:
-            LOG.debug("Identified Github Actions CI workspace path: %s", github_ws_path)
+            LOG.debug("Detected Github Actions CI workspace path: %s", github_ws_path)
         return github_ws_path
