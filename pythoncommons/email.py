@@ -48,7 +48,8 @@ class EmailService:
         log_exception_when_retried: bool = True,
     ):
         self._validate_config(recipients)
-
+        saved_args = locals()
+        LOG.debug("Received args: %s", saved_args)
         email_msg = None
         if attachment_file:
             FileUtils.ensure_file_exists(attachment_file)
