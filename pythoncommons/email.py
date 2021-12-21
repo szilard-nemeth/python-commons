@@ -48,21 +48,23 @@ class EmailService:
         log_exception_when_retried: bool = True,
     ):
         self._validate_config(recipients)
-        saved_args = locals()
+        saved_args = locals().copy()
+        # Do not log HTML contents
+        del saved_args["body"]
         LOG.debug("Received args: %s", saved_args)
-        email_msg = None
-        if attachment_file:
+        mime_text = MIMEText(str(body), body_mimetype.value)
+        if not attachment_file:
+            email_msg = mime_text
+        else:
             FileUtils.ensure_file_exists(attachment_file)
             # https://stackoverflow.com/a/169406/1106893
             email_msg = MIMEMultipart()
-            email_msg.attach(MIMEText(str(body), body_mimetype.value))
+            email_msg.attach(mime_text)
             if override_attachment_filename:
                 attachment = self._create_attachment(attachment_file, attachment_name=override_attachment_filename)
             else:
                 attachment = self._create_attachment(attachment_file)
             email_msg.attach(attachment)
-        else:
-            email_msg = MIMEText(str(body))
         recipients_comma_separated = self._add_common_email_data(email_msg, recipients, sender, subject)
         self._connect_to_server_and_send(
             email_msg,
