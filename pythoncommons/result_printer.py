@@ -118,7 +118,8 @@ class TableRenderingConfig:
         bool_conversion_config: BoolConversionConfig = None,
         colorize_config: ColorizeConfig = None,
         print_result: bool = True,
-        tabulate_format=TabulateTableFormat.GRID,
+        tabulate_format: TabulateTableFormat = None,
+        tabulate_formats: List[TabulateTableFormat] = None,
     ):
         self.row_callback = row_callback
         self.join_lists_by_comma = join_lists_by_comma
@@ -129,37 +130,32 @@ class TableRenderingConfig:
         self.colorize_config = colorize_config
         self.print_result = print_result
         self.tabulate_format = tabulate_format
+        self.tabulate_formats = tabulate_formats
+
+        # Validation
+        if not self.tabulate_format and not self.tabulate_formats:
+            raise ValueError("Either of tabulate_format or tabulate_formats should be specified!")
+        if self.tabulate_format and self.tabulate_formats:
+            raise ValueError(
+                "Can't decide if tabulate_format or tabulate_formats should be used. Please only use either of them!"
+            )
 
 
 class ResultPrinter:
     @staticmethod
     def print_tables(
         data,
-        row_callback,
         header,
-        print_result=True,
-        max_width: int = None,
-        max_width_separator: str = " ",
-        bool_conversion_config: BoolConversionConfig = None,
-        colorize_config: ColorizeConfig = None,
-        tabulate_fmts=None,
-        add_row_numbers=True,
+        render_conf: TableRenderingConfig,
         verbose=False,
     ):
-        if not tabulate_fmts:
-            tabulate_fmts = DEFAULT_TABLE_FORMATS
-
-        orig_args = locals().copy()
         tables = {}
-        for fmt in tabulate_fmts:
-            args = orig_args.copy()
-            del args["tabulate_fmts"]
-            args["tabulate_format"] = fmt
+        if verbose:
+            LOG.debug("Rendering config for table is: %s", render_conf)
+        for table_format in render_conf.tabulate_formats:
             if verbose:
-                LOG.debug(f"Calling {ResultPrinter.print_table.__name__} with args: {args}")
-            render_conf = TableRenderingConfig(**args)
-            table = ResultPrinter.print_table(data, header, render_conf=render_conf)
-            tables[fmt] = table
+                LOG.debug("Calling %s with table format: %s", ResultPrinter.print_table.__name__, table_format)
+            tables[table_format] = ResultPrinter.print_table(data, header, render_conf=render_conf)
         return tables
 
     @staticmethod
