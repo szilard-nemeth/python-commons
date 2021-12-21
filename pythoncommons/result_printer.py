@@ -19,12 +19,12 @@ DEFAULT_TABLE_FORMATS = [TabulateTableFormat.GRID, TabulateTableFormat.HTML]
 class GenericTableWithHeader:
     def __init__(
         self,
-            header_title: str,
-            header_list: List[str],
-            source_data: Any,
-            rendered_table: str,
-            table_fmt: TabulateTableFormat,
-            colorized: bool = False
+        header_title: str,
+        header_list: List[str],
+        source_data: Any,
+        rendered_table: str,
+        table_fmt: TabulateTableFormat,
+        colorized: bool = False,
     ):
         self.header = (
             StringUtils.generate_header_line(
@@ -107,57 +107,33 @@ class BoolConversionConfig:
 
 
 @auto_str
-class ConversionConfig:
+class TableRenderingConfig:
     def __init__(
         self,
+        row_callback,  # TODO specify type
         join_lists_by_comma: bool = True,
         add_row_numbers: bool = True,
         max_width: int = None,
         max_width_separator: str = " ",
         bool_conversion_config: BoolConversionConfig = None,
         colorize_config: ColorizeConfig = None,
+        print_result: bool = True,
+        tabulate_format=TabulateTableFormat.GRID,
     ):
+        self.row_callback = row_callback
         self.join_lists_by_comma = join_lists_by_comma
         self.add_row_numbers = add_row_numbers
         self.max_width = max_width
         self.max_width_separator = max_width_separator
         self.bool_conversion_config = bool_conversion_config
         self.colorize_config = colorize_config
+        self.print_result = print_result
+        self.tabulate_format = tabulate_format
 
 
 class ResultPrinter:
     @staticmethod
     def print_tables(
-            data,
-            row_callback,
-            header,
-            print_result=True,
-            max_width: int = None,
-            max_width_separator: str = " ",
-            bool_conversion_config: BoolConversionConfig = None,
-            colorize_config: ColorizeConfig = None,
-            tabulate_fmts=None,
-            add_row_numbers=True,
-            verbose=False):
-        if not tabulate_fmts:
-            tabulate_fmts = DEFAULT_TABLE_FORMATS
-
-        orig_args = locals().copy()
-        tables = {}
-        for fmt in tabulate_fmts:
-            args = orig_args.copy()
-            del args["tabulate_fmts"]
-            args["tabulate_fmt"] = fmt
-            if verbose:
-                LOG.debug(f"Calling {ResultPrinter.print_table.__name__} with args: {args}")
-            table = ResultPrinter.print_table(**args)
-            tables[fmt] = table
-        return tables
-
-
-    # TODO Signature can be modified later if all usages migrated to use ConversionConfig object as input
-    @staticmethod
-    def print_table(
         data,
         row_callback,
         header,
@@ -166,47 +142,58 @@ class ResultPrinter:
         max_width_separator: str = " ",
         bool_conversion_config: BoolConversionConfig = None,
         colorize_config: ColorizeConfig = None,
-        tabulate_fmt=TabulateTableFormat.GRID,
+        tabulate_fmts=None,
         add_row_numbers=True,
-        verbose=False
+        verbose=False,
     ):
-        conversion_config = ConversionConfig(
-            max_width=max_width,
-            max_width_separator=max_width_separator,
-            bool_conversion_config=bool_conversion_config,
-            colorize_config=colorize_config,
-            add_row_numbers=add_row_numbers
-        )
-        conversion_result = ResultPrinter.convert_list_data(data, row_callback, conversion_config)
+        if not tabulate_fmts:
+            tabulate_fmts = DEFAULT_TABLE_FORMATS
+
+        orig_args = locals().copy()
+        tables = {}
+        for fmt in tabulate_fmts:
+            args = orig_args.copy()
+            del args["tabulate_fmts"]
+            args["tabulate_format"] = fmt
+            if verbose:
+                LOG.debug(f"Calling {ResultPrinter.print_table.__name__} with args: {args}")
+            render_conf = TableRenderingConfig(**args)
+            table = ResultPrinter.print_table(data, header, render_conf=render_conf)
+            tables[fmt] = table
+        return tables
+
+    @staticmethod
+    def print_table(data, header, render_conf: TableRenderingConfig):
+        conversion_result = ResultPrinter.convert_list_data(data, render_conf)
         # LOG.debug(f"Conversion result: {conversion_result}")
-        tabulated = tabulate(conversion_result.dst_data, header, tablefmt=tabulate_fmt.value)
-        if print_result:
+        tabulated = tabulate(conversion_result.dst_data, header, tablefmt=render_conf.tabulate_format.value)
+        if render_conf.print_result:
             print(tabulated)
         return tabulated
 
     @staticmethod
-    def convert_list_data(src_data, row_callback, conf: ConversionConfig):
+    def convert_list_data(src_data, render_conf: TableRenderingConfig):
         result = []
         for idx, src_row in enumerate(src_data):
-            row = row_callback(src_row)
+            row = render_conf.row_callback(src_row)
             converted_row = []
-            if conf.add_row_numbers:
+            if render_conf.add_row_numbers:
                 converted_row.append(idx + 1)
             for cell in row:
-                if conf.join_lists_by_comma and isinstance(cell, list):
+                if render_conf.join_lists_by_comma and isinstance(cell, list):
                     cell = ", ".join(cell)
 
-                bcc = conf.bool_conversion_config
+                bcc = render_conf.bool_conversion_config
                 if bcc and isinstance(cell, bool):
                     cell = bcc.convert_true_to if cell else bcc.convert_false_to
-                if conf.max_width and isinstance(cell, str):
+                if render_conf.max_width and isinstance(cell, str):
                     cell = StringUtils.convert_string_to_multiline(
-                        cell, max_line_length=conf.max_width, separator=conf.max_width_separator
+                        cell, max_line_length=render_conf.max_width, separator=render_conf.max_width_separator
                     )
                 converted_row.append(cell)
 
-            if conf.colorize_config:
-                ResultPrinter._colorize_row(conf.colorize_config, converted_row, row)
+            if render_conf.colorize_config:
+                ResultPrinter._colorize_row(render_conf.colorize_config, converted_row, row)
             result.append(converted_row)
 
         return ConversionResult(src_data, result)
@@ -217,7 +204,7 @@ class ResultPrinter:
         truthy = []
         for cd in conf.descriptors:
             filtered_type_values = list(
-                filter(lambda x: type(x) == cd.type, row_as_list[cd.scan_range[0]: cd.scan_range[1]])
+                filter(lambda x: type(x) == cd.type, row_as_list[cd.scan_range[0] : cd.scan_range[1]])
             )
             match_count = 0
             for idx, val in enumerate(filtered_type_values):
@@ -245,12 +232,14 @@ class ResultPrinter:
 
     # TODO Users of this function should be migrated to _colorize_row and the new ResultPrinter
     @staticmethod
-    def colorize_row(curr_row,
-            convert_bools=False,
-            char_if_present="X",
-            char_if_not_present="-",
-            color_if_okay="green",
-            color_if_not_okay="red"):
+    def colorize_row(
+        curr_row,
+        convert_bools=False,
+        char_if_present="X",
+        char_if_not_present="-",
+        color_if_okay="green",
+        color_if_not_okay="red",
+    ):
         res = []
         missing_backport = False
         if not all(curr_row[1:]):
