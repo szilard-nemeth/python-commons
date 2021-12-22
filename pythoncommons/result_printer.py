@@ -153,6 +153,8 @@ class ResultPrinter:
         if verbose:
             LOG.debug("Rendering config for table is: %s", render_conf)
         for table_format in render_conf.tabulate_formats:
+            # TODO this is a dirty hack to avoid: AttributeError: 'NoneType' object has no attribute 'value'
+            render_conf.tabulate_format = table_format
             if verbose:
                 LOG.debug("Calling %s with table format: %s", ResultPrinter.print_table.__name__, table_format)
             tables[table_format] = ResultPrinter.print_table(data, header, render_conf=render_conf)
