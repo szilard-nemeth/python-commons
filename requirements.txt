@@ -12,3 +12,4 @@ tabulate
 docker
 sh~=1.14.1
 colr~=0.9.1
+jira
