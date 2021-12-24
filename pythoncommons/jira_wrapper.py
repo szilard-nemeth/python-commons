@@ -6,6 +6,7 @@ import requests
 from jira import JIRA, JIRAError, Issue
 from jira.resources import Attachment
 
+from pythoncommons.file_utils import FileUtils
 from pythoncommons.string_utils import StringUtils
 
 LOG = logging.getLogger(__name__)
@@ -118,8 +119,7 @@ class JiraWrapper:
 
                 # TODO let JiraPatch object create the path
                 patch.set_patch_file_path(patch_file_path)
-                with open(patch_file_path, "w") as file:
-                    file.write(attachment_data)
+                FileUtils.write_to_file(patch_file_path, attachment_data, bytes=True)
                 found = True
                 break
 

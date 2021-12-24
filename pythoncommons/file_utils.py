@@ -159,8 +159,11 @@ class FileUtils:
 
     # TODO consolidate with save_to_file
     @classmethod
-    def write_to_file(cls, file_path, data):
-        f = open(file_path, "w")
+    def write_to_file(cls, file_path, data, bytes=False):
+        file_access_mode = "w"
+        if bytes:
+            file_access_mode = "wb"
+        f = open(file_path, file_access_mode)
         f.write(data)
         f.close()
 
