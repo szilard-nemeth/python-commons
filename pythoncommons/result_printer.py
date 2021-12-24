@@ -198,6 +198,16 @@ class ResultPrinter:
 
     @staticmethod
     def _colorize_row(conf: ColorizeConfig, converted_row, row):
+        largest_range_end = -1
+        for desc in conf.descriptors:
+            range_end = desc.colorize_range[1]
+            largest_range_end = max(largest_range_end, range_end)
+        if largest_range_end >= len(converted_row):
+            raise ValueError(
+                "Invalid colorize config. Range is larger than number of columns in row. "
+                "Colorize config: {}, row: {}".format(conf, row)
+            )
+
         row_as_list = list(row)
         truthy = []
         for cd in conf.descriptors:
