@@ -1,6 +1,8 @@
 import logging
 import os
 import time
+from dataclasses import dataclass
+from typing import List, Any, Dict
 
 import requests
 from jira import JIRA, JIRAError, Issue
@@ -10,6 +12,13 @@ from pythoncommons.file_utils import FileUtils
 from pythoncommons.string_utils import StringUtils
 
 LOG = logging.getLogger(__name__)
+
+
+@dataclass
+class JiraStatus:
+    status: str
+    resolution: str
+    status_category: str
 
 
 class JiraFetchMode:
@@ -181,3 +190,18 @@ class JiraWrapper:
             owner_name = "unassigned"
             owner_display_name = "unassigned"
         return PatchOwner(owner_name, owner_display_name)
+
+    def search(self, search_jql, max_results=999):
+        return self.jira.search_issues(search_jql, maxResults=max_results)
+
+    def get_subjiras_of_umbrella(self, jira_id):
+        return self.search(f"parent = {jira_id}")
+
+    def get_subjira_statuses_of_umbrella(self, jira_id) -> Dict[str, JiraStatus]:
+        jiras: List[Any] = self.search(f"parent = {jira_id}")
+        return {
+            jira.key: JiraStatus(
+                jira.fields.status.name, jira.fields.resolution, jira.fields.status.statusCategory.name
+            )
+            for jira in jiras
+        }
