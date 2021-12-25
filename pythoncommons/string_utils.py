@@ -14,10 +14,28 @@ LOG = logging.getLogger(__name__)
 
 def auto_str(cls, with_repr=True):
     def __str__(self):
-        return '%s(%s)' % (
-            type(self).__name__,
-            ', '.join('%s=%s' % item for item in vars(self).items())
-        )
+        return "%s(%s)" % (type(self).__name__, ", ".join("%s=%s" % item for item in vars(self).items()))
+
+    cls.__str__ = __str__
+
+    def __repr__(self):
+        return __str__(self)
+
+    if with_repr:
+        cls.__repr__ = __repr__
+    return cls
+
+
+# TODO complete this implementation
+def auto_str2(cls, with_repr=True, exclude_props=None):
+    if not exclude_props:
+        exclude_props = []
+
+    def __str__(self):
+        props = vars(self).items()
+        filtered_props = filter(lambda x: x not in exclude_props, props)
+        ret = "%s(%s)" % (type(self).__name__, ", ".join("%s=%s" % prop for prop in filtered_props))
+        return ret
 
     cls.__str__ = __str__
 
@@ -74,10 +92,10 @@ class StringUtils:
         if not isinstance(unistr, str):
             LOG.warning("Object expected to be unicode: " + str(unistr))
             return str(unistr)
-        normalized = unicodedata.normalize('NFD', unistr).encode('ascii', 'ignore')
-        normalized = normalized.decode('utf-8')
+        normalized = unicodedata.normalize("NFD", unistr).encode("ascii", "ignore")
+        normalized = normalized.decode("utf-8")
         valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
-        valid_title = ''.join(c for c in normalized if c in valid_chars)
+        valid_title = "".join(c for c in normalized if c in valid_chars)
         return valid_title
 
     @staticmethod
@@ -132,8 +150,9 @@ class StringUtils:
     def strip_strings(filename, strip_strs):
         for str, mode in strip_strs:
             if not isinstance(mode, StringUtils.StripMode):
-                raise ValueError(f"Mode of operation is invalid. "
-                                 f"It should be an instance of: {StringUtils.StripMode.__name__}")
+                raise ValueError(
+                    f"Mode of operation is invalid. " f"It should be an instance of: {StringUtils.StripMode.__name__}"
+                )
             if mode == StringUtils.StripMode.BEGINNING:
                 if filename.startswith(str):
                     filename = filename.split(str)[1]
@@ -154,14 +173,12 @@ class StringUtils:
         return escaped_lines
 
     @staticmethod
-    def escape_str(orig_str,
-                   escape_single_quotes=True,
-                   escape_double_quotes=True):
+    def escape_str(orig_str, escape_single_quotes=True, escape_double_quotes=True):
         mod_str = orig_str
         if escape_single_quotes:
             mod_str = mod_str.replace("'", "\\'")
         if escape_double_quotes:
-            mod_str = mod_str.replace("\"", "\\\"")
+            mod_str = mod_str.replace('"', '\\"')
         return mod_str
 
     @staticmethod
@@ -227,7 +244,6 @@ class StringUtils:
     def is_any_of_dir_names_in_path(path, dir_names: List[str]):
         return any(StringUtils.is_dir_name_in_path(path, dirname) for dirname in dir_names)
 
-
     @staticmethod
     def get_list_of_components_from_path(path):
         if os.sep in path:
@@ -262,4 +278,3 @@ class RegexUtils:
                 match,
             )
         return match.group(group)
-
