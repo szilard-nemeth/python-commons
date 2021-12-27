@@ -1,16 +1,87 @@
 import logging
 import os
 from contextlib import closing
+from io import BufferedWriter
 from typing import List
 from zlib import Z_DEFAULT_COMPRESSION
 
 from pythoncommons.file_utils import FileUtils, FileFinder
 import tempfile
 import zipfile
+
+from pythoncommons.string_utils import StringUtils
+
 LOG = logging.getLogger(__name__)
 
 
 class ZipFileUtils:
+    @staticmethod
+    def create_zip_file_advanced(
+        input_files: List[str], dest_filename: str, ignore_filetypes: List[str] = None, output_dir: str = None
+    ):
+        if not ignore_filetypes:
+            ignore_filetypes = []
+
+        sum_len_all_files: int = 0
+        all_ignores_files: int = 0
+        if ignore_filetypes:
+            all_ignores_files, sum_len_all_files, input_files = ZipFileUtils._determine_input_files_based_on_exclusions(
+                all_ignores_files, ignore_filetypes, input_files, sum_len_all_files
+            )
+
+        temp_dir_dest: bool = True if not output_dir or output_dir.startswith("/tmp") else False
+        if output_dir:
+            dest_filepath = FileUtils.join_path(output_dir, dest_filename)
+            zip_file: BufferedWriter = ZipFileUtils.create_zip_file(input_files, dest_filepath, compress=True)
+        else:
+            zip_file: BufferedWriter = ZipFileUtils.create_zip_as_tmp_file(input_files, dest_filename, compress=True)
+
+        zip_file_name = zip_file.name
+        no_of_files_in_zip: int = ZipFileUtils.get_number_of_files_in_zip(zip_file_name)
+        if ignore_filetypes and (sum_len_all_files - all_ignores_files) != no_of_files_in_zip:
+            raise ValueError(
+                f"Unexpected number of files in zip. "
+                f"All files: {sum_len_all_files}, "
+                f"all ignored files: {all_ignores_files}, "
+                f"number of files in zip: {no_of_files_in_zip}, "
+                f"zip file: {zip_file_name}"
+            )
+
+        LOG.info(
+            f"Finished writing command data to zip file: {zip_file_name}, "
+            f"size: {FileUtils.get_file_size(zip_file_name)}"
+        )
+        return zip_file_name, temp_dir_dest
+
+    @staticmethod
+    def _determine_input_files_based_on_exclusions(
+        all_ignores_files, ignore_filetypes, input_files_param, sum_len_all_files
+    ):
+        input_files = []
+        for input_file in input_files_param:
+            if FileUtils.is_dir(input_file):
+                all_files = FileUtils.find_files(input_file, regex=".*", full_path_result=True)
+                sum_len_all_files += len(all_files)
+                files_to_ignore = set()
+                for ext in ignore_filetypes:
+                    new_files_to_ignore = FileUtils.find_files(input_file, extension=ext, full_path_result=True)
+                    all_ignores_files += len(new_files_to_ignore)
+                    LOG.debug(
+                        f"Found {len(new_files_to_ignore)} files to ignore in directory '{input_file}': "
+                        f"{StringUtils.list_to_multiline_string(files_to_ignore)}"
+                    )
+                    files_to_ignore.update(new_files_to_ignore)
+
+                files_to_keep = list(set(all_files).difference(files_to_ignore))
+                tmp_dir: tempfile.TemporaryDirectory = tempfile.TemporaryDirectory()
+                tmp_dir_path = tmp_dir.name
+                FileUtils.copy_files_to_dir(files_to_keep, tmp_dir_path, cut_path=input_file)
+                input_files.append(tmp_dir_path)
+            else:
+                input_files.append(input_file)
+                sum_len_all_files += 1
+        return all_ignores_files, sum_len_all_files, input_files
+
     @staticmethod
     def create_zip_as_tmp_file(src_files: List[str], filename: str, compress=False):
         filename, suffix = ZipFileUtils._validate_zip_file_name(filename)
@@ -19,7 +90,9 @@ class ZipFileUtils:
 
     @staticmethod
     def create_zip_file(src_files: List[str], filename: str, compress=False, ignore_files: List[str] = None):
-        return ZipFileUtils._create_zip_file(src_files, open(filename, mode="wb"), compress=compress, ignore_files=ignore_files)
+        return ZipFileUtils._create_zip_file(
+            src_files, open(filename, mode="wb"), compress=compress, ignore_files=ignore_files
+        )
 
     @staticmethod
     def extract_zip_file(file: str, path: str):
@@ -48,7 +121,7 @@ class ZipFileUtils:
         kwargs = {}
         if compress:
             kwargs["compression"] = zipfile.ZIP_DEFLATED
-            kwargs["compresslevel"] = Z_DEFAULT_COMPRESSION # https://docs.python.org/3/library/zlib.html#zlib.compress
+            kwargs["compresslevel"] = Z_DEFAULT_COMPRESSION  # https://docs.python.org/3/library/zlib.html#zlib.compress
         if not ignore_files:
             ignore_files = []
         zip_file = zipfile.ZipFile(file, "w", **kwargs)
@@ -100,7 +173,7 @@ class ZipFileUtils:
     @staticmethod
     def _add_file_to_zip(zip, dirpath, filename, src_dir):
         file_full_path = os.path.join(dirpath, filename)
-        dir_path_from_src_dir = dirpath.replace(src_dir, '')
+        dir_path_from_src_dir = dirpath.replace(src_dir, "")
         if dir_path_from_src_dir.startswith(os.sep):
             dir_path_from_src_dir = dir_path_from_src_dir[1:]
 
@@ -113,4 +186,3 @@ class ZipFileUtils:
         with closing(zipfile.ZipFile(zip_file)) as archive:
             count = len(archive.infolist())
         return count
-
