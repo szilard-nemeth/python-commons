@@ -5,6 +5,8 @@ from typing import List
 from git import Repo, RemoteProgress, GitCommandError, Commit, Actor
 from pythoncommons.git_constants import ORIGIN
 from pythoncommons.git_constants import HEAD, COMMIT_FIELD_SEPARATOR
+from pythoncommons.git_utils import GitUtils
+from pythoncommons.jira_wrapper import PatchOverallStatus, AdvancedJiraPatch, PatchApply, JiraPatchStatus
 
 FORMAT_CODE_HASH = "%H"
 FORMAT_CODE_COMMIT_MSG = "%s"
@@ -73,7 +75,7 @@ class GitWrapper:
         try:
             result = remote.pull(progress=progress, **kwargs)
             LOG.debug("Result of git pull: %s", result)
-        except GitCommandError as e:
+        except GitCommandError:
             LOG.exception("Failed to execute git command. Printing some diagnostic info...", exc_info=True)
             branch = self.get_current_branch_name()
             LOG.error("Current branch: %s", branch)
@@ -180,6 +182,146 @@ class GitWrapper:
                 raise e
             return False
 
+    def apply_patch_advanced(self, patch: AdvancedJiraPatch, branch_prefix):
+        if not isinstance(patch, AdvancedJiraPatch):
+            raise ValueError("patch must be an instance of JiraPatch!")
+        if not self.repo:
+            raise ValueError("Repository is not yet synced! Please invoke sync_hadoop method before this method!")
+
+        LOG.info("Applying patch %s on branches: %s", patch.filename, patch.target_branches)
+        LOG.debug("Applying patch %s", patch)
+
+        results = []
+        for branch in patch.target_branches:
+            patch_branch_name = "{prefix}-{branch}-{filename}".format(
+                prefix=branch_prefix, branch=branch, filename=patch.filename
+            )
+            target_branch = "origin/" + branch
+
+            if not patch.is_applicable_for_branch(branch):
+                LOG.warning(
+                    "Patch %s is not applicable on branch %s! Reason: %s!",
+                    patch,
+                    branch,
+                    patch.get_reason_for_non_applicability(branch),
+                )
+                results.append(PatchApply(patch, target_branch, JiraPatchStatus.PATCH_ALREADY_COMMITTED))
+                continue
+
+            # If branch already exists, move it to target_branch
+            if patch_branch_name in self.repo.heads:
+                LOG.info(
+                    "Patch branch already exists with name %s, moving branch pointer to %s",
+                    patch_branch_name,
+                    target_branch,
+                )
+                patch_branch = self.repo.heads[patch_branch_name]
+                patch_branch.set_commit(target_branch)
+            else:
+                patch_branch = self.repo.create_head(patch_branch_name, target_branch)
+
+            self.repo.head.reference = patch_branch
+            self.cleanup()
+            try:
+                LOG.debug("[%s] Applying patch %s to branch: %s...", patch.issue_id, patch.filename, target_branch)
+                status, stdout, stderr = self.repo.git.execute(
+                    ["git", "apply", patch.file_path], with_extended_output=True
+                )
+                self.log_git_exec(status, stderr, stdout)
+                if status == 0:
+                    LOG.info(
+                        "[%s] Successfully applied patch %s to branch: %s.",
+                        patch.issue_id,
+                        patch.filename,
+                        target_branch,
+                    )
+                    results.append(PatchApply(patch, target_branch, JiraPatchStatus.APPLIES_CLEANLY))
+                else:
+                    LOG.error("Something bad happened")
+                    self.log_git_exec(status, stderr, stdout, level=logging.INFO)
+            except GitCommandError as gce:
+                if "patch does not apply" in gce.stderr:
+                    LOG.info("[%s] Patch %s does not apply to %s!" % (patch.issue_id, patch.filename, target_branch))
+                    self.log_git_exec(gce.status, gce.stderr, gce.stdout)
+
+                    conflicts = GitUtils.get_number_of_conflicts_from_str(gce.stderr)
+                    results.append(
+                        PatchApply(
+                            patch,
+                            target_branch,
+                            JiraPatchStatus.CONFLICT,
+                            conflicts=conflicts,
+                            conflict_details=gce.stderr,
+                        )
+                    )
+                else:
+                    results.append(PatchApply(patch, target_branch, JiraPatchStatus.UNKNOWN_ERROR))
+
+        return results
+
+    def validate_branches(self, branches):
+        if not self.repo:
+            raise ValueError("Repository is not yet synced! Please invoke sync_hadoop method before this method!")
+        for branch in branches:
+            Repo.rev_parse(self.repo, "origin/" + branch)
+
+    def cleanup(self):
+        self.repo.head.reset(index=True, working_tree=True)
+        self.repo.git.clean("-xdfq")
+
+    def log_git_exec(self, status, stderr, stdout, level=logging.DEBUG):
+        if level == logging.DEBUG:
+            LOG.debug("Status of git command: %s", status)
+            LOG.debug("stdout of git command: %s", stdout)
+            LOG.debug("stderr of git command: %s", stderr)
+        else:
+            LOG.info("Status of git command: %s", status)
+            LOG.info("stdout of git command: %s", stdout)
+            LOG.info("stderr of git command: %s", stderr)
+
+    def get_commit_hashes(self, issue_id):
+        status, stdout, stderr = self.repo.git.execute(
+            ["git", "log", "--oneline", "--all", "--grep", issue_id], with_extended_output=True
+        )
+        self.log_git_exec(status, stderr, stdout)
+        if status != 0:
+            raise ValueError("[%s] Failed to run git log command that finds a Jira issue!")
+        if stdout:
+            commit_hashes = []
+            for line in stdout.splitlines():
+                line_parts = line.split(" ")
+                if len(line_parts) > 0:
+                    commit_hashes.append(line_parts[0])
+            return commit_hashes
+
+        return []
+
+    def get_remote_branches_for_commits(self, commits, strip_remote=True):
+        if commits is None:
+            raise ValueError("List of commits should not be None!")
+
+        remote_branches = []
+        for commit in commits:
+            status, stdout, stderr = self.repo.git.execute(
+                ["git", "branch", "-r", "--contains", commit], with_extended_output=True
+            )
+            self.log_git_exec(status, stderr, stdout)
+            if status != 0:
+                raise ValueError("[%s] Failed to run git branch command that finds remote branches for commit!")
+            if stdout:
+                for r_branch in stdout.splitlines():
+                    if len(r_branch) > 0:
+                        stripped_rbranch = r_branch.lstrip()
+
+                        if strip_remote:
+                            local_branch = GitUtils.convert_remote_branch_name_to_local(r_branch)
+                            remote_branches.append(local_branch)
+                        else:
+                            remote_branches.append(stripped_rbranch)
+            else:
+                return []
+        return remote_branches
+
     def diff(self, branch, cached=False):
         kwargs = {}
         if cached:
@@ -262,11 +404,9 @@ class GitWrapper:
             LOG.exception("Failed to commit changes from index", exc_info=True)
             return False
 
-    def commit(self, message,
-               author: Actor = None,
-               committer: Actor = None,
-               add_files_to_index: List[str] = None,
-               amend=False):
+    def commit(
+        self, message, author: Actor = None, committer: Actor = None, add_files_to_index: List[str] = None, amend=False
+    ):
         if not add_files_to_index:
             add_files_to_index = []
 
@@ -282,7 +422,6 @@ class GitWrapper:
         if add_files_to_index:
             self.add_to_index(add_files_to_index)
         self.repo.index.commit(message, **kwargs)
-
 
     def log(
         self,
@@ -464,7 +603,7 @@ class GitWrapper:
             conf = conf_reader.items_all(section_name)
             LOG.info("Git config for section '%s': %s", section_name, conf)
             return conf
-        except KeyError as ke:
+        except KeyError:
             LOG.warning("Section '%s' does not exist in Git config. Config mode: %s", section_name, config_level)
 
     @staticmethod
@@ -520,10 +659,7 @@ class GitWrapper:
 
     def __str__(self):
         filtered_dict = dict(filter(lambda elem: elem[0] in ["repo_path"], vars(self).items()))
-        return '%s(%s)' % (
-            type(self).__name__,
-            ', '.join('%s=%s' % item for item in filtered_dict.items())
-        )
+        return "%s(%s)" % (type(self).__name__, ", ".join("%s=%s" % item for item in filtered_dict.items()))
 
 
 class ProgressPrinter(RemoteProgress):
