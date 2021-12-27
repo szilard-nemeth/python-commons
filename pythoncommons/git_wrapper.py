@@ -1,5 +1,6 @@
 import logging
 import os
+from enum import Enum
 from typing import List
 
 from git import Repo, RemoteProgress, GitCommandError, Commit, Actor
@@ -16,6 +17,13 @@ FORMAT_CODE_COMMITTER = "%ce"
 DEFAULT_BRANCH = "master"
 
 LOG = logging.getLogger(__name__)
+
+
+# TODO GitLogLineFormat could store the actual log format strings
+class GitLogLineFormat(Enum):
+    ONELINE_WITH_DATE = 0
+    ONELINE_WITH_DATE_AND_AUTHOR = 1
+    ONELINE_WITH_DATE_AUTHOR_COMMITTER = 2
 
 
 class GitWrapper:
