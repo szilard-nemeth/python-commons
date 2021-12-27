@@ -56,6 +56,13 @@ class OsUtils:
             cls.ENV_UPDATES[env_name] = env_value
         os.environ[env_name] = env_value
 
+    @classmethod
+    def is_env_var_true(cls, env_var_name, default_val):
+        env_var_value = OsUtils.get_env_value(env_var_name, default_val)
+        if env_var_value is None:
+            raise ValueError("Env var value should not be None for env var name: '{}'".format(env_var_name))
+        return env_var_value == "True" or env_var_value is True
+
     @staticmethod
     def determine_full_command():
         return " ".join(sys.argv)
