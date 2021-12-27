@@ -69,5 +69,6 @@ class GitHubUtils:
         for title, pr_dict in pr_by_title.items():
             if title.startswith(jira_id):
                 found_pr = pr_dict
+                # TODO Handle multiple PRs, e.g. https://issues.apache.org/jira/browse/YARN-11014
                 break
         return found_pr
