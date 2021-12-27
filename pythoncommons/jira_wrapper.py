@@ -11,6 +11,7 @@ from jira.resources import Attachment
 from pythoncommons.git_utils import GitUtils
 
 from pythoncommons.file_utils import FileUtils
+from pythoncommons.github_utils import GithubPRMergeStatus
 from pythoncommons.string_utils import StringUtils
 
 LOG = logging.getLogger(__name__)
@@ -57,8 +58,31 @@ class JiraPatchStatus:
     CONFLICT = "CONFLICT"
     PATCH_ALREADY_COMMITTED = "PATCH_ALREADY_COMMITTED"
     UNKNOWN_ERROR = "UNKNOWN_ERROR"
-    CANNOT_FIND_PATCH = "CANNOT FIND PATCH - POSSIBLE PULL REQUEST?"
-    ALLOWED_VALUES = {APPLIES_CLEANLY, CONFLICT, PATCH_ALREADY_COMMITTED, UNKNOWN_ERROR, CANNOT_FIND_PATCH}
+    PR_MERGEABLE = "PULL REQUEST MERGEABLE"
+    PR_NOT_MERGEABLE = "PULL REQUEST NOT MERGEABLE"
+    PR_STATUS_UNKNOWN = "PULL REQUEST UNKNOWN STATUS"
+    CANNOT_FIND_PATCH_OR_PR = "PULL REQUEST OR PATCH NOT FOUND"
+    ALLOWED_VALUES = {
+        APPLIES_CLEANLY,
+        CONFLICT,
+        PATCH_ALREADY_COMMITTED,
+        UNKNOWN_ERROR,
+        PR_MERGEABLE,
+        PR_NOT_MERGEABLE,
+        PR_STATUS_UNKNOWN,
+        CANNOT_FIND_PATCH_OR_PR,
+    }
+
+    @staticmethod
+    def translate_from_github_pr_merge_status(github_merge_status: GithubPRMergeStatus):
+        if github_merge_status == GithubPRMergeStatus.MERGEABLE:
+            return JiraPatchStatus.PR_MERGEABLE
+        elif github_merge_status == GithubPRMergeStatus.NOT_MERGEABLE:
+            return JiraPatchStatus.PR_NOT_MERGEABLE
+        elif github_merge_status == GithubPRMergeStatus.PR_NOT_FOUND:
+            return JiraPatchStatus.CANNOT_FIND_PATCH_OR_PR
+        elif github_merge_status == GithubPRMergeStatus.UNKNOWN:
+            return JiraPatchStatus.PR_STATUS_UNKNOWN
 
 
 class PatchApplicability:
@@ -284,6 +308,10 @@ class JiraWrapper:
             print("Name: '{filename}', size: {size}".format(filename=attachment.filename, size=attachment.size))
             # to read content use `get` method:
             # print("Content: '{}'".format(attachment.get()))
+
+    def get_links(self, issue_id: str):
+        issue: Issue = self.jira.issue(issue_id)
+        return issue.fields.issuelinks
 
     def get_status(self, issue_id: str):
         issue = self.jira.issue(issue_id)

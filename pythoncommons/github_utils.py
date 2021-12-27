@@ -7,12 +7,14 @@ from pythoncommons.os_utils import OsUtils
 
 LOG = logging.getLogger(__name__)
 GITHUB_PULLS_API = "https://api.github.com/repos/apache/hadoop/pulls/$PR_ID"
+GITHUB_PULLS_LIST_API = "https://api.github.com/repos/apache/hadoop/pulls"
 
 
 class GithubPRMergeStatus(Enum):
     MERGEABLE = "Mergeable"
     NOT_MERGEABLE = "Not mergeable"
     UNKNOWN = "Unknown"
+    PR_NOT_FOUND = "Pull request not found"
 
 
 class GithubActionsEnvVar(Enum):
@@ -38,7 +40,14 @@ class GitHubUtils:
         return github_ws_path
 
     @staticmethod
-    def is_pull_request_mergeable(pr_id: int):
+    def is_pull_request_of_jira_mergeable(jira_id: str) -> GithubPRMergeStatus:
+        found_pr = GitHubUtils.find_pull_request(jira_id)
+        if not found_pr:
+            return GithubPRMergeStatus.PR_NOT_FOUND
+        return GitHubUtils.is_pull_request_mergeable(int(found_pr["number"]))
+
+    @staticmethod
+    def is_pull_request_mergeable(pr_id: int) -> GithubPRMergeStatus:
         pr_json = requests.get(GitHubUtils.get_pull_request_url(pr_id)).json()
         if "mergeable" in pr_json:
             if pr_json["mergeable"]:
@@ -50,3 +59,15 @@ class GitHubUtils:
     @staticmethod
     def get_pull_request_url(pr_id: int):
         return GITHUB_PULLS_API.replace("$PR_ID", str(pr_id))
+
+    @classmethod
+    def find_pull_request(cls, jira_id):
+        prs = requests.get(GITHUB_PULLS_LIST_API).json()
+        pr_by_title = {pr["title"]: pr for pr in prs}
+
+        found_pr = None
+        for title, pr_dict in pr_by_title.items():
+            if title.startswith(jira_id):
+                found_pr = pr_dict
+                break
+        return found_pr
