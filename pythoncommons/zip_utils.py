@@ -25,7 +25,12 @@ class ZipFileUtils:
         sum_len_all_files: int = 0
         all_ignores_files: int = 0
         if ignore_filetypes:
-            all_ignores_files, sum_len_all_files, input_files = ZipFileUtils._determine_input_files_based_on_exclusions(
+            (
+                all_ignores_files,
+                sum_len_all_files,
+                input_files,
+                tmp_dir,
+            ) = ZipFileUtils._determine_input_files_based_on_exclusions(
                 all_ignores_files, ignore_filetypes, input_files, sum_len_all_files
             )
 
@@ -58,6 +63,7 @@ class ZipFileUtils:
         all_ignores_files, ignore_filetypes, input_files_param, sum_len_all_files
     ):
         input_files = []
+        tmp_dir: tempfile.TemporaryDirectory or None = None
         for input_file in input_files_param:
             if FileUtils.is_dir(input_file):
                 all_files = FileUtils.find_files(input_file, regex=".*", full_path_result=True)
@@ -80,7 +86,9 @@ class ZipFileUtils:
             else:
                 input_files.append(input_file)
                 sum_len_all_files += 1
-        return all_ignores_files, sum_len_all_files, input_files
+        # IMPORTANT: Need to return tmp_dir as when the TemporaryDirectory object is garbage collected, the tmp dir itself is deleted as well
+        # See: https://stackoverflow.com/a/55104228/1106893
+        return all_ignores_files, sum_len_all_files, input_files, tmp_dir
 
     @staticmethod
     def create_zip_as_tmp_file(src_files: List[str], filename: str, compress=False):
