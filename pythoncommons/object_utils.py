@@ -1,6 +1,6 @@
 import logging
 import pickle
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Tuple
 
 LOG = logging.getLogger(__name__)
 
@@ -23,6 +23,26 @@ class ObjUtils:
     @staticmethod
     def get_static_fields_with_values(clazz):
         return {v: getattr(clazz, v) for v, m in vars(clazz).items() if not (v.startswith("_") or callable(m))}
+
+    @staticmethod
+    def ensure_all_attrs_present(obj, attrs: List[Tuple[str, str]]):
+        not_found_attrs: List[Tuple[str, str]] = []
+
+        for attr_tup in attrs:
+            attr_name = attr_tup[0]
+            if not hasattr(obj, attr_name):
+                not_found_attrs.append(attr_tup)
+
+        if not not_found_attrs:
+            return
+        if len(not_found_attrs) == 1:
+            tup: Tuple[str, str] = not_found_attrs[0]
+            raise ValueError("Attribute '{}' (name: {}) is not specified!".format(*tup))
+        elif len(not_found_attrs) > 1:
+            exc_message = "The following attributes are not specified: \n"
+            for tup in not_found_attrs:
+                exc_message += "Attribute '{}' (name: {})\n".format(*tup)
+            raise ValueError(exc_message)
 
 
 class ListUtils:
