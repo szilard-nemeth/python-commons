@@ -6,22 +6,24 @@ LOG = logging.getLogger(__name__)
 
 DATEFORMAT_DASH_COLON = "%Y-%m-%d %H:%M:%S"
 
+
 # https://medium.com/pythonhive/python-decorator-to-measure-the-execution-time-of-methods-fa04cb6bb36d
 def timeit(method):
     def timed(*args, **kw):
         def print_time(method_name, time_value):
             pretty_time = TimeUtilities.prettify_time(time_value)
-            LOG.info('Method runtime: %s: %s', method_name, pretty_time)
+            LOG.info("Method runtime: %s: %s", method_name, pretty_time)
 
         ts = time.time()
         result = method(*args, **kw)
         te = time.time()
-        if 'log_time' in kw:
-            name = kw.get('log_name', method.__name__.upper())
-            kw['log_time'][name] = int((te - ts) * 1000)
+        if "log_time" in kw:
+            name = kw.get("log_name", method.__name__.upper())
+            kw["log_time"][name] = int((te - ts) * 1000)
         else:
             print_time(method.__name__, (te - ts))
         return result
+
     return timed
 
 
@@ -41,19 +43,15 @@ class TimeUtilities:
 
         # TODO generate pairs of curly braces with range()
         if days > 0:
-            return '{} {}, {} {}, {} {}, {} {}'.format(days, cls.DAYS,
-                                                       hours, cls.HOURS,
-                                                       minutes, cls.MINUTES,
-                                                       seconds, cls.SECONDS)
+            return "{} {}, {} {}, {} {}, {} {}".format(
+                days, cls.DAYS, hours, cls.HOURS, minutes, cls.MINUTES, seconds, cls.SECONDS
+            )
         elif hours > 0:
-            return '{} {}, {} {}, {} {}'.format(hours, cls.HOURS,
-                                                minutes, cls.MINUTES,
-                                                seconds, cls.SECONDS)
+            return "{} {}, {} {}, {} {}".format(hours, cls.HOURS, minutes, cls.MINUTES, seconds, cls.SECONDS)
         elif minutes > 0:
-            return '{} {}, {} {}'.format(minutes, cls.MINUTES,
-                                         seconds, cls.SECONDS)
+            return "{} {}, {} {}".format(minutes, cls.MINUTES, seconds, cls.SECONDS)
         else:
-            return '{} {}'.format(seconds, cls.SECONDS)
+            return "{} {}".format(seconds, cls.SECONDS)
 
 
 class DateUtils:
@@ -68,8 +66,8 @@ class DateUtils:
         return DateUtils.now().strftime(fmt)
 
     @classmethod
-    def from_iso_format(cls):
-        return datetime.date.fromisoformat
+    def from_iso_format(cls, date_str):
+        return datetime.date.fromisoformat(date_str)
 
     @classmethod
     def now(cls):
@@ -101,13 +99,13 @@ class DateUtils:
     def _datetime_minus(cls, dt: datetime, days, hours, minutes, seconds) -> datetime:
         kwargs = {}
         if seconds:
-            kwargs['seconds'] = seconds
+            kwargs["seconds"] = seconds
         if minutes:
-            kwargs['minutes'] = minutes
+            kwargs["minutes"] = minutes
         if hours:
-            kwargs['hours'] = hours
+            kwargs["hours"] = hours
         if days:
-            kwargs['days'] = days
+            kwargs["days"] = days
         return dt - datetime.timedelta(**kwargs)
 
     @classmethod

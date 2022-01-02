@@ -92,6 +92,10 @@ class CollectionUtils:
                     lists[idx].append(item)
         return lists
 
+    @staticmethod
+    def get_dict_keys_with_prefix(dictionary: Dict[Any, Any], prefix: str):
+        return [key.startswith(prefix) for key in dictionary.keys()]
+
 
 class PickleUtils:
     @staticmethod
