@@ -13,6 +13,7 @@ from pythoncommons.date_utils import DateUtils
 from pythoncommons.file_utils import FileUtils, FindResultType
 from pythoncommons.os_utils import OsUtils
 from pythoncommons.string_utils import StringUtils
+
 LOG = logging.getLogger(__name__)
 
 
@@ -28,6 +29,7 @@ def determine_project_basedir():
         LOG.info("Overriding user home dir with: %s", override_user_home)
         user_home = override_user_home
     return FileUtils.join_path(user_home, PROJECTS_BASEDIR_NAME)
+
 
 MAC_PRIVATE_DIR = "private"
 PROJECTS_BASEDIR_NAME = "snemeth-dev-projects"
@@ -55,7 +57,13 @@ def get_stack_human_readable(stack):
 
 class SimpleProjectUtils:
     @classmethod
-    def get_project_dir(cls, basedir: str, parent_dir: str, dir_to_find: str, find_result_type: FindResultType, ):
+    def get_project_dir(
+        cls,
+        basedir: str,
+        parent_dir: str,
+        dir_to_find: str,
+        find_result_type: FindResultType,
+    ):
         found_dirs = FileUtils.find_files(
             basedir,
             find_type=find_result_type,
@@ -73,7 +81,12 @@ class SimpleProjectUtils:
         return found_dirs[0]
 
     @classmethod
-    def get_project_file(cls, basedir: str, file_to_find: str, find_result_type: FindResultType, ):
+    def get_project_file(
+        cls,
+        basedir: str,
+        file_to_find: str,
+        find_result_type: FindResultType,
+    ):
         found_files = FileUtils.find_files(
             basedir,
             find_type=find_result_type,
@@ -82,10 +95,7 @@ class SimpleProjectUtils:
             full_path_result=True,
         )
         if len(found_files) != 1:
-            raise ValueError(
-                f"Expected to find 1 file with name {file_to_find}."
-                f"Actual results: {found_files}"
-            )
+            raise ValueError(f"Expected to find 1 file with name {file_to_find}." f"Actual results: {found_files}")
         return found_files[0]
 
 
@@ -95,6 +105,8 @@ class StrategyBase(ABC):
         pass
 
     def find_common_paths(self, path, file_of_caller):
+        # Remove potential multiple slashes to check against the same path, see: https://stackoverflow.com/a/64459248/1106893
+        file_of_caller = os.path.abspath(file_of_caller)
         found_match: bool = file_of_caller.startswith(path)
         if found_match:
             return path, file_of_caller
@@ -108,6 +120,9 @@ class StrategyBase(ABC):
 
     @staticmethod
     def mac_specific_path_startswith(path, file_of_caller):
+        # Remove potential multiple slashes to check against the same path, see: https://stackoverflow.com/a/64459248/1106893
+        file_of_caller = os.path.abspath(file_of_caller)
+
         # Had to make an OS-based distinction here...
         # On MacOS, if the file is executed from /var or /tmp, the stackframe will contain the normal path.
         # However, even if the normal path is added to sys.path from a testcase,
@@ -123,31 +138,39 @@ class StrategyBase(ABC):
             # WARNING: Cannot use os.path.join, neither StringUtils.prepend_path here as it removes /private from the path string :(
             # extended_file_of_caller = StringUtils.prepend_path(file_of_caller, MAC_PRIVATE_DIR)
             extended_file_of_caller = os.sep + MAC_PRIVATE_DIR + file_of_caller
-            LOG.debug(f"Original file of caller: {file_of_caller}"
-                      f"\nExtended file of caller: {extended_file_of_caller}"
-                      f"\nPath: {path}")
+            LOG.debug(
+                f"Original file of caller: {file_of_caller}"
+                f"\nExtended file of caller: {extended_file_of_caller}"
+                f"\nPath: {path}"
+            )
             if extended_file_of_caller.startswith(path):
                 return True, extended_file_of_caller
         return False, file_of_caller
 
-    LOG.debug("Execution environment is not local, "
-              "trying to determine project name with sys.path strategy. "
-              f"Current sys.path: \n{get_sys_path_human_readable()}")
+    LOG.debug(
+        "Execution environment is not local, "
+        "trying to determine project name with sys.path strategy. "
+        f"Current sys.path: \n{get_sys_path_human_readable()}"
+    )
 
 
 class CommonPathStrategy(StrategyBase):
     def determine_path(self, file_of_caller, stack, project_name_hint=None):
-        LOG.debug("Execution environment is not local, "
-                  "trying to determine project name with common files strategy. "
-                  f"Current sys.path: \n{get_sys_path_human_readable()}"
-                  f"Current caller file: {file_of_caller}")
+        LOG.debug(
+            "Execution environment is not local, "
+            "trying to determine project name with common files strategy. "
+            f"Current sys.path: \n{get_sys_path_human_readable()}"
+            f"Current caller file: {file_of_caller}"
+        )
         project_root_path, visited_paths = FileUtils.find_repo_root_dir_auto(file_of_caller, raise_error=False)
         if project_root_path == os.sep:
             orig_path = os.path.realpath(file_of_caller)
-            err_message = f"Failed to find project root directory starting from path '{orig_path}'. " \
-                          f"Visited: {visited_paths}\n" \
-                          f"Strategy: {type(self).__name__}\n" \
-                          f"Caller file: {file_of_caller}"
+            err_message = (
+                f"Failed to find project root directory starting from path '{orig_path}'. "
+                f"Visited: {visited_paths}\n"
+                f"Strategy: {type(self).__name__}\n"
+                f"Caller file: {file_of_caller}"
+            )
             if project_name_hint:
                 LOG.error(err_message + " Returning project name from hint: " + project_name_hint)
                 return file_of_caller, project_name_hint
@@ -164,9 +187,11 @@ class CommonPathStrategy(StrategyBase):
 
 class RepositoryDirStrategy(StrategyBase):
     def determine_path(self, file_of_caller, stack, project_name_hint=None):
-        LOG.debug("Trying to determine project name with repository dir strategy. "
-                  f"Current sys.path: \n{get_sys_path_human_readable()}")
-        filename = file_of_caller[len(REPOS_DIR):]
+        LOG.debug(
+            "Trying to determine project name with repository dir strategy. "
+            f"Current sys.path: \n{get_sys_path_human_readable()}"
+        )
+        filename = file_of_caller[len(REPOS_DIR) :]
         # We should return the first dir name of the path
         # Cut leading slashes, if any as split would return empty string for 0th component
         filename = StringUtils.strip_leading_os_sep(filename)
@@ -189,8 +214,10 @@ class SysPathStrategy(StrategyBase):
             LOG.debug("Found Base path: %s for file of caller: %s", matched_base_path, file_of_caller)
             matched_base_path = StringUtils.strip_trailing_os_sep(matched_base_path)
             if ProjectUtils.FORCE_SITE_PACKAGES_IN_PATH_NAME and not matched_base_path.endswith(SITE_PACKAGES_DIRNAME):
-                LOG.debug("Matched base path does not end with '%s'. Dropping path components after it.",
-                          SITE_PACKAGES_DIRNAME)
+                LOG.debug(
+                    "Matched base path does not end with '%s'. Dropping path components after it.",
+                    SITE_PACKAGES_DIRNAME,
+                )
                 # Need to cut the last dir from the path, so we find the site-packages root
                 # Example: /<somepath>/venv/lib/python3.8/site-packages/test_project
                 matched_base_path = StringUtils.remove_last_dir_from_path(matched_base_path)
@@ -206,16 +233,20 @@ class SysPathStrategy(StrategyBase):
 
             # Example #2: ['', '/testproject/commands/testcommand/dummy_test_command.py']
             if StringUtils.is_path_multi_component(proj_name):
-                LOG.debug("Found multiple dirs in project name: %s. "
-                          "Assuming first dir is the name of the project.", proj_name)
+                LOG.debug(
+                    "Found multiple dirs in project name: %s. " "Assuming first dir is the name of the project.",
+                    proj_name,
+                )
                 proj_name = StringUtils.get_first_dir_of_path_if_multi_component(proj_name)
             LOG.info(f"Determined path: {matched_base_path}, project: {proj_name}")
             return matched_base_path, proj_name
 
-        err_message = f"Cannot determine project! " \
-                      f"File of caller: {file_of_caller}\n" \
-                      f"Call stack: \n{get_stack_human_readable(stack)}" \
-                      f"Strategy: {type(self).__name__}"
+        err_message = (
+            f"Cannot determine project! "
+            f"File of caller: {file_of_caller}\n"
+            f"Call stack: \n{get_stack_human_readable(stack)}"
+            f"Strategy: {type(self).__name__}"
+        )
         if project_name_hint:
             LOG.error(err_message + " Returning project name from hint: " + project_name_hint)
             return file_of_caller, project_name_hint
@@ -236,7 +267,8 @@ class ProjectUtils:
     STRATEGIES: Dict[ProjectRootDeterminationStrategy, StrategyBase] = {
         ProjectRootDeterminationStrategy.COMMON_FILE: CommonPathStrategy(),
         ProjectRootDeterminationStrategy.SYS_PATH: SysPathStrategy(),
-        ProjectRootDeterminationStrategy.REPOSITORY_DIR: RepositoryDirStrategy()}
+        ProjectRootDeterminationStrategy.REPOSITORY_DIR: RepositoryDirStrategy(),
+    }
 
     @classmethod
     def reset_root_determine_strategy_to_default(cls):
@@ -249,10 +281,12 @@ class ProjectUtils:
     @classmethod
     def determine_project_and_parent_dir(cls, file_of_caller, stack, project_name_hint=None):
         received_args = locals().copy()
-        received_args['stack'] = get_stack_human_readable(stack)
-        LOG.debug(f"Determining project name with strategy '{cls.project_root_determine_strategy}'. "
-                  f"Received args: {received_args}. \n"
-                  f"{cls._get_known_projects_str()}\n")
+        received_args["stack"] = get_stack_human_readable(stack)
+        LOG.debug(
+            f"Determining project name with strategy '{cls.project_root_determine_strategy}'. "
+            f"Received args: {received_args}. \n"
+            f"{cls._get_known_projects_str()}\n"
+        )
 
         if file_of_caller in cls.FILES_TO_PROJECT:
             project = cls.FILES_TO_PROJECT[file_of_caller]
@@ -280,29 +314,32 @@ class ProjectUtils:
             LOG.info("Using strategy '%s' based on env var", strat)
             return cls.STRATEGIES[strat]
         strategy: StrategyBase = cls.STRATEGIES[cls.project_root_determine_strategy]
-        if REPOS_DIR in file_of_caller and cls.project_root_determine_strategy == cls.default_project_determine_strategy:
+        if (
+            REPOS_DIR in file_of_caller
+            and cls.project_root_determine_strategy == cls.default_project_determine_strategy
+        ):
             strategy = cls.STRATEGIES[ProjectRootDeterminationStrategy.REPOSITORY_DIR]
         return strategy
 
     @classmethod
-    def get_output_basedir(cls, basedir_name: str,
-                           ensure_created=True,
-                           allow_python_commons_as_project=False,
-                           basedir=PROJECTS_BASEDIR):
+    def get_output_basedir(
+        cls, basedir_name: str, ensure_created=True, allow_python_commons_as_project=False, basedir=PROJECTS_BASEDIR
+    ):
         if not basedir_name:
             raise ValueError("Basedir name should be specified!")
 
-        project_name = cls.verify_caller_filename_valid(
-            allow_python_commons_as_project=allow_python_commons_as_project)
+        project_name = cls.verify_caller_filename_valid(allow_python_commons_as_project=allow_python_commons_as_project)
         proj_basedir = FileUtils.join_path(basedir, basedir_name)
         if project_name in cls.PROJECT_BASEDIR_DICT:
             old_basedir = cls.PROJECT_BASEDIR_DICT[project_name]
             if old_basedir != proj_basedir:
-                raise ValueError("Project is already registered with a different output basedir. Details: \n"
-                                 f"Old basedir name: {StringUtils.get_last_dir_of_path(old_basedir)}\n"
-                                 f"Project basedir's old full path: {old_basedir}\n"
-                                 f"New basedir name would be: {basedir_name}\n"
-                                 f"Project basedir's new full path would be: {proj_basedir}\n")
+                raise ValueError(
+                    "Project is already registered with a different output basedir. Details: \n"
+                    f"Old basedir name: {StringUtils.get_last_dir_of_path(old_basedir)}\n"
+                    f"Project basedir's old full path: {old_basedir}\n"
+                    f"New basedir name would be: {basedir_name}\n"
+                    f"Project basedir's new full path would be: {proj_basedir}\n"
+                )
         cls.PROJECT_BASEDIR_DICT[project_name] = proj_basedir
 
         if ensure_created:
@@ -310,8 +347,7 @@ class ProjectUtils:
         return proj_basedir
 
     @classmethod
-    def get_test_output_basedir(cls, basedir_name: str,
-                                allow_python_commons_as_project=False):
+    def get_test_output_basedir(cls, basedir_name: str, allow_python_commons_as_project=False):
         """
 
         :param basedir_name:
@@ -320,12 +356,12 @@ class ProjectUtils:
         :return:
         """
         cls.test_execution = True
-        project_name = cls.verify_caller_filename_valid(
-            allow_python_commons_as_project=allow_python_commons_as_project)
+        project_name = cls.verify_caller_filename_valid(allow_python_commons_as_project=allow_python_commons_as_project)
         if project_name not in cls.PROJECT_BASEDIR_DICT:
             # Creating project dir for the first time
-            proj_basedir = cls.get_output_basedir(basedir_name,
-                                                  allow_python_commons_as_project=allow_python_commons_as_project)
+            proj_basedir = cls.get_output_basedir(
+                basedir_name, allow_python_commons_as_project=allow_python_commons_as_project
+            )
         else:
             proj_basedir = cls.PROJECT_BASEDIR_DICT[project_name]
 
@@ -354,7 +390,9 @@ class ProjectUtils:
         return new_child_dir
 
     @classmethod
-    def get_test_output_child_dir(cls, dir_name: str, ensure_created=True, special_parent_dir=None, project_name_hint=None):
+    def get_test_output_child_dir(
+        cls, dir_name: str, ensure_created=True, special_parent_dir=None, project_name_hint=None
+    ):
         if not dir_name:
             raise ValueError("Dir name should be specified!")
         project_name = cls._validate_project_for_child_dir_creation(project_name_hint=project_name_hint)
@@ -412,10 +450,12 @@ class ProjectUtils:
             FileUtils.ensure_dir_created(session_dir)
             return session_dir
         else:
-            raise ValueError(f"Cannot find stored {child_dir_type} for project. "
-                             f"Project: {project_name}, "
-                             f"Child dir: {child_dir_name}, "
-                             f"All stored {child_dir_type}s: {dir_dict}")
+            raise ValueError(
+                f"Cannot find stored {child_dir_type} for project. "
+                f"Project: {project_name}, "
+                f"Child dir: {child_dir_name}, "
+                f"All stored {child_dir_type}s: {dir_dict}"
+            )
 
     @classmethod
     def save_to_test_file(cls, dir_name: str, filename: str, file_contents: str):
@@ -427,8 +467,7 @@ class ProjectUtils:
         project_name = cls._validate_project_for_child_dir_creation()
         cls.validate_test_child_dir(dir_name, project_name)
         dir_path = cls.CHILD_DIR_TEST_DICT[project_name][dir_name]
-        FileUtils.save_to_file(
-            FileUtils.join_path(dir_path, filename), file_contents)
+        FileUtils.save_to_file(FileUtils.join_path(dir_path, filename), file_contents)
 
     @classmethod
     def validate_test_child_dir(cls, dir_name, project_name):
@@ -452,10 +491,12 @@ class ProjectUtils:
     def _validate_project_for_child_dir_creation(cls, project_name_hint=None):
         project_name = cls.verify_caller_filename_valid(project_name_hint=project_name_hint)
         if project_name not in cls.PROJECT_BASEDIR_DICT:
-            raise ValueError(f"Project '{project_name}' is unknown. "
-                             f"{cls._get_known_projects_str()}\n"
-                             f"Please call {ProjectUtils.__name__}.{ProjectUtils.get_output_basedir.__name__} "
-                             f"first in order to set the basedir for the project!")
+            raise ValueError(
+                f"Project '{project_name}' is unknown. "
+                f"{cls._get_known_projects_str()}\n"
+                f"Please call {ProjectUtils.__name__}.{ProjectUtils.get_output_basedir.__name__} "
+                f"first in order to set the basedir for the project!"
+            )
         return project_name
 
     @classmethod
@@ -467,7 +508,9 @@ class ProjectUtils:
         return cls._get_log_filename_internal(project_name, postfix, level_name=level_name, prod=False)
 
     @classmethod
-    def _get_log_filename_internal(cls, project_name: str, postfix: str = None, level_name: str = None, prod: bool = True):
+    def _get_log_filename_internal(
+        cls, project_name: str, postfix: str = None, level_name: str = None, prod: bool = True
+    ):
         if postfix:
             postfix = "-" + postfix
         else:
@@ -481,7 +524,11 @@ class ProjectUtils:
             level_name = ""
 
         filename = f"{project_name}{postfix}{level_name}-{DateUtils.get_current_datetime()}"
-        log_dir = cls.get_logs_dir(project_name_hint=project_name) if prod else cls.get_test_logs_dir(project_name_hint=project_name)
+        log_dir = (
+            cls.get_logs_dir(project_name_hint=project_name)
+            if prod
+            else cls.get_test_logs_dir(project_name_hint=project_name)
+        )
         return FileUtils.join_path(log_dir, filename)
 
     @classmethod
@@ -499,17 +546,21 @@ class ProjectUtils:
         file_of_caller = stack_frame.filename
         LOG.debug("Filename of caller: " + file_of_caller)
         if StringUtils.is_any_of_dir_names_in_path(file_of_caller, cls.FORBIDDEN_DIR_NAMES):
-            message = f"Detected caller as 'unittest'. Current stack frame: {stack_frame}\n" \
-                     f"Stack: {get_stack_human_readable(stack)}"
+            message = (
+                f"Detected caller as 'unittest'. Current stack frame: {stack_frame}\n"
+                f"Stack: {get_stack_human_readable(stack)}"
+            )
             if allow_python_commons_as_project:
                 LOG.warning(message)
                 # Get the previous frame which should belong to pythoncommons
                 python_commons_frame = stack[idx - 1]
                 file_of_caller = python_commons_frame.filename
             else:
-                message += "\n'allow_python_commons_as_project' is set to False. " \
-                               "Please set 'allow_python_commons_as_project' to True " \
-                               "to the ProjectUtils method that initiated the call."
+                message += (
+                    "\n'allow_python_commons_as_project' is set to False. "
+                    "Please set 'allow_python_commons_as_project' to True "
+                    "to the ProjectUtils method that initiated the call."
+                )
                 raise ValueError(message)
         path, project = cls.determine_project_and_parent_dir(file_of_caller, stack, project_name_hint=project_name_hint)
         return project
@@ -525,9 +576,11 @@ class ProjectUtils:
             idx += 1
         if idx == len(stack):
             # Walked up the stack and haven't found any frame that is not pythoncommons
-            raise ValueError("Walked up the stack but haven't found any frame that does not belong to python-commons. \n"
-                             "Printing the stack: \n"
-                             f"{get_stack_human_readable(stack)}")
+            raise ValueError(
+                "Walked up the stack but haven't found any frame that does not belong to python-commons. \n"
+                "Printing the stack: \n"
+                f"{get_stack_human_readable(stack)}"
+            )
         return stack[idx], idx
 
     @classmethod
