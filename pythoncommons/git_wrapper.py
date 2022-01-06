@@ -56,6 +56,12 @@ class GitWrapper:
             LOG.info("Tracking branch '%s' with remote '%s'", branch, ORIGIN)
             self.repo.git.branch("-u", ORIGIN + "/" + branch)
 
+    def move_branch(self, branch, move_to="HEAD"):
+        if move_to == "HEAD":
+            self.repo.git.branch("-f", branch)
+        else:
+            self.repo.git.branch("-f", branch, move_to)
+
     def checkout_new_branch(self, new_branch, base_ref):
         base_exist = self.is_branch_exist(base_ref)
         if not base_exist:
