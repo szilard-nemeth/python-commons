@@ -844,21 +844,27 @@ class JsonFileUtils:
         LOG.info("Finished writing to file: %s", path)
 
     @classmethod
-    def load_data_from_json_file(cls, file, create_if_not_exists=False):
+    def load_data_from_json_file(
+        cls, file, create_if_not_exists=False, swallow_file_not_found=False, swallow_value_error=False
+    ):
         import json
 
         try:
             with open(file, "r") as f:
                 return json.load(f)
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             LOG.exception("Error while opening file: %s", file)
             if create_if_not_exists:
                 LOG.info("Creating new empty file: %s", file)
                 FileUtils.create_new_empty_file(file)
-            return None
-        except ValueError:
+            if swallow_file_not_found:
+                return None
+            raise e
+        except ValueError as e:
             LOG.exception("Error while reading file: %s", file)
-            return None
+            if swallow_value_error:
+                return None
+            raise e
 
 
 class CsvFileUtils:
