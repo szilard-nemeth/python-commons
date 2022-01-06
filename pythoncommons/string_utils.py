@@ -251,6 +251,16 @@ class StringUtils:
         else:
             return [path]
 
+    @staticmethod
+    def find_all(s, expr):
+        start = 0
+        while True:
+            start = s.find(expr, start)
+            if start == -1:
+                return
+            yield start
+            start += len(expr)  # use start += 1 to find overlapping matches
+
 
 class RegexUtils:
     @staticmethod

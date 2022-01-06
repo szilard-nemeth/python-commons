@@ -96,6 +96,12 @@ class CollectionUtils:
     def get_dict_keys_with_prefix(dictionary: Dict[Any, Any], prefix: str):
         return [key.startswith(prefix) for key in dictionary.keys()]
 
+    @staticmethod
+    def pairwise(iterable):
+        "s -> (s0, s1), (s2, s3), (s4, s5), ..."
+        a = iter(iterable)
+        return zip(a, a)
+
 
 class PickleUtils:
     @staticmethod
