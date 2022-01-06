@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from os.path import expanduser
 import inspect
-from typing import Dict
+from typing import Dict, List
 
 from pythoncommons.constants import PROJECT_NAME
 from pythoncommons.date_utils import DateUtils
@@ -63,12 +63,14 @@ class SimpleProjectUtils:
         parent_dir: str,
         dir_to_find: str,
         find_result_type: FindResultType,
+        exclude_dirs: List[str] = None,
     ):
         found_dirs = FileUtils.find_files(
             basedir,
             find_type=find_result_type,
             regex=dir_to_find,
             parent_dir=parent_dir,
+            exclude_dirs=exclude_dirs,
             single_level=False,
             full_path_result=True,
         )
