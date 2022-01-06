@@ -844,18 +844,20 @@ class JsonFileUtils:
         LOG.info("Finished writing to file: %s", path)
 
     @classmethod
-    def load_data_from_json_file(cls, file):
+    def load_data_from_json_file(cls, file, create_if_not_exists=False):
         import json
 
         try:
             with open(file, "r") as f:
                 return json.load(f)
         except FileNotFoundError:
-            LOG.exception("Error during opening file: %s", file)
-            FileUtils.create_new_empty_file(file)
+            LOG.exception("Error while opening file: %s", file)
+            if create_if_not_exists:
+                LOG.info("Creating new empty file: %s", file)
+                FileUtils.create_new_empty_file(file)
             return None
         except ValueError:
-            LOG.exception("Error during reading file: %s", file)
+            LOG.exception("Error while reading file: %s", file)
             return None
 
 
