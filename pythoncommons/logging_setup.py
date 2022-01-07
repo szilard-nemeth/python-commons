@@ -7,10 +7,13 @@ from logging.handlers import TimedRotatingFileHandler
 import logging.config
 from typing import List, Dict, Callable
 
+from _pytest.logging import _LiveLoggingStreamHandler
+from _pytest.terminal import TerminalReporter
 from pythoncommons.constants import PROJECT_NAME as PYTHONCOMMONS_PROJECT_NAME, ExecutionMode
 from pythoncommons.date_utils import DateUtils
 from pythoncommons.file_utils import FileUtils
 from pythoncommons.project_utils import ProjectUtils
+from pythoncommons.test_utils import PyTestUtils
 
 DEFAULT_CONSOLE_STREAM = sys.stdout
 DEFAULT_LOG_YAML_FILENAME = "logging_default.yaml"
@@ -174,11 +177,36 @@ class SimpleLoggingSetup:
             specified_file_log_level_name, file_postfix, execution_mode, project_name
         )
         log_file_paths: Dict[int, str] = {DEFAULT_LOG_LEVEL: log_file_path_for_default_level}
-        console_handler = SimpleLoggingSetup._create_console_handler(console_log_level)
-        handlers = [
-            console_handler,
-            SimpleLoggingSetup._create_file_handler(log_file_path_for_default_level, DEFAULT_LOG_LEVEL),
-        ]
+
+        file_handler = SimpleLoggingSetup._create_file_handler(log_file_path_for_default_level, DEFAULT_LOG_LEVEL)
+
+        console_handler = None
+        if PyTestUtils.is_pytest_execution():
+            # IMPORTANT!
+            # PyTest has its own handlers so a console handler wouldn't log anything.
+            # Keep all handlers of PyTest and don't use the simple StreamHandler for the stdout stream.
+            # An example list of these handlers:
+            # 0 = {_LiveLoggingStreamHandler} <_LiveLoggingStreamHandler (DEBUG)>
+            # 1 = {_FileHandler} <_FileHandler /<path>/pytest-logs.txt (DEBUG)>
+            # 2 = {LogCaptureHandler} <LogCaptureHandler (DEBUG)>
+            # 3 = {LogCaptureHandler} <LogCaptureHandler (DEBUG)>
+            # More info here:
+            # 1. https://stackoverflow.com/a/51633600/1106893
+            # 2. https://docs.pytest.org/en/latest/how-to/logging.html#live-logs
+            root_logger_handlers = logging.getLogger().handlers
+            for rh in root_logger_handlers:
+                if isinstance(rh, _LiveLoggingStreamHandler) and isinstance(rh.stream, TerminalReporter):
+                    console_handler = rh
+            if not console_handler:
+                raise ValueError("Console handler not found among PyTest's handlers: {}".format(root_logger_handlers))
+            handlers = [*root_logger_handlers, file_handler]
+        else:
+            console_handler = SimpleLoggingSetup._create_console_handler(console_log_level)
+            handlers = [
+                console_handler,
+                file_handler,
+            ]
+
         # Only add a second file handler if default logging level is different than specified.
         # Example: Default is logging.INFO, specified is logging.DEBUG
         if specified_file_log_level != DEFAULT_LOG_LEVEL:
@@ -297,7 +325,10 @@ class SimpleLoggingSetup:
         level = conf.specified_file_log_level
         level_name: str = logging.getLevelName(level)
         logger_names, loggers = SimpleLoggingSetup.get_all_loggers_from_loggerdict(conf.project_main_logger)
-        project_specific_loggers = SimpleLoggingSetup.get_project_specific_loggers(loggers, conf.logger_name_prefix)
+        project_specific_loggers = SimpleLoggingSetup.get_project_specific_loggers(
+            loggers, conf.logger_name_prefix, append_dot=True
+        )
+
         if not project_specific_loggers:
             print(
                 "Cannot find any project specific loggers with project name '%s', found loggers: %s",
@@ -308,11 +339,14 @@ class SimpleLoggingSetup:
             conf.project_main_logger.debug(
                 "Setting logging level to '%s' on the following project-specific loggers: %s.", level_name, logger_names
             )
-            SimpleLoggingSetup._set_level_and_add_handlers_on_loggers(conf, project_specific_loggers, logger_names)
+        SimpleLoggingSetup._set_level_and_add_handlers_on_loggers(conf, project_specific_loggers, logger_names)
 
-        if conf.modify_pythoncommons_logger_names:
-            pythoncommons_loggers = SimpleLoggingSetup.get_pythoncommons_loggers(loggers)
-            SimpleLoggingSetup._set_level_and_add_handlers_on_loggers(conf, pythoncommons_loggers, logger_names)
+        # Add handlers for non-project specific loggers as well (Git, GoogleApiWrapper, etc.)
+        except_prefixes = [conf.logger_name_prefix]
+        if not conf.modify_pythoncommons_logger_names:
+            except_prefixes.append(PYTHONCOMMONS_PROJECT_NAME)
+        non_project_specific_loggers = SimpleLoggingSetup.get_loggers(loggers, except_prefixes)
+        SimpleLoggingSetup._set_level_and_add_handlers_on_loggers(conf, non_project_specific_loggers, logger_names)
         return loggers
 
     @staticmethod
@@ -324,11 +358,25 @@ class SimpleLoggingSetup:
         return logger_names, loggers
 
     @staticmethod
-    def get_project_specific_loggers(loggers, logger_name_prefix):
-        project_specific_loggers: List[logging.Logger] = list(
-            filter(lambda x: x.name.startswith(logger_name_prefix + "."), loggers)
-        )
-        return project_specific_loggers
+    def get_project_specific_loggers(loggers, logger_name_prefix, append_dot=False):
+        if append_dot:
+            logger_name_prefix = logger_name_prefix + "."
+        loggers: List[logging.Logger] = list(filter(lambda x: x.name.startswith(logger_name_prefix), loggers))
+        return loggers
+
+    @staticmethod
+    def get_loggers(loggers, except_prefixes: List[str], append_dots=False):
+        if not except_prefixes:
+            return loggers
+        if append_dots:
+            except_prefixes = list(map(lambda e: e + "." if e[-1] != "." else e, except_prefixes))
+
+        filtered_loggers = []
+        for logger in loggers:
+            for prefix in except_prefixes:
+                if not logger.name.startswith(prefix):
+                    filtered_loggers.append(logger)
+        return filtered_loggers
 
     @staticmethod
     def get_pythoncommons_loggers(loggers):
@@ -371,18 +419,23 @@ class SimpleLoggingSetup:
 
             # Handle project main logger specially
             if is_project_main_logger:
-                SimpleLoggingSetup._remove_handlers_from_logger(
-                    conf.project_main_logger, logger, type=HandlerType.CONSOLE
-                )
-                SimpleLoggingSetup._add_handlers_to_logger(
-                    conf.project_main_logger, logger, conf.handlers, type=HandlerType.CONSOLE
-                )
-                SimpleLoggingSetup._remove_handlers_from_logger(conf.project_main_logger, logger, type=HandlerType.FILE)
-                SimpleLoggingSetup._add_handlers_to_logger(
-                    conf.project_main_logger, logger, conf.handlers, type=HandlerType.FILE
-                )
-                # Handlers to project's main logger has been already added, no more processing here.
-                return
+                if PyTestUtils.is_pytest_execution():
+                    # Simply add all handlers
+                    SimpleLoggingSetup._add_handlers_to_logger(conf.project_main_logger, logger, conf.handlers)
+                else:
+                    SimpleLoggingSetup._remove_handlers_from_logger(
+                        conf.project_main_logger, logger, type=HandlerType.CONSOLE
+                    )
+                    SimpleLoggingSetup._add_handlers_to_logger(
+                        conf.project_main_logger, logger, conf.handlers, type=HandlerType.CONSOLE
+                    )
+                    SimpleLoggingSetup._remove_handlers_from_logger(
+                        conf.project_main_logger, logger, type=HandlerType.FILE
+                    )
+                    SimpleLoggingSetup._add_handlers_to_logger(
+                        conf.project_main_logger, logger, conf.handlers, type=HandlerType.FILE
+                    )
+                    return
             else:
                 SimpleLoggingSetup._remove_handlers_from_logger(conf.project_main_logger, logger, callback=callback)
 
