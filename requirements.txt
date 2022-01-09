@@ -13,3 +13,4 @@ docker
 sh~=1.14.1
 colr~=0.9.1
 jira
+pytest~=6.2.3

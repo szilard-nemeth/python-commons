@@ -17,7 +17,7 @@ jira
 
 
 flake8
-pytest>=3.6
+pytest~=6.2.3
 pytest-cov
 setuptools
 pre-commit
