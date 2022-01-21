@@ -70,6 +70,8 @@ class SimpleLoggingSetupInputConfig:
     modify_pythoncommons_logger_names: bool = True
     remove_existing_handlers: bool = True
     disable_propagation: bool = True
+    enable_logging_setup_debug_details: bool = False
+
     # Dynamic fields
     specified_file_log_level: int or None = None
     handlers: List[logging.Handler] = field(default_factory=list)
@@ -153,6 +155,7 @@ class SimpleLoggingSetup:
             modify_pythoncommons_logger_names,
             remove_existing_handlers,
             disable_propagation,
+            enable_logging_setup_debug_details,
         )
         specified_file_log_level: int = logging.DEBUG if debug else DEFAULT_LOG_LEVEL
         specified_file_log_level_name: str = logging.getLevelName(specified_file_log_level)
@@ -224,9 +227,6 @@ class SimpleLoggingSetup:
         conf.specified_file_log_level = specified_file_log_level
         conf.handlers = handlers
         project_main_logger = SimpleLoggingSetup._setup_project_main_logger(conf)
-        if not enable_logging_setup_debug_details:
-            project_main_logger.info("Disabling debug logs of initial LoggingSetup. Logger: %s", project_main_logger)
-            project_main_logger.setLevel(DEFAULT_LOG_LEVEL)
 
         loggers: List[logging.Logger] = SimpleLoggingSetup.setup_existing_loggers(conf)
 
@@ -403,8 +403,13 @@ class SimpleLoggingSetup:
         # has_console_handler = len(list(filter(lambda h: SimpleLoggingSetup._is_console_handler(h), existing_handlers)))
         # has_file_handler = len(list(filter(lambda h: SimpleLoggingSetup._is_file_handler(h), existing_handlers)))
         is_project_main_logger = SimpleLoggingSetup._is_project_main_logger(conf, logger)
+        main_logger = conf.project_main_logger
         if is_project_main_logger:
             conf.project_main_logger = logger
+            main_logger = conf.project_main_logger
+            if not conf.enable_logging_setup_debug_details:
+                main_logger.info("Disabling debug logs of initial LoggingSetup. Logger: %s", main_logger)
+                main_logger.setLevel(DEFAULT_LOG_LEVEL)
 
         # If we are in TEST mode and the handler is a FileHandler, don't replace it
         callback = (
@@ -413,40 +418,35 @@ class SimpleLoggingSetup:
         )
 
         if conf.remove_existing_handlers:
-            conf.project_main_logger.debug(
-                "Removing existing handlers from logger: %s, handlers: %s", logger, existing_handlers
-            )
+            main_logger.debug("Removing existing handlers from logger: %s, handlers: %s", logger, existing_handlers)
 
             # Handle project main logger specially
             if is_project_main_logger:
                 if PyTestUtils.is_pytest_execution():
                     # Simply add all handlers
-                    SimpleLoggingSetup._add_handlers_to_logger(conf.project_main_logger, logger, conf.handlers)
+                    SimpleLoggingSetup._add_handlers_to_logger(main_logger, logger, conf.handlers)
                 else:
-                    SimpleLoggingSetup._remove_handlers_from_logger(
-                        conf.project_main_logger, logger, type=HandlerType.CONSOLE
-                    )
+                    SimpleLoggingSetup._remove_handlers_from_logger(main_logger, logger, type=HandlerType.CONSOLE)
                     SimpleLoggingSetup._add_handlers_to_logger(
-                        conf.project_main_logger, logger, conf.handlers, type=HandlerType.CONSOLE
+                        main_logger, logger, conf.handlers, type=HandlerType.CONSOLE
                     )
-                    SimpleLoggingSetup._remove_handlers_from_logger(
-                        conf.project_main_logger, logger, type=HandlerType.FILE
-                    )
+                    SimpleLoggingSetup._remove_handlers_from_logger(main_logger, logger, type=HandlerType.FILE)
                     SimpleLoggingSetup._add_handlers_to_logger(
-                        conf.project_main_logger, logger, conf.handlers, type=HandlerType.FILE
+                        main_logger, logger, conf.handlers, type=HandlerType.FILE
                     )
                     return
             else:
-                SimpleLoggingSetup._remove_handlers_from_logger(conf.project_main_logger, logger, callback=callback)
+                SimpleLoggingSetup._remove_handlers_from_logger(main_logger, logger, callback=callback)
 
-        SimpleLoggingSetup._set_level_on_logger(level, logger, conf.project_main_logger)
+        if not is_project_main_logger or conf.enable_logging_setup_debug_details:
+            SimpleLoggingSetup._set_level_on_logger(level, logger, main_logger)
         kwargs = {}
         if conf.remove_existing_handlers and len(logger.handlers) != 0:
             # If we selectively removed handlers with the callback,
             # we also want to selectively add handlers with the same callback
             kwargs["callback"] = callback
 
-        SimpleLoggingSetup._add_handlers_to_logger(conf.project_main_logger, logger, conf.handlers, **kwargs)
+        SimpleLoggingSetup._add_handlers_to_logger(main_logger, logger, conf.handlers, **kwargs)
         if logger.parent:
             SimpleLoggingSetup._set_level_and_add_handlers(conf, logger.parent, recursive=recursive)
 
