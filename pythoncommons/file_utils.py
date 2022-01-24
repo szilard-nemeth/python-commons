@@ -328,7 +328,7 @@ class FileUtils:
     @staticmethod
     def find_repo_root_dir_auto(curr_file, files_to_search: List[str] = None, raise_error=True):
         def _does_files_exist_in_dir(d):
-            if not FileUtils.is_dir(d):
+            if not FileUtils.is_dir(d, throw_ex=False):
                 return False
             LOG.debug(f"Listing files in dir {d}")
             files = os.listdir(d)
