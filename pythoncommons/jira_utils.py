@@ -20,6 +20,8 @@ class JiraUtils:
     def parse_jira_title(html_doc):
         soup = BeautifulSoup(html_doc, "html.parser")
         title = soup.find("h1", attrs={"id": "summary-val"})
+        if not title:
+            raise ValueError("Cannot find title in HTML document: {}".format(html_doc))
         return title.string
 
     @staticmethod
