@@ -135,10 +135,13 @@ class ZipFileUtils:
         zip_file = zipfile.ZipFile(file, "w", **kwargs)
         LOG.info(f"Creating zip file. Target file: {zip_file.filename}, Input files: {src_files}")
         for src_file in src_files:
+            if not FileUtils.does_file_exist(src_file):
+                LOG.warning("Src file does not exist: %s", src_file)
+                continue
             if ignore_files:
                 if ZipFileUtils._is_file_ignored(src_file, ignore_files):
                     continue
-            if FileUtils.is_dir(src_file):
+            if FileUtils.is_dir(src_file, throw_ex=False):
                 ZipFileUtils._add_dir_to_zip(src_file, zip_file, ignore_files=ignore_files)
             else:
                 LOG.debug(f"Adding file '{src_file}' to zip file '${zip_file.filename}'")
