@@ -182,6 +182,14 @@ class StringUtils:
         return mod_str
 
     @staticmethod
+    def wrap_to_quotes(s):
+        return f'"{s}"'
+
+    @staticmethod
+    def wrap_to_single_quotes(s):
+        return f"'{s}'"
+
+    @staticmethod
     def strip_leading_os_sep(path):
         if path.startswith(os.sep):
             return path[1:]
