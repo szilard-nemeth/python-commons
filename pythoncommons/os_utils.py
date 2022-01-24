@@ -3,7 +3,7 @@ import os
 import sys
 
 # TODO rename to SystemUtils?
-from typing import Dict
+from typing import Dict, List
 
 PASSWORD_PREFIX = "password "
 LOG = logging.getLogger(__name__)
@@ -55,6 +55,13 @@ class OsUtils:
         if cls.TRACK_UPDATES:
             cls.ENV_UPDATES[env_name] = env_value
         os.environ[env_name] = env_value
+
+    @classmethod
+    def clear_env_vars(cls, vars: List[str]):
+        for var in vars:
+            if var in os.environ:
+                LOG.debug("Removing env variable '%s'", var)
+                del os.environ[var]
 
     @classmethod
     def is_env_var_true(cls, env_var_name, default_val):
