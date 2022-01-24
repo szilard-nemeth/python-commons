@@ -1,3 +1,4 @@
+import inspect
 import logging
 import pickle
 from typing import Any, List, Dict, Tuple
@@ -11,6 +12,11 @@ class ObjUtils:
         LOG.info("Printing properties of obj: %s", obj)
         for prop, value in vars(obj).items():
             LOG.info("%s: %s", prop, value)
+
+    @staticmethod
+    def get_class_members(clazz):
+        attributes = inspect.getmembers(clazz, lambda a: not (inspect.isroutine(a)))
+        return [a for a in attributes if not (a[0].startswith("__") and a[0].endswith("__"))]
 
     @staticmethod
     def get_properties(obj):
