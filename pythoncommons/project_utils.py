@@ -279,7 +279,11 @@ class ProjectUtils:
     @classmethod
     def set_root_determine_strategy(cls, strategy: ProjectRootDeterminationStrategy, allow_overwrite=True):
         old_strategy = cls.project_root_determine_strategy
+        LOG.info("Discovered project root determine strategy: %s", old_strategy)
         if not old_strategy or allow_overwrite:
+            LOG.info(
+                "Overwriting project root determine strategy! Old value: %s, New value: %s", old_strategy, strategy
+            )
             cls.project_root_determine_strategy = strategy
 
     @classmethod
