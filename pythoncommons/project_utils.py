@@ -263,6 +263,7 @@ class ProjectUtils:
     FILES_TO_PROJECT = {}
     FORBIDDEN_DIR_NAMES = ["unittest", "pytest", "_pytest"]
     test_execution: bool = False
+    project_root_determine_strategy_set_manually: bool = False
     default_project_determine_strategy = ProjectRootDeterminationStrategy.COMMON_FILE
     project_root_determine_strategy = default_project_determine_strategy
     FORCE_SITE_PACKAGES_IN_PATH_NAME = True
@@ -274,17 +275,19 @@ class ProjectUtils:
 
     @classmethod
     def reset_root_determine_strategy_to_default(cls):
+        cls.project_root_determine_strategy_set_manually = False
         cls.project_root_determine_strategy = cls.default_project_determine_strategy
 
     @classmethod
     def set_root_determine_strategy(cls, strategy: ProjectRootDeterminationStrategy, allow_overwrite=True):
         old_strategy = cls.project_root_determine_strategy
         LOG.info("Discovered project root determine strategy: %s", old_strategy)
-        if not old_strategy or allow_overwrite:
+        if not cls.project_root_determine_strategy_set_manually or allow_overwrite:
             LOG.info(
                 "Overwriting project root determine strategy! Old value: %s, New value: %s", old_strategy, strategy
             )
             cls.project_root_determine_strategy = strategy
+            cls.project_root_determine_strategy_set_manually = True
 
     @classmethod
     def determine_project_and_parent_dir(cls, file_of_caller, stack, project_name_hint=None):
