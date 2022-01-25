@@ -277,8 +277,10 @@ class ProjectUtils:
         cls.project_root_determine_strategy = cls.default_project_determine_strategy
 
     @classmethod
-    def set_root_determine_strategy(cls, strategy: ProjectRootDeterminationStrategy):
-        cls.project_root_determine_strategy = strategy
+    def set_root_determine_strategy(cls, strategy: ProjectRootDeterminationStrategy, allow_overwrite=True):
+        old_strategy = cls.project_root_determine_strategy
+        if not old_strategy or allow_overwrite:
+            cls.project_root_determine_strategy = strategy
 
     @classmethod
     def determine_project_and_parent_dir(cls, file_of_caller, stack, project_name_hint=None):
