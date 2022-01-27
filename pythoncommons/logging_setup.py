@@ -157,8 +157,8 @@ class SimpleLoggingSetup:
             disable_propagation,
             enable_logging_setup_debug_details,
         )
-        specified_file_log_level: int = logging.DEBUG if debug else DEFAULT_LOG_LEVEL
-        specified_file_log_level_name: str = logging.getLevelName(specified_file_log_level)
+        conf.specified_file_log_level = logging.DEBUG if debug else DEFAULT_LOG_LEVEL
+        specified_file_log_level_name: str = logging.getLevelName(conf.specified_file_log_level)
         default_file_log_level_name: str = logging.getLevelName(DEFAULT_LOG_LEVEL)
         console_log_level: int = logging.DEBUG if debug else DEFAULT_LOG_LEVEL
 
@@ -168,7 +168,7 @@ class SimpleLoggingSetup:
         final_format_str, formatter = SimpleLoggingSetup._determine_formatter(format_str)
 
         # This will init the root logger to the specified level
-        logging.basicConfig(format=final_format_str, level=specified_file_log_level)
+        logging.basicConfig(format=final_format_str, level=conf.specified_file_log_level)
 
         log_file_path_for_default_level = SimpleLoggingSetup._determine_log_file_path(
             default_file_log_level_name, file_postfix, execution_mode, project_name
@@ -176,24 +176,21 @@ class SimpleLoggingSetup:
         log_file_path_for_specified_level = SimpleLoggingSetup._determine_log_file_path(
             specified_file_log_level_name, file_postfix, execution_mode, project_name
         )
-        console_handler, handlers, log_file_paths = SimpleLoggingSetup._determine_handlers(
+        console_handler, conf.handlers, log_file_paths = SimpleLoggingSetup._determine_handlers(
             console_log_level,
             log_file_path_for_default_level,
             log_file_path_for_specified_level,
-            specified_file_log_level,
+            conf.specified_file_log_level,
             formatter,
         )
         # Add fields to input config
-        conf.specified_file_log_level = specified_file_log_level
-        conf.handlers = handlers
         project_main_logger = SimpleLoggingSetup._setup_project_main_logger(conf)
-
         loggers: List[logging.Logger] = SimpleLoggingSetup.setup_existing_loggers(conf)
 
         logger_to_handler_count_dict = {logger.name: len(logger.handlers) for logger in loggers}
         project_main_logger.debug("Number of handlers on existing loggers: %s", logger_to_handler_count_dict)
         if sanity_check_number_of_handlers:
-            SimpleLoggingSetup._sanity_check_number_of_handlers(conf, handlers, loggers)
+            SimpleLoggingSetup._sanity_check_number_of_handlers(conf, loggers)
 
         if enable_logging_setup_debug_details:
             logger = project_main_logger
@@ -209,7 +206,7 @@ class SimpleLoggingSetup:
             console_log_level_name=logging.getLevelName(console_log_level),
             formatter=final_format_str,
             console_handler=console_handler,
-            file_handlers=list(filter(lambda h: isinstance(h, logging.FileHandler), handlers)),
+            file_handlers=list(filter(lambda h: isinstance(h, logging.FileHandler), conf.handlers)),
             main_project_logger=project_main_logger,
             log_file_paths=log_file_paths,
         )
@@ -275,9 +272,9 @@ class SimpleLoggingSetup:
         return final_format_str, formatter
 
     @staticmethod
-    def _sanity_check_number_of_handlers(conf, handlers, loggers):
+    def _sanity_check_number_of_handlers(conf, loggers):
         wrong_number_of_handlers: Dict[str, List[logging.Handler]] = {}
-        expected_no_of_handlers = len(handlers)
+        expected_no_of_handlers = len(conf.handlers)
         for logger in loggers:
             logger_name = logger.name
             if logger_name.startswith(PYTHONCOMMONS_PROJECT_NAME) or logger_name.startswith(conf.logger_name_prefix):
@@ -287,7 +284,7 @@ class SimpleLoggingSetup:
             raise ValueError(
                 "Unexpected number of handlers on loggers. "
                 f"Expected: {expected_no_of_handlers}, "
-                f"Expected handlers: {handlers}, "
+                f"Expected handlers: {conf.handlers}, "
                 f"These loggers are having wrong number of handlers: {wrong_number_of_handlers}"
             )
 
