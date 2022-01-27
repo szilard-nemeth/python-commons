@@ -247,6 +247,7 @@ class SimpleLoggingSetup:
                 raise ValueError(
                     "Unexpected number of handlers on loggers. "
                     f"Expected: {expected_no_of_handlers}, "
+                    f"Expected handlers: {handlers}, "
                     f"These loggers are having wrong number of handlers: {wrong_number_of_handlers}"
                 )
 
