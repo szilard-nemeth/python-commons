@@ -233,23 +233,7 @@ class SimpleLoggingSetup:
         logger_to_handler_count_dict = {logger.name: len(logger.handlers) for logger in loggers}
         project_main_logger.debug("Number of handlers on existing loggers: %s", logger_to_handler_count_dict)
         if sanity_check_number_of_handlers:
-            wrong_number_of_handlers: Dict[str, List[logging.Handler]] = {}
-            expected_no_of_handlers = len(handlers)
-            for logger in loggers:
-                logger_name = logger.name
-                if logger_name.startswith(PYTHONCOMMONS_PROJECT_NAME) or logger_name.startswith(
-                    conf.logger_name_prefix
-                ):
-                    if len(logger.handlers) != expected_no_of_handlers:
-                        wrong_number_of_handlers[logger_name] = logger.handlers
-
-            if len(wrong_number_of_handlers) > 0:
-                raise ValueError(
-                    "Unexpected number of handlers on loggers. "
-                    f"Expected: {expected_no_of_handlers}, "
-                    f"Expected handlers: {handlers}, "
-                    f"These loggers are having wrong number of handlers: {wrong_number_of_handlers}"
-                )
+            SimpleLoggingSetup._sanity_check_number_of_handlers(conf, handlers, loggers)
 
         if enable_logging_setup_debug_details:
             logger = project_main_logger
@@ -270,6 +254,23 @@ class SimpleLoggingSetup:
             log_file_paths=log_file_paths,
         )
         return config
+
+    @staticmethod
+    def _sanity_check_number_of_handlers(conf, handlers, loggers):
+        wrong_number_of_handlers: Dict[str, List[logging.Handler]] = {}
+        expected_no_of_handlers = len(handlers)
+        for logger in loggers:
+            logger_name = logger.name
+            if logger_name.startswith(PYTHONCOMMONS_PROJECT_NAME) or logger_name.startswith(conf.logger_name_prefix):
+                if len(logger.handlers) != expected_no_of_handlers:
+                    wrong_number_of_handlers[logger_name] = logger.handlers
+        if len(wrong_number_of_handlers) > 0:
+            raise ValueError(
+                "Unexpected number of handlers on loggers. "
+                f"Expected: {expected_no_of_handlers}, "
+                f"Expected handlers: {handlers}, "
+                f"These loggers are having wrong number of handlers: {wrong_number_of_handlers}"
+            )
 
     @staticmethod
     def _determine_log_file_path(file_log_level_name, file_postfix, exec_mode, project_name):
