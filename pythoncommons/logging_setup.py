@@ -210,7 +210,7 @@ class SimpleLoggingSetup:
                 file_handler,
             ]
 
-        # Only add a second file handler if default logging level is different than specified.
+        # Only add a second file handler if default logging level is different from specified.
         # Example: Default is logging.INFO, specified is logging.DEBUG
         if specified_file_log_level != DEFAULT_LOG_LEVEL:
             handler = SimpleLoggingSetup._create_file_handler(
@@ -422,19 +422,12 @@ class SimpleLoggingSetup:
 
             # Handle project main logger specially
             if is_project_main_logger:
-                if PyTestUtils.is_pytest_execution():
-                    # Simply add all handlers
-                    SimpleLoggingSetup._add_handlers_to_logger(main_logger, logger, conf.handlers)
-                else:
-                    SimpleLoggingSetup._remove_handlers_from_logger(main_logger, logger, type=HandlerType.CONSOLE)
-                    SimpleLoggingSetup._add_handlers_to_logger(
-                        main_logger, logger, conf.handlers, type=HandlerType.CONSOLE
-                    )
-                    SimpleLoggingSetup._remove_handlers_from_logger(main_logger, logger, type=HandlerType.FILE)
-                    SimpleLoggingSetup._add_handlers_to_logger(
-                        main_logger, logger, conf.handlers, type=HandlerType.FILE
-                    )
-                    return
+                # TODO trial & error
+                SimpleLoggingSetup._remove_handlers_from_logger(main_logger, logger, type=HandlerType.CONSOLE)
+                SimpleLoggingSetup._add_handlers_to_logger(main_logger, logger, conf.handlers, type=HandlerType.CONSOLE)
+                SimpleLoggingSetup._remove_handlers_from_logger(main_logger, logger, type=HandlerType.FILE)
+                SimpleLoggingSetup._add_handlers_to_logger(main_logger, logger, conf.handlers, type=HandlerType.FILE)
+                return
             else:
                 SimpleLoggingSetup._remove_handlers_from_logger(main_logger, logger, callback=callback)
 
