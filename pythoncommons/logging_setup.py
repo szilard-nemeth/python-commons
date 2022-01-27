@@ -165,10 +165,7 @@ class SimpleLoggingSetup:
         if not console_debug:
             console_log_level = DEFAULT_LOG_LEVEL
 
-        final_format_str = DEFAULT_FORMAT
-        if format_str:
-            final_format_str = format_str
-        formatter = logging.Formatter(final_format_str)
+        final_format_str, formatter = SimpleLoggingSetup._determine_formatter(format_str)
 
         # This will init the root logger to the specified level
         logging.basicConfig(format=final_format_str, level=specified_file_log_level)
@@ -254,6 +251,14 @@ class SimpleLoggingSetup:
             log_file_paths=log_file_paths,
         )
         return config
+
+    @staticmethod
+    def _determine_formatter(format_str):
+        final_format_str = DEFAULT_FORMAT
+        if format_str:
+            final_format_str = format_str
+        formatter = logging.Formatter(final_format_str)
+        return final_format_str, formatter
 
     @staticmethod
     def _sanity_check_number_of_handlers(conf, handlers, loggers):
