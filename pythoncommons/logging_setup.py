@@ -176,24 +176,13 @@ class SimpleLoggingSetup:
         log_file_path_for_specified_level = SimpleLoggingSetup._determine_log_file_path(
             specified_file_log_level_name, file_postfix, execution_mode, project_name
         )
-        log_file_paths: Dict[int, str] = {DEFAULT_LOG_LEVEL: log_file_path_for_default_level}
-
-        file_handler = SimpleLoggingSetup._create_file_handler(log_file_path_for_default_level, DEFAULT_LOG_LEVEL)
-        console_handler, handlers = SimpleLoggingSetup._determine_handlers(console_log_level, file_handler)
-
-        # Only add a second file handler if default logging level is different from specified.
-        # Example: Default is logging.INFO, specified is logging.DEBUG
-        if specified_file_log_level != DEFAULT_LOG_LEVEL:
-            handler = SimpleLoggingSetup._create_file_handler(
-                log_file_path_for_specified_level, specified_file_log_level
-            )
-            handlers.append(handler)
-            log_file_paths[specified_file_log_level] = log_file_path_for_specified_level
-        SimpleLoggingSetup._ALL_LOG_FILES.extend(log_file_paths.values())
-
-        for h in handlers:
-            h.setFormatter(formatter)
-
+        console_handler, handlers, log_file_paths = SimpleLoggingSetup._determine_handlers(
+            console_log_level,
+            log_file_path_for_default_level,
+            log_file_path_for_specified_level,
+            specified_file_log_level,
+            formatter,
+        )
         # Add fields to input config
         conf.specified_file_log_level = specified_file_log_level
         conf.handlers = handlers
@@ -227,7 +216,15 @@ class SimpleLoggingSetup:
         return config
 
     @staticmethod
-    def _determine_handlers(console_log_level, file_handler):
+    def _determine_handlers(
+        console_log_level,
+        log_file_path_for_default_level,
+        log_file_path_for_specified_level,
+        specified_file_log_level,
+        formatter,
+    ):
+        log_file_paths: Dict[int, str] = {DEFAULT_LOG_LEVEL: log_file_path_for_default_level}
+        file_handler = SimpleLoggingSetup._create_file_handler(log_file_path_for_default_level, DEFAULT_LOG_LEVEL)
         console_handler = None
         if PyTestUtils.is_pytest_execution():
             # IMPORTANT!
@@ -254,7 +251,20 @@ class SimpleLoggingSetup:
                 console_handler,
                 file_handler,
             ]
-        return console_handler, handlers
+
+        # Only add a second file handler if default logging level is different from specified.
+        # Example: Default is logging.INFO, specified is logging.DEBUG
+        if specified_file_log_level != DEFAULT_LOG_LEVEL:
+            handler = SimpleLoggingSetup._create_file_handler(
+                log_file_path_for_specified_level, specified_file_log_level
+            )
+            handlers.append(handler)
+            log_file_paths[specified_file_log_level] = log_file_path_for_specified_level
+        SimpleLoggingSetup._ALL_LOG_FILES.extend(log_file_paths.values())
+
+        for h in handlers:
+            h.setFormatter(formatter)
+        return console_handler, handlers, log_file_paths
 
     @staticmethod
     def _determine_formatter(format_str):
