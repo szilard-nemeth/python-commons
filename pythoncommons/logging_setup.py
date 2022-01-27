@@ -179,33 +179,7 @@ class SimpleLoggingSetup:
         log_file_paths: Dict[int, str] = {DEFAULT_LOG_LEVEL: log_file_path_for_default_level}
 
         file_handler = SimpleLoggingSetup._create_file_handler(log_file_path_for_default_level, DEFAULT_LOG_LEVEL)
-
-        console_handler = None
-        if PyTestUtils.is_pytest_execution():
-            # IMPORTANT!
-            # PyTest has its own handlers so a console handler wouldn't log anything.
-            # Keep all handlers of PyTest and don't use the simple StreamHandler for the stdout stream.
-            # An example list of these handlers:
-            # 0 = {_LiveLoggingStreamHandler} <_LiveLoggingStreamHandler (DEBUG)>
-            # 1 = {_FileHandler} <_FileHandler /<path>/pytest-logs.txt (DEBUG)>
-            # 2 = {LogCaptureHandler} <LogCaptureHandler (DEBUG)>
-            # 3 = {LogCaptureHandler} <LogCaptureHandler (DEBUG)>
-            # More info here:
-            # 1. https://stackoverflow.com/a/51633600/1106893
-            # 2. https://docs.pytest.org/en/latest/how-to/logging.html#live-logs
-            root_logger_handlers = logging.getLogger().handlers
-            for rh in root_logger_handlers:
-                if isinstance(rh, _LiveLoggingStreamHandler) and isinstance(rh.stream, TerminalReporter):
-                    console_handler = rh
-            if not console_handler:
-                raise ValueError("Console handler not found among PyTest's handlers: {}".format(root_logger_handlers))
-            handlers = [*root_logger_handlers, file_handler]
-        else:
-            console_handler = SimpleLoggingSetup._create_console_handler(console_log_level)
-            handlers = [
-                console_handler,
-                file_handler,
-            ]
+        console_handler, handlers = SimpleLoggingSetup._determine_handlers(console_log_level, file_handler)
 
         # Only add a second file handler if default logging level is different from specified.
         # Example: Default is logging.INFO, specified is logging.DEBUG
@@ -251,6 +225,36 @@ class SimpleLoggingSetup:
             log_file_paths=log_file_paths,
         )
         return config
+
+    @staticmethod
+    def _determine_handlers(console_log_level, file_handler):
+        console_handler = None
+        if PyTestUtils.is_pytest_execution():
+            # IMPORTANT!
+            # PyTest has its own handlers so a console handler wouldn't log anything.
+            # Keep all handlers of PyTest and don't use the simple StreamHandler for the stdout stream.
+            # An example list of these handlers:
+            # 0 = {_LiveLoggingStreamHandler} <_LiveLoggingStreamHandler (DEBUG)>
+            # 1 = {_FileHandler} <_FileHandler /<path>/pytest-logs.txt (DEBUG)>
+            # 2 = {LogCaptureHandler} <LogCaptureHandler (DEBUG)>
+            # 3 = {LogCaptureHandler} <LogCaptureHandler (DEBUG)>
+            # More info here:
+            # 1. https://stackoverflow.com/a/51633600/1106893
+            # 2. https://docs.pytest.org/en/latest/how-to/logging.html#live-logs
+            root_logger_handlers = logging.getLogger().handlers
+            for rh in root_logger_handlers:
+                if isinstance(rh, _LiveLoggingStreamHandler) and isinstance(rh.stream, TerminalReporter):
+                    console_handler = rh
+            if not console_handler:
+                raise ValueError("Console handler not found among PyTest's handlers: {}".format(root_logger_handlers))
+            handlers = [*root_logger_handlers, file_handler]
+        else:
+            console_handler = SimpleLoggingSetup._create_console_handler(console_log_level)
+            handlers = [
+                console_handler,
+                file_handler,
+            ]
+        return console_handler, handlers
 
     @staticmethod
     def _determine_formatter(format_str):
