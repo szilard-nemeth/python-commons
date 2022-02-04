@@ -440,11 +440,19 @@ class SimpleLoggingSetup:
 
             # Handle project main logger specially
             if is_project_main_logger:
-                # TODO trial & error
-                SimpleLoggingSetup._remove_handlers_from_logger(main_logger, logger, type=HandlerType.CONSOLE)
-                SimpleLoggingSetup._add_handlers_to_logger(main_logger, logger, conf.handlers, type=HandlerType.CONSOLE)
-                SimpleLoggingSetup._remove_handlers_from_logger(main_logger, logger, type=HandlerType.FILE)
-                SimpleLoggingSetup._add_handlers_to_logger(main_logger, logger, conf.handlers, type=HandlerType.FILE)
+                if PyTestUtils.is_pytest_execution():
+                    # Simply remove & add all handlers
+                    SimpleLoggingSetup._remove_handlers_from_logger(main_logger, logger, type=None)
+                    SimpleLoggingSetup._add_handlers_to_logger(main_logger, logger, conf.handlers)
+                else:
+                    SimpleLoggingSetup._remove_handlers_from_logger(main_logger, logger, type=HandlerType.CONSOLE)
+                    SimpleLoggingSetup._add_handlers_to_logger(
+                        main_logger, logger, conf.handlers, type=HandlerType.CONSOLE
+                    )
+                    SimpleLoggingSetup._remove_handlers_from_logger(main_logger, logger, type=HandlerType.FILE)
+                    SimpleLoggingSetup._add_handlers_to_logger(
+                        main_logger, logger, conf.handlers, type=HandlerType.FILE
+                    )
                 return
             else:
                 SimpleLoggingSetup._remove_handlers_from_logger(main_logger, logger, callback=callback)
