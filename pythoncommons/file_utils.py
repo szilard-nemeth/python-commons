@@ -562,10 +562,10 @@ class FileUtils:
         file.close()
 
     @classmethod
-    def create_new_dir(cls, path):
+    def create_new_dir(cls, path, fail_if_created=True):
         if not os.path.exists(path):
             os.makedirs(path)
-        else:
+        elif fail_if_created:
             raise ValueError("Directory already exist: %s", path)
 
     @classmethod
