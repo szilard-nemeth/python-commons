@@ -8,6 +8,8 @@ from pythoncommons.os_utils import OsUtils
 LOG = logging.getLogger(__name__)
 GITHUB_PULLS_API = "https://api.github.com/repos/apache/hadoop/pulls/$PR_ID"
 GITHUB_PULLS_LIST_API = "https://api.github.com/repos/apache/hadoop/pulls"
+GITHUB_PULLS_LIST_API_QUERY_PAGE = "page"
+GITHUB_PULLS_LIST_API_QUERY_PER_PAGE = "per_page"
 
 
 class GithubPRMergeStatus(Enum):
@@ -62,11 +64,42 @@ class GitHubUtils:
 
     @classmethod
     def find_pull_request(cls, jira_id):
-        prs = requests.get(GITHUB_PULLS_LIST_API).json()
-        pr_by_title = {pr["title"]: pr for pr in prs}
+        """
+        With GitHub's pulls API, we can't get the number of PR results or the number of pages.
+        However, we can get the PRs by specifying the page=<number> query parameter.
+        We should query the PRs as long as the current page gave some meaningful result.
+        If the resulted PR list is empty, we can stop the itaration.
+        See:
+        https://docs.github.com/en/rest/reference/pulls
+        https://stackoverflow.com/a/38699904/1106893
+        :param jira_id:
+        :return:
+        """
+        all_pr_by_title = {}
+        page_number = 1
 
+        while True:
+            page_param = f"{GITHUB_PULLS_LIST_API_QUERY_PAGE}={page_number}"
+            url = f"{GITHUB_PULLS_LIST_API}?{GITHUB_PULLS_LIST_API_QUERY_PER_PAGE}=100&{page_param}"
+            LOG.info("Querying Pull requests from URL: %s", url)
+            prs = requests.get(url).json()
+            pr_by_title = {pr["title"]: pr for pr in prs}
+            if pr_by_title:
+                LOG.info(
+                    "Found %d open PRs for URL: %s. All PRs found so far: %d",
+                    len(pr_by_title),
+                    url,
+                    len(all_pr_by_title),
+                )
+            else:
+                break
+            all_pr_by_title.update(pr_by_title)
+            page_number += 1
+
+        LOG.info("Found %d open PRs for base URL: %s", len(all_pr_by_title), GITHUB_PULLS_LIST_API)
+        LOG.debug("Found open PRs for base URL '%s', details: %s", GITHUB_PULLS_LIST_API, all_pr_by_title)
         found_pr = None
-        for title, pr_dict in pr_by_title.items():
+        for title, pr_dict in all_pr_by_title.items():
             if title.startswith(jira_id):
                 found_pr = pr_dict
                 # TODO Handle multiple PRs, e.g. https://issues.apache.org/jira/browse/YARN-11014
