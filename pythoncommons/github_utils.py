@@ -1,6 +1,7 @@
 import logging
 from dataclasses import dataclass
 from enum import Enum
+from typing import Dict, Any
 
 import requests
 
@@ -13,7 +14,7 @@ GITHUB_PULLS_LIST_API_QUERY_PAGE = "page"
 GITHUB_PULLS_LIST_API_QUERY_PER_PAGE = "per_page"
 
 
-@dataclass
+@dataclass(frozen=True, eq=True)
 class GitHubRepoIdentifier:
     owner: str
     repo: str
@@ -48,6 +49,8 @@ class GithubActionsEnvVar(Enum):
 
 
 class GitHubUtils:
+    ALL_PRS_BY_REPO_ID_CACHE: Dict[GitHubRepoIdentifier, Dict[Any, Any]] = {}
+
     @staticmethod
     def is_github_ci_execution() -> bool:
         is_github_ci_exec = OsUtils.get_env_value(GithubActionsEnvVar.GITHUB_ACTIONS.value)
@@ -64,8 +67,10 @@ class GitHubUtils:
         return github_ws_path
 
     @staticmethod
-    def is_pull_request_of_jira_mergeable(gh_repo_id: GitHubRepoIdentifier, jira_id: str) -> GithubPRMergeStatus:
-        found_pr = GitHubUtils.find_pull_request(gh_repo_id, jira_id)
+    def is_pull_request_of_jira_mergeable(
+        gh_repo_id: GitHubRepoIdentifier, jira_id: str, use_cache=True
+    ) -> GithubPRMergeStatus:
+        found_pr = GitHubUtils.find_pull_request(gh_repo_id, jira_id, use_cache=use_cache)
         if not found_pr:
             return GithubPRMergeStatus.PR_NOT_FOUND
         return GitHubUtils._is_pull_request_mergeable(gh_repo_id, int(found_pr["number"]))
@@ -86,7 +91,7 @@ class GitHubUtils:
         return gh_repo_id.as_pulls_api().replace("$PR_ID", str(pr_id))
 
     @classmethod
-    def find_pull_request(cls, gh_repo_id: GitHubRepoIdentifier, jira_id):
+    def find_pull_request(cls, gh_repo_id: GitHubRepoIdentifier, jira_id: str, use_cache=True):
         """
         With GitHub's pulls API, we can't get the number of PR results or the number of pages.
         However, we can get the PRs by specifying the page=<number> query parameter.
@@ -98,7 +103,7 @@ class GitHubUtils:
         :param jira_id:
         :return:
         """
-        all_pr_by_title = cls._find_all_pull_requests(gh_repo_id)
+        all_pr_by_title = cls._find_all_pull_requests(gh_repo_id, use_cache=use_cache)
         return cls.find_in_all_pull_requests(all_pr_by_title, jira_id)
 
     @classmethod
@@ -112,7 +117,10 @@ class GitHubUtils:
         return found_pr
 
     @classmethod
-    def _find_all_pull_requests(cls, gh_repo_id: GitHubRepoIdentifier):
+    def _find_all_pull_requests(cls, gh_repo_id: GitHubRepoIdentifier, use_cache=True):
+        if use_cache and gh_repo_id in cls.ALL_PRS_BY_REPO_ID_CACHE:
+            return cls.ALL_PRS_BY_REPO_ID_CACHE[gh_repo_id]
+
         all_prs_by_title = {}
         page_number = 1
         while True:
@@ -134,4 +142,6 @@ class GitHubUtils:
             page_number += 1
         LOG.info("Found %d open PRs for base URL: %s", len(all_prs_by_title), gh_repo_id.as_list_api())
         LOG.debug("Found open PRs for base URL '%s', details: %s", gh_repo_id.as_list_api(), all_prs_by_title)
+        if use_cache:
+            cls.ALL_PRS_BY_REPO_ID_CACHE[gh_repo_id] = all_prs_by_title
         return all_prs_by_title
