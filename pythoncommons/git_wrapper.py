@@ -295,9 +295,13 @@ class GitWrapper:
 
     def get_commit_hashes(self, issue_id, branch=None):
         cmd_list = ["git", "log"]
+        basic_options = ["--oneline", "--grep", issue_id]
         if branch:
             cmd_list.append(branch)
-        cmd_list.extend(["--oneline", "--all", "--grep", issue_id])
+        else:
+            cmd_list.append("--all")
+        cmd_list.extend(basic_options)
+
         status, stdout, stderr = self.repo.git.execute(cmd_list, with_extended_output=True)
         self.log_git_exec(status, stderr, stdout)
         if status != 0:
