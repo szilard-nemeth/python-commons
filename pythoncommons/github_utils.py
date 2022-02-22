@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 from enum import Enum
 
 import requests
@@ -6,10 +7,31 @@ import requests
 from pythoncommons.os_utils import OsUtils
 
 LOG = logging.getLogger(__name__)
-GITHUB_PULLS_API = "https://api.github.com/repos/apache/hadoop/pulls/$PR_ID"
-GITHUB_PULLS_LIST_API = "https://api.github.com/repos/apache/hadoop/pulls"
+GITHUB_PULLS_API_TEMPLATE = "https://api.github.com/repos/$owner$/$repo$/pulls/$PR_ID"
+GITHUB_PULLS_LIST_API_TEMPLATE = "https://api.github.com/repos/$owner$/$repo$/pulls"
 GITHUB_PULLS_LIST_API_QUERY_PAGE = "page"
 GITHUB_PULLS_LIST_API_QUERY_PER_PAGE = "per_page"
+
+
+@dataclass
+class GitHubRepoIdentifier:
+    owner: str
+    repo: str
+
+    def as_list_api(self):
+        replacers = [("$owner$", self.owner), ("$repo$", self.repo)]
+        return self._multi_replace(GITHUB_PULLS_LIST_API_TEMPLATE, replacers)
+
+    def as_pulls_api(self):
+        replacers = [("$owner$", self.owner), ("$repo$", self.repo)]
+        return self._multi_replace(GITHUB_PULLS_API_TEMPLATE, replacers)
+
+    @staticmethod
+    def _multi_replace(base_str, replacers):
+        res = base_str
+        for replacer in replacers:
+            res = res.replace(replacer[0], replacer[1])
+        return res
 
 
 class GithubPRMergeStatus(Enum):
@@ -42,15 +64,16 @@ class GitHubUtils:
         return github_ws_path
 
     @staticmethod
-    def is_pull_request_of_jira_mergeable(jira_id: str) -> GithubPRMergeStatus:
-        found_pr = GitHubUtils.find_pull_request(jira_id)
+    def is_pull_request_of_jira_mergeable(gh_repo_id: GitHubRepoIdentifier, jira_id: str) -> GithubPRMergeStatus:
+        found_pr = GitHubUtils.find_pull_request(gh_repo_id, jira_id)
         if not found_pr:
             return GithubPRMergeStatus.PR_NOT_FOUND
-        return GitHubUtils.is_pull_request_mergeable(int(found_pr["number"]))
+        return GitHubUtils._is_pull_request_mergeable(gh_repo_id, int(found_pr["number"]))
 
     @staticmethod
-    def is_pull_request_mergeable(pr_id: int) -> GithubPRMergeStatus:
-        pr_json = requests.get(GitHubUtils.get_pull_request_url(pr_id)).json()
+    def _is_pull_request_mergeable(gh_repo_id: GitHubRepoIdentifier, pr_id: int) -> GithubPRMergeStatus:
+        pr_url = GitHubUtils._get_pull_request_url(gh_repo_id, pr_id)
+        pr_json = requests.get(pr_url).json()
         if "mergeable" in pr_json:
             if pr_json["mergeable"]:
                 return GithubPRMergeStatus.MERGEABLE
@@ -59,11 +82,11 @@ class GitHubUtils:
         return GithubPRMergeStatus.UNKNOWN
 
     @staticmethod
-    def get_pull_request_url(pr_id: int):
-        return GITHUB_PULLS_API.replace("$PR_ID", str(pr_id))
+    def _get_pull_request_url(gh_repo_id: GitHubRepoIdentifier, pr_id: int):
+        return gh_repo_id.as_pulls_api().replace("$PR_ID", str(pr_id))
 
     @classmethod
-    def find_pull_request(cls, jira_id):
+    def find_pull_request(cls, gh_repo_id: GitHubRepoIdentifier, jira_id):
         """
         With GitHub's pulls API, we can't get the number of PR results or the number of pages.
         However, we can get the PRs by specifying the page=<number> query parameter.
@@ -75,7 +98,7 @@ class GitHubUtils:
         :param jira_id:
         :return:
         """
-        all_pr_by_title = cls._find_all_pull_requests()
+        all_pr_by_title = cls._find_all_pull_requests(gh_repo_id)
         return cls.find_in_all_pull_requests(all_pr_by_title, jira_id)
 
     @classmethod
@@ -89,12 +112,12 @@ class GitHubUtils:
         return found_pr
 
     @classmethod
-    def _find_all_pull_requests(cls):
+    def _find_all_pull_requests(cls, gh_repo_id: GitHubRepoIdentifier):
         all_prs_by_title = {}
         page_number = 1
         while True:
             page_param = f"{GITHUB_PULLS_LIST_API_QUERY_PAGE}={page_number}"
-            url = f"{GITHUB_PULLS_LIST_API}?{GITHUB_PULLS_LIST_API_QUERY_PER_PAGE}=100&{page_param}"
+            url = f"{gh_repo_id.as_list_api()}?{GITHUB_PULLS_LIST_API_QUERY_PER_PAGE}=100&{page_param}"
             LOG.info("Querying Pull requests from URL: %s", url)
             prs = requests.get(url).json()
             pr_by_title = {pr["title"]: pr for pr in prs}
@@ -109,6 +132,6 @@ class GitHubUtils:
                 break
             all_prs_by_title.update(pr_by_title)
             page_number += 1
-        LOG.info("Found %d open PRs for base URL: %s", len(all_prs_by_title), GITHUB_PULLS_LIST_API)
-        LOG.debug("Found open PRs for base URL '%s', details: %s", GITHUB_PULLS_LIST_API, all_prs_by_title)
+        LOG.info("Found %d open PRs for base URL: %s", len(all_prs_by_title), gh_repo_id.as_list_api())
+        LOG.debug("Found open PRs for base URL '%s', details: %s", gh_repo_id.as_list_api(), all_prs_by_title)
         return all_prs_by_title
