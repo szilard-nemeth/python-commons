@@ -75,9 +75,19 @@ class GitHubUtils:
         :param jira_id:
         :return:
         """
-        all_pr_by_title = {}
-        page_number = 1
+        all_pr_by_title = cls.find_all_pull_requests()
+        found_pr = None
+        for title, pr_dict in all_pr_by_title.items():
+            if title.startswith(jira_id):
+                found_pr = pr_dict
+                # TODO Handle multiple PRs, e.g. https://issues.apache.org/jira/browse/YARN-11014
+                break
+        return found_pr
 
+    @classmethod
+    def find_all_pull_requests(cls):
+        all_prs_by_title = {}
+        page_number = 1
         while True:
             page_param = f"{GITHUB_PULLS_LIST_API_QUERY_PAGE}={page_number}"
             url = f"{GITHUB_PULLS_LIST_API}?{GITHUB_PULLS_LIST_API_QUERY_PER_PAGE}=100&{page_param}"
@@ -89,19 +99,12 @@ class GitHubUtils:
                     "Found %d open PRs for URL: %s. All PRs found so far: %d",
                     len(pr_by_title),
                     url,
-                    len(all_pr_by_title),
+                    len(all_prs_by_title),
                 )
             else:
                 break
-            all_pr_by_title.update(pr_by_title)
+            all_prs_by_title.update(pr_by_title)
             page_number += 1
-
-        LOG.info("Found %d open PRs for base URL: %s", len(all_pr_by_title), GITHUB_PULLS_LIST_API)
-        LOG.debug("Found open PRs for base URL '%s', details: %s", GITHUB_PULLS_LIST_API, all_pr_by_title)
-        found_pr = None
-        for title, pr_dict in all_pr_by_title.items():
-            if title.startswith(jira_id):
-                found_pr = pr_dict
-                # TODO Handle multiple PRs, e.g. https://issues.apache.org/jira/browse/YARN-11014
-                break
-        return found_pr
+        LOG.info("Found %d open PRs for base URL: %s", len(all_prs_by_title), GITHUB_PULLS_LIST_API)
+        LOG.debug("Found open PRs for base URL '%s', details: %s", GITHUB_PULLS_LIST_API, all_prs_by_title)
+        return all_prs_by_title
