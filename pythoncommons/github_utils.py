@@ -75,9 +75,13 @@ class GitHubUtils:
         :param jira_id:
         :return:
         """
-        all_pr_by_title = cls.find_all_pull_requests()
+        all_pr_by_title = cls._find_all_pull_requests()
+        return cls.find_in_all_pull_requests(all_pr_by_title, jira_id)
+
+    @classmethod
+    def find_in_all_pull_requests(cls, all_prs_by_title, jira_id):
         found_pr = None
-        for title, pr_dict in all_pr_by_title.items():
+        for title, pr_dict in all_prs_by_title.items():
             if title.startswith(jira_id):
                 found_pr = pr_dict
                 # TODO Handle multiple PRs, e.g. https://issues.apache.org/jira/browse/YARN-11014
@@ -85,7 +89,7 @@ class GitHubUtils:
         return found_pr
 
     @classmethod
-    def find_all_pull_requests(cls):
+    def _find_all_pull_requests(cls):
         all_prs_by_title = {}
         page_number = 1
         while True:
