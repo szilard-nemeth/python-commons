@@ -293,10 +293,12 @@ class GitWrapper:
             LOG.info("stdout of git command: %s", stdout)
             LOG.info("stderr of git command: %s", stderr)
 
-    def get_commit_hashes(self, issue_id):
-        status, stdout, stderr = self.repo.git.execute(
-            ["git", "log", "--oneline", "--all", "--grep", issue_id], with_extended_output=True
-        )
+    def get_commit_hashes(self, issue_id, branch=None):
+        cmd_list = ["git", "log"]
+        if branch:
+            cmd_list.append(branch)
+        cmd_list.extend(["--oneline", "--all", "--grep", issue_id])
+        status, stdout, stderr = self.repo.git.execute(cmd_list, with_extended_output=True)
         self.log_git_exec(status, stderr, stdout)
         if status != 0:
             raise ValueError("[%s] Failed to run git log command that finds a Jira issue!")
