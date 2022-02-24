@@ -11,6 +11,7 @@ LOG = logging.getLogger(__name__)
 class TabulateTableFormat(Enum):
     GRID = "fancy_grid"
     HTML = "html"
+    UNSAFE_HTML = "unsafehtml"
 
 
 DEFAULT_TABLE_FORMATS = [TabulateTableFormat.GRID, TabulateTableFormat.HTML]
