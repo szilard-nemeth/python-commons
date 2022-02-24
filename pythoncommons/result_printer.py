@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 from enum import Enum
 from typing import Tuple, List, Any
 from colr import color
@@ -15,6 +16,15 @@ class TabulateTableFormat(Enum):
 
 
 DEFAULT_TABLE_FORMATS = [TabulateTableFormat.GRID, TabulateTableFormat.HTML]
+
+
+@dataclass
+class TableCellLink:
+    link_name: str
+    link_value: str
+
+    def to_html(self):
+        return f'<a href="{self.link_value}">{self.link_name}</a>'
 
 
 class GenericTableWithHeader:
@@ -185,7 +195,9 @@ class ResultPrinter:
                 bcc = render_conf.bool_conversion_config
                 if bcc and isinstance(cell, bool):
                     cell = bcc.convert_true_to if cell else bcc.convert_false_to
-                if render_conf.max_width and isinstance(cell, str):
+                if isinstance(cell, TableCellLink):
+                    cell = cell.to_html()
+                elif render_conf.max_width and isinstance(cell, str):
                     cell = StringUtils.convert_string_to_multiline(
                         cell, max_line_length=render_conf.max_width, separator=render_conf.max_width_separator
                     )
