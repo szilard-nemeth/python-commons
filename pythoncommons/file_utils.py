@@ -119,6 +119,7 @@ class FileFinder:
         extension=None,
         debug=False,
         exclude_dirs: List[str] = None,
+        ensure_number_of_results: int = None,
     ):
         cls.old_debug = cls.debug
         cls.debug = debug
@@ -136,6 +137,14 @@ class FileFinder:
             if single_level:
                 return result_files
         cls.debug = cls.old_debug
+
+        if ensure_number_of_results:
+            if len(result_files) != ensure_number_of_results:
+                raise ValueError(
+                    "Number of results is not equal to expected result size! Expected: {}, Actual: {}".format(
+                        ensure_number_of_results, len(result_files)
+                    )
+                )
         return result_files
 
     @classmethod
@@ -367,6 +376,7 @@ class FileUtils:
         extension=None,
         debug=False,
         exclude_dirs: List[str] = None,
+        ensure_number_of_results: int = None,
     ):
         args = locals().copy()
         del args["cls"]
