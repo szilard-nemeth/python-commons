@@ -21,6 +21,7 @@ pytest~=6.2.3
 pytest-cov
 setuptools
 pre-commit
+dataclasses-json
 
 # Python 2
 pathlib
