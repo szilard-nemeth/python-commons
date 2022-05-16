@@ -5,6 +5,7 @@ import logging
 from re import Pattern
 from typing import Dict, Tuple, List, Any, Callable
 
+from pythoncommons.file_parser.parser_config_reader import RegexGenerator
 from pythoncommons.file_utils import FileUtils
 
 LOG = logging.getLogger(__name__)
@@ -61,6 +62,42 @@ class DiagnosticPrinter:
         enabled = self.diagnostic_config.conf_dict[info_type]
         if enabled:
             LOG.debug(info_type.log_pattern, pprint.pformat(obj))
+
+
+class GenericLineByLineParser:
+    def __init__(self, generic_parser_config, regex, diagnostic_config):
+        self.generic_parser_config = generic_parser_config
+        self.regex = regex
+        self.printer = DiagnosticPrinter(diagnostic_config)
+
+    def parse(self, file, parsed_object_dataclass: Any, line_to_obj_parser_func: Callable):
+        self.fields_by_regexes = RegexGenerator.get_regexes(self.generic_parser_config.generic_parser_settings.fields)
+        LOG.info("FINAL REGEX: %s", self.fields_by_regexes)
+
+        file_contents = FileUtils.read_file(file)
+        # TODO change to debug level
+        LOG.info("File contents: %s", file_contents)
+        self.lines_of_file = file_contents.split("\n")
+        parsed_objects: List[parsed_object_dataclass] = []
+        for idx, line in enumerate(self.lines_of_file):
+            parsed_object = self._process_line(line, line_to_obj_parser_func)
+            parsed_objects.append(parsed_object)
+        self.printer.pretty_print(parsed_objects, DiagnosticInfoType.PARSED_OBJECTS)
+        return parsed_objects
+
+    def _process_line(self, line, line_to_obj_parser_func):
+        matches: Dict[str, str] = {}
+        for field_name, regex in self.fields_by_regexes.items():
+            LOG.debug("Trying to match field with name '%s' on line '%s' with regex '%s'", field_name, line, regex)
+            match = re.search(regex, line)
+            if match and match.group(field_name):
+                matches[field_name] = match.group(field_name)
+                self.printer.print_line(match, DiagnosticInfoType.MATCH_OBJECT)
+                line = line.replace(match.group(field_name), "")
+            else:
+                LOG.debug("Field with name '%s' on line '%s' with regex '%s' not found!", field_name, line, regex)
+
+        return line_to_obj_parser_func(matches)
 
 
 class GenericBlockBasedInputFileParser:
