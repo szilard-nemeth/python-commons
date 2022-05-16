@@ -12,6 +12,11 @@ from pythoncommons.date_utils import DateUtils
 from pythoncommons.file_utils import JsonFileUtils
 from pythoncommons.string_utils import auto_str
 
+REGEX_DOT = "\\."
+
+REGEX_TWO_DIGITS = "\\d\\d"
+REGEX_FOUR_DIGITS = REGEX_TWO_DIGITS + REGEX_TWO_DIGITS
+
 DEFAULT_PARSER_CONFIG_FILENAME = "parserconfig.json"
 DEFAULT_PARSE_PREFIX_SEPARATOR = ":"
 DEFAULT_ALLOWED_VALUES_SEPARATOR = ","
@@ -254,7 +259,7 @@ class ParserConfigReader:
         return generic_parser_config, extended_parser_config
 
     def _convert_date_formats_to_patterns(self):
-        mappings = {"%m": "\\d\\d", "%d": "\\d\\d", "%Y": "\\d\\d\\d\\d", ".": "\\."}
+        mappings = {"%m": REGEX_TWO_DIGITS, "%d": REGEX_TWO_DIGITS, "%Y": REGEX_FOUR_DIGITS, ".": REGEX_DOT}
         regexes: List[Pattern] = []
         for fmt in self.config.generic_parser_settings.date_formats:
             curr_regex = fmt
