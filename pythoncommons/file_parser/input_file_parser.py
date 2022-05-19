@@ -90,8 +90,8 @@ class GenericLineByLineParser:
         for field_name, regex in self.fields_by_regexes.items():
             LOG.debug("Trying to match field with name '%s' on line '%s' with regex '%s'", field_name, line, regex)
             match = re.search(regex, line)
-            matched_str = match.group(field_name)
-            if match and matched_str:
+            if match:
+                matched_str = match.group(field_name)
                 field_object = self._field_objects[field_name]
                 result_str = matched_str
                 if field_object.parse_prefix:
