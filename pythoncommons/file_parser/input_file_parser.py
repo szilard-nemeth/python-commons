@@ -5,7 +5,7 @@ import logging
 from re import Pattern
 from typing import Dict, Tuple, List, Any, Callable
 
-from pythoncommons.file_parser.parser_config_reader import RegexGenerator
+from pythoncommons.file_parser.parser_config_reader import RegexGenerator, DEFAULT_PARSE_PREFIX_SEPARATOR
 from pythoncommons.file_utils import FileUtils
 
 LOG = logging.getLogger(__name__)
@@ -68,7 +68,8 @@ class GenericLineByLineParser:
     def __init__(self, generic_parser_config, diagnostic_config):
         self.generic_parser_config = generic_parser_config
         self.printer = DiagnosticPrinter(diagnostic_config)
-        self.fields_by_regexes = RegexGenerator.get_regexes(self.generic_parser_config.generic_parser_settings.fields)
+        self._field_objects = self.generic_parser_config.generic_parser_settings.fields
+        self.fields_by_regexes = RegexGenerator.get_regexes(self._field_objects)
         LOG.info("Fields by regexes: %s", self.fields_by_regexes)
         self.lines_of_file = None
 
@@ -89,10 +90,24 @@ class GenericLineByLineParser:
         for field_name, regex in self.fields_by_regexes.items():
             LOG.debug("Trying to match field with name '%s' on line '%s' with regex '%s'", field_name, line, regex)
             match = re.search(regex, line)
-            if match and match.group(field_name):
-                matches[field_name] = match.group(field_name)
+            matched_str = match.group(field_name)
+            if match and matched_str:
+                field_object = self._field_objects[field_name]
+                result_str = matched_str
+                if field_object.parse_prefix:
+                    prefix_with_sep = field_object.parse_prefix + DEFAULT_PARSE_PREFIX_SEPARATOR
+                    if matched_str.startswith(prefix_with_sep):
+                        result_str = matched_str[len(prefix_with_sep) :]
+                        LOG.debug(
+                            "Stripping prefix '%s' from string '%s', resulted string: '%s'",
+                            prefix_with_sep,
+                            matched_str,
+                            result_str,
+                        )
+                matches[field_name] = result_str
+
                 self.printer.print_line(match, DiagnosticInfoType.MATCH_OBJECT)
-                line = line.replace(match.group(field_name), "")
+                line = line.replace(matched_str, "")
             else:
                 LOG.debug("Field with name '%s' on line '%s' with regex '%s' not found!", field_name, line, regex)
 
