@@ -292,7 +292,7 @@ class RegexGenerator:
         regex_dict: Dict[str, str] = {}
         used_group_names = {}
         for field_name, field_object in field_objects.items():
-            group_name = field_name.lower()
+            group_name = field_name  # use uppercase field name everywhere
             if group_name not in used_group_names:
                 used_group_names[group_name] = True
                 regex_dict[group_name] = RegexGenerator._create_regex(group_name, field_object)
