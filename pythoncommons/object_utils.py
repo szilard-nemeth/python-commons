@@ -1,7 +1,7 @@
 import inspect
 import logging
 import pickle
-from typing import Any, List, Dict, Tuple
+from typing import Any, List, Dict, Tuple, Iterable
 
 LOG = logging.getLogger(__name__)
 
@@ -49,6 +49,26 @@ class ObjUtils:
             for tup in not_found_attrs:
                 exc_message += "Attribute '{}' (name: {})\n".format(*tup)
             raise ValueError(exc_message)
+
+    @staticmethod
+    def ensure_all_attrs_with_value(obj, attrs: Iterable[str], expected_value):
+        not_found_attrs: List[str] = []
+        attrs_with_different_value: List[Tuple[str, Any]] = []
+
+        for attr_name in attrs:
+            if not hasattr(obj, attr_name):
+                not_found_attrs.append(attr_name)
+            elif getattr(obj, attr_name) != expected_value:
+                attrs_with_different_value.append((attr_name, getattr(obj, attr_name)))
+
+        if not_found_attrs:
+            raise ValueError("The following attributes are not found: {}".format(not_found_attrs))
+        if attrs_with_different_value:
+            raise ValueError(
+                "The following attributes are not having value of '{}': {}".format(
+                    expected_value, attrs_with_different_value
+                )
+            )
 
 
 class ListUtils:
