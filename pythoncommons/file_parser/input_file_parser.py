@@ -5,7 +5,11 @@ import logging
 from re import Pattern
 from typing import Dict, Tuple, List, Any, Callable
 
-from pythoncommons.file_parser.parser_config_reader import RegexGenerator, DEFAULT_PARSE_PREFIX_SEPARATOR
+from pythoncommons.file_parser.parser_config_reader import (
+    RegexGenerator,
+    DEFAULT_PARSE_PREFIX_SEPARATOR,
+    GREEDY_FIELD_POSTFIX,
+)
 from pythoncommons.file_utils import FileUtils
 
 LOG = logging.getLogger(__name__)
@@ -109,7 +113,12 @@ class GenericLineByLineParser:
                                 matched_str,
                                 result_str,
                             )
-                    matches[field_name] = result_str
+                    if field_object.eat_greedy_without_parse_prefix:
+                        original_field_name = field_name.replace(GREEDY_FIELD_POSTFIX, "")
+                        if original_field_name not in matches or not matches[original_field_name]:
+                            matches[field_name] = result_str
+                    else:
+                        matches[field_name] = result_str
 
                     self.printer.print_line(match, DiagnosticInfoType.MATCH_OBJECT)
                     line = line.replace(matched_str, "")
