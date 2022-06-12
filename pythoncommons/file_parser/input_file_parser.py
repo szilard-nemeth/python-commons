@@ -70,7 +70,7 @@ class GenericLineByLineParser:
         self.printer = DiagnosticPrinter(diagnostic_config)
         self._field_objects = self.generic_parser_config.generic_parser_settings.fields
         self.fields_by_regexes, additional_fields = RegexGenerator.get_regexes(self._field_objects)
-        self._field_objects.extend(additional_fields)
+        self._field_objects.update(additional_fields)
         LOG.info("Fields by regexes: %s", self.fields_by_regexes)
         self.lines_of_file = None
 
@@ -88,32 +88,34 @@ class GenericLineByLineParser:
 
     def _process_line(self, line, line_to_obj_parser_func):
         matches: Dict[str, str] = {}
-        for field_name, regex in self.fields_by_regexes.items():
-            LOG.debug("Trying to match field with name '%s' on line '%s' with regex '%s'", field_name, line, regex)
-            match = re.search(regex, line)
-            if match:
-                field_object = self._field_objects[field_name]
-                matched_str = match.group(field_name)
-                if not matched_str:
-                    continue
+        for field_name, regexes in self.fields_by_regexes.items():
+            for regex in regexes:
+                LOG.debug("Trying to match field with name '%s' on line '%s' with regex '%s'", field_name, line, regex)
+                match = re.search(regex, line)
+                if match:
+                    field_object = self._field_objects[field_name]
+                    matched_str = match.group(field_name)
+                    if not matched_str:
+                        continue
 
-                result_str = matched_str
-                if field_object.parse_prefix:
-                    prefix_with_sep = field_object.parse_prefix + DEFAULT_PARSE_PREFIX_SEPARATOR
-                    if matched_str.startswith(prefix_with_sep):
-                        result_str = matched_str[len(prefix_with_sep) :]
-                        LOG.debug(
-                            "Stripping prefix '%s' from string '%s', resulted string: '%s'",
-                            prefix_with_sep,
-                            matched_str,
-                            result_str,
-                        )
-                matches[field_name] = result_str
+                    result_str = matched_str
+                    if field_object.parse_prefix:
+                        prefix_with_sep = field_object.parse_prefix + DEFAULT_PARSE_PREFIX_SEPARATOR
+                        if matched_str.startswith(prefix_with_sep):
+                            result_str = matched_str[len(prefix_with_sep) :]
+                            LOG.debug(
+                                "Stripping prefix '%s' from string '%s', resulted string: '%s'",
+                                prefix_with_sep,
+                                matched_str,
+                                result_str,
+                            )
+                    matches[field_name] = result_str
 
-                self.printer.print_line(match, DiagnosticInfoType.MATCH_OBJECT)
-                line = line.replace(matched_str, "")
-            else:
-                LOG.debug("Field with name '%s' on line '%s' with regex '%s' not found!", field_name, line, regex)
+                    self.printer.print_line(match, DiagnosticInfoType.MATCH_OBJECT)
+                    line = line.replace(matched_str, "")
+                    line = line.lstrip()
+                else:
+                    LOG.debug("Field with name '%s' on line '%s' with regex '%s' not found!", field_name, line, regex)
 
         return line_to_obj_parser_func(matches)
 

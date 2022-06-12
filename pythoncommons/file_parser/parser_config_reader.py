@@ -25,9 +25,13 @@ GREEDY_FIELD_POSTFIX = "_greedy"
 
 LOG = logging.getLogger(__name__)
 
+REGEX_FOR_STRING = "[a-zA-ZÀ-ú0-9-:@<>_@().,'|\\[\\]\\/]+"
+REGEX_FOR_MULTI_WORD_STRING = '"[a-zA-ZÀ-ú0-9-:@<>_@() .,\'|\\[\\]\\/]+"'
+
 
 class FieldParseType(Enum):
     REGEX = "regex"
+    REGEX_WITH_SMART_PARSE = "regexSmartParse"
     LITERAL = "literal"
     BOOL = "bool"
     INT = "int"
@@ -38,7 +42,6 @@ class FieldParseType(Enum):
 class ExtractableField:
     parse_type: FieldParseType
     optional: bool
-    smart_parse: bool
     value: str = None
     extract_inner_group: bool = False
     allowed_values: str or None = field(default=None)
@@ -291,24 +294,25 @@ class RegexGenerator:
         # Order dict by precedence
         field_objects = {k: v for k, v in sorted(field_objects.items(), key=lambda item: item[1].precedence)}
 
-        regex_dict: Dict[str, str] = {}
+        regex_dict: Dict[str, List[str]] = {}
         additional_fields: Dict[str, ExtractableField] = {}
         used_group_names = {}
         for field_name, field_object in field_objects.items():
             group_name = field_name  # use uppercase field name everywhere
             if group_name not in used_group_names:
                 used_group_names[group_name] = True
-                regex_dict[group_name] = RegexGenerator._create_regex(group_name, field_object)
+                regex_dict[group_name] = RegexGenerator._create_regexes(group_name, field_object)
             else:
                 raise ValueError("Group name is already used in regex: {}".format(group_name))
             if field_object.eat_greedy_without_parse_prefix:
                 field_key = group_name + GREEDY_FIELD_POSTFIX
-                regex_dict[field_key] = RegexGenerator._create_regex(field_key, field_object, use_parse_prefix=False)
+                regex_dict[field_key] = RegexGenerator._create_regexes(field_key, field_object, use_parse_prefix=False)
                 copied_field = copy(field_object)
                 additional_fields[field_key] = copied_field
         return regex_dict, additional_fields
 
     @staticmethod
+    # TODO Seems unused
     def create_final_regex(parser_config):
         field_objects: Dict[str, ExtractableField] = parser_config.generic_parser_settings.fields_proxy
         final_regex = r""
@@ -318,21 +322,20 @@ class RegexGenerator:
             group_name = field_name
             if group_name not in used_group_names:
                 used_group_names[group_name] = 1
-                final_regex += RegexGenerator._create_regex(group_name, field_object)
+                final_regex += RegexGenerator._create_regexes(group_name, field_object)
             else:
                 if group_name not in parser_config.generic_parser_settings.mandatory_fields_proxy:
                     used_group_names[group_name] += 1
                     group_name = f"{group_name}_{used_group_names[group_name]}"
-                    final_regex += RegexGenerator._create_regex(group_name, field_object)
+                    final_regex += RegexGenerator._create_regexes(group_name, field_object)
                 else:
                     raise ValueError("Group name is already used in regex: {}".format(group_name))
         LOG.info("FINAL REGEX: %s", final_regex)
         return final_regex
 
     @staticmethod
-    def _create_regex(group_name, field_object: ExtractableField, use_parse_prefix=True):
-        regex_value = field_object.value
-
+    def _create_regexes(group_name, field_object: ExtractableField, use_parse_prefix=True) -> List[str]:
+        regex_values: List[str] = [field_object.value]
         parse_prefix = ""
         if use_parse_prefix:
             parse_prefix = field_object.parse_prefix
@@ -341,39 +344,44 @@ class RegexGenerator:
             else:
                 parse_prefix += DEFAULT_PARSE_PREFIX_SEPARATOR
 
-        if (
-            field_object.parse_type == FieldParseType.REGEX
-            and regex_value.startswith('"')
-            and regex_value.endswith('"')
-        ):
-            regex_value = regex_value[1:-1]
         elif field_object.parse_type == FieldParseType.INT:
-            regex_value = r"\d+"
+            regex_values = [r"\d+"]
         elif field_object.parse_type == FieldParseType.BOOL:
-            regex_value = "|".join(field_object.allowed_values_list)
+            regex_values = ["|".join(field_object.allowed_values_list)]
 
-        regex_value = f"{parse_prefix}{regex_value}"
+        if field_object.parse_type == FieldParseType.REGEX_WITH_SMART_PARSE:
+            # Add another regex with quoted string + multiple word capability
+            # example values could be parsed:
+            # from: "word1 word2 word3"
+            # from: word1
+            regex_values = [REGEX_FOR_STRING, REGEX_FOR_MULTI_WORD_STRING]
+
+        regex_values = [f"{parse_prefix}{r}" for r in regex_values]
 
         if field_object.extract_inner_group:
-            grouped_regex = RegexGenerator._get_inner_group_grouped_regex(group_name, regex_value)
+            grouped_regexes = RegexGenerator._get_inner_group_grouped_regexes(group_name, regex_values)
             if field_object.optional:
-                grouped_regex = f"({grouped_regex})*"
+                grouped_regexes = [f"({r})*" for r in grouped_regexes]
         else:
-            grouped_regex = f"(?P<{group_name}>{regex_value})"
+            grouped_regexes = [f"(?P<{group_name}>{r})" for r in regex_values]
             if field_object.optional:
-                grouped_regex += "*"
-        return grouped_regex
+                grouped_regexes = [f"{r}*" for r in grouped_regexes]
+
+        return grouped_regexes
 
     @staticmethod
-    def _get_inner_group_grouped_regex(group_name, regex_value):
-        open_idx = regex_value.find("(")
-        close_idx = regex_value.rfind(")")
-        quantifier = regex_value[close_idx + 1]
-        if quantifier not in ["*", "?", "+"]:
-            quantifier = ""
-        start = regex_value[:open_idx]
-        end = regex_value[close_idx + 1 :]
-        group = regex_value[open_idx + 1 : close_idx] + quantifier
-        grouped_regex = f"(?P<{group_name}>{group})"
-        new_regex_value = f"{start}{grouped_regex}{end}"
-        return new_regex_value
+    def _get_inner_group_grouped_regexes(group_name, regex_values):
+        ret = []
+        for regex_value in regex_values:
+            open_idx = regex_value.find("(")
+            close_idx = regex_value.rfind(")")
+            quantifier = regex_value[close_idx + 1]
+            if quantifier not in ["*", "?", "+"]:
+                quantifier = ""
+            start = regex_value[:open_idx]
+            end = regex_value[close_idx + 1 :]
+            group = regex_value[open_idx + 1 : close_idx] + quantifier
+            grouped_regex = f"(?P<{group_name}>{group})"
+            new_regex_value = f"{start}{grouped_regex}{end}"
+            ret.append(new_regex_value)
+        return ret
