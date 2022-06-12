@@ -69,7 +69,8 @@ class GenericLineByLineParser:
         self.generic_parser_config = generic_parser_config
         self.printer = DiagnosticPrinter(diagnostic_config)
         self._field_objects = self.generic_parser_config.generic_parser_settings.fields
-        self.fields_by_regexes = RegexGenerator.get_regexes(self._field_objects)
+        self.fields_by_regexes, additional_fields = RegexGenerator.get_regexes(self._field_objects)
+        self._field_objects.extend(additional_fields)
         LOG.info("Fields by regexes: %s", self.fields_by_regexes)
         self.lines_of_file = None
 

@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+from copy import copy
 from dataclasses import field, dataclass
 from enum import Enum
 from typing import Dict, List, Pattern
@@ -37,6 +38,7 @@ class FieldParseType(Enum):
 class ExtractableField:
     parse_type: FieldParseType
     optional: bool
+    smart_parse: bool
     value: str = None
     extract_inner_group: bool = False
     allowed_values: str or None = field(default=None)
@@ -290,6 +292,7 @@ class RegexGenerator:
         field_objects = {k: v for k, v in sorted(field_objects.items(), key=lambda item: item[1].precedence)}
 
         regex_dict: Dict[str, str] = {}
+        additional_fields: Dict[str, ExtractableField] = {}
         used_group_names = {}
         for field_name, field_object in field_objects.items():
             group_name = field_name  # use uppercase field name everywhere
@@ -301,7 +304,9 @@ class RegexGenerator:
             if field_object.eat_greedy_without_parse_prefix:
                 field_key = group_name + GREEDY_FIELD_POSTFIX
                 regex_dict[field_key] = RegexGenerator._create_regex(field_key, field_object, use_parse_prefix=False)
-        return regex_dict
+                copied_field = copy(field_object)
+                additional_fields[field_key] = copied_field
+        return regex_dict, additional_fields
 
     @staticmethod
     def create_final_regex(parser_config):
