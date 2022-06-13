@@ -113,20 +113,25 @@ class GenericLineByLineParser:
                                 matched_str,
                                 result_str,
                             )
-                    if field_object.eat_greedy_without_parse_prefix:
-                        original_field_name = field_name.replace(GREEDY_FIELD_POSTFIX, "")
-                        if original_field_name not in matches or not matches[original_field_name]:
-                            matches[field_name] = result_str
-                    else:
-                        matches[field_name] = result_str
-
+                    LOG.debug("Match: %s", result_str)
+                    self._add_to_matches(field_name, field_object, matches, result_str)
                     self.printer.print_line(match, DiagnosticInfoType.MATCH_OBJECT)
                     line = line.replace(matched_str, "")
                     line = line.lstrip()
+                    line = line.rstrip()
                 else:
                     LOG.debug("Field with name '%s' on line '%s' with regex '%s' not found!", field_name, line, regex)
 
         return line_to_obj_parser_func(matches)
+
+    @staticmethod
+    def _add_to_matches(field_name, field_object, matches, result_str):
+        if field_object.eat_greedy_without_parse_prefix:
+            original_field_name = field_name.replace(GREEDY_FIELD_POSTFIX, "")
+            if original_field_name not in matches or not matches[original_field_name]:
+                matches[field_name] = result_str
+        else:
+            matches[field_name] = result_str
 
 
 class GenericBlockBasedInputFileParser:
