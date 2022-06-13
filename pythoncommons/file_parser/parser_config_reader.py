@@ -26,7 +26,8 @@ GREEDY_FIELD_POSTFIX = "_greedy"
 LOG = logging.getLogger(__name__)
 
 REGEX_FOR_STRING = "[a-zA-ZÀ-ú0-9-:@<>_@().,'|\\[\\]\\/]+"
-REGEX_FOR_MULTI_WORD_STRING = '"[a-zA-ZÀ-ú0-9-:@<>_@() .,\'|\\[\\]\\/]+"'
+REGEX_FOR_MULTI_WORD_STRING = '"[ a-zA-ZÀ-ú0-9-:@<>_@().,\'|\\[\\]\\/]+"'
+REGEX_FOR_MULTI_WORD_STRING_GREEDY = "[ a-zA-ZÀ-ú0-9-:@<>_@().,'|\\[\\]\\/]+"
 
 
 class FieldParseType(Enum):
@@ -288,7 +289,14 @@ class ParserConfigReader:
         return self.__str__()
 
 
+class RegexFieldMatchType(Enum):
+    SINGLE_MATCH = "single"
+    MATCH_ANYWHERE = "anywhere"
+
+
 class RegexGenerator:
+    MATCH_TYPE = RegexFieldMatchType.MATCH_ANYWHERE
+
     @staticmethod
     def get_regexes(field_objects: Dict[str, ExtractableField]):
         # Order dict by precedence
@@ -306,13 +314,15 @@ class RegexGenerator:
                 raise ValueError("Group name is already used in regex: {}".format(group_name))
             if field_object.eat_greedy_without_parse_prefix:
                 field_key = group_name + GREEDY_FIELD_POSTFIX
-                regex_dict[field_key] = RegexGenerator._create_regexes(field_key, field_object, use_parse_prefix=False)
+                regex_dict[field_key] = RegexGenerator._create_regexes(
+                    field_key, field_object, use_parse_prefix=False, greedy=True
+                )
                 copied_field = copy(field_object)
                 additional_fields[field_key] = copied_field
         return regex_dict, additional_fields
 
     @staticmethod
-    # TODO Seems unused
+    # TODO Only monthlyexpensesummarizer uses this, remove later
     def create_final_regex(parser_config):
         field_objects: Dict[str, ExtractableField] = parser_config.generic_parser_settings.fields_proxy
         final_regex = r""
@@ -334,7 +344,7 @@ class RegexGenerator:
         return final_regex
 
     @staticmethod
-    def _create_regexes(group_name, field_object: ExtractableField, use_parse_prefix=True) -> List[str]:
+    def _create_regexes(group_name, field_object: ExtractableField, use_parse_prefix=True, greedy=False) -> List[str]:
         regex_values: List[str] = [field_object.value]
         parse_prefix = ""
         if use_parse_prefix:
@@ -343,7 +353,6 @@ class RegexGenerator:
                 parse_prefix = ""
             else:
                 parse_prefix += DEFAULT_PARSE_PREFIX_SEPARATOR
-
         elif field_object.parse_type == FieldParseType.INT:
             regex_values = [r"\d+"]
         elif field_object.parse_type == FieldParseType.BOOL:
@@ -354,10 +363,25 @@ class RegexGenerator:
             # example values could be parsed:
             # from: "word1 word2 word3"
             # from: word1
-            regex_values = [REGEX_FOR_STRING, REGEX_FOR_MULTI_WORD_STRING]
+            if greedy:
+                # NOTE: Order is important, need to match multi-word strings before single word string
+                regex_values = [REGEX_FOR_MULTI_WORD_STRING_GREEDY, REGEX_FOR_STRING]
+            else:
+                regex_values = [REGEX_FOR_STRING, REGEX_FOR_MULTI_WORD_STRING]
 
-        regex_values = [f"{parse_prefix}{r}" for r in regex_values]
+        regex_values = RegexGenerator._create_prefixed_regexes(parse_prefix, regex_values)
+        grouped_regexes = RegexGenerator._create_grouped_regexes(field_object, group_name, regex_values)
+        return grouped_regexes
 
+    @staticmethod
+    def _create_prefixed_regexes(parse_prefix, regex_values):
+        # TODO
+        # if RegexGenerator.MATCH_TYPE == RegexFieldMatchType.MATCH_ANYWHERE:
+        # return [f".*{parse_prefix}{r}" for r in regex_values]
+        return [f"{parse_prefix}{r}" for r in regex_values]
+
+    @staticmethod
+    def _create_grouped_regexes(field_object, group_name, regex_values):
         if field_object.extract_inner_group:
             grouped_regexes = RegexGenerator._get_inner_group_grouped_regexes(group_name, regex_values)
             if field_object.optional:
@@ -366,7 +390,6 @@ class RegexGenerator:
             grouped_regexes = [f"(?P<{group_name}>{r})" for r in regex_values]
             if field_object.optional:
                 grouped_regexes = [f"{r}*" for r in grouped_regexes]
-
         return grouped_regexes
 
     @staticmethod
