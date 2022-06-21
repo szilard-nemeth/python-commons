@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 import requests
 
@@ -127,7 +127,12 @@ class GitHubUtils:
             page_param = f"{GITHUB_PULLS_LIST_API_QUERY_PAGE}={page_number}"
             url = f"{gh_repo_id.as_list_api()}?{GITHUB_PULLS_LIST_API_QUERY_PER_PAGE}=100&{page_param}"
             LOG.info("Querying Pull requests from URL: %s", url)
-            prs = requests.get(url).json()
+            resp = requests.get(url)
+            if resp.status_code != 200:
+                resp_json = resp.json()
+                message = resp_json["message"]
+                raise ValueError("HTTP error during querying {}. Message: {}".format(url, message))
+            prs = resp.json()
             pr_by_title = {pr["title"]: pr for pr in prs}
             if pr_by_title:
                 LOG.info(
