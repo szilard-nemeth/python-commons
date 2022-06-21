@@ -7,7 +7,6 @@ from typing import List, Any, Dict
 import requests
 from jira import JIRA, JIRAError, Issue
 from jira.resources import Attachment
-
 from pythoncommons.git_utils import GitUtils
 
 from pythoncommons.file_utils import FileUtils
@@ -74,7 +73,16 @@ class JiraPatchStatus:
     }
 
     @staticmethod
-    def translate_from_github_pr_merge_status(github_merge_status: GithubPRMergeStatus):
+    def translate_from_github_pr_merge_statuses(
+        github_merge_statuses: Dict[str, GithubPRMergeStatus]
+    ) -> Dict[str, Any]:
+        res = {}
+        for branch, status in github_merge_statuses.items():
+            res[branch] = JiraPatchStatus._translate_from_github_merge_status(status)
+        return res
+
+    @staticmethod
+    def _translate_from_github_merge_status(github_merge_status):
         if github_merge_status == GithubPRMergeStatus.MERGEABLE:
             return JiraPatchStatus.PR_MERGEABLE
         elif github_merge_status == GithubPRMergeStatus.NOT_MERGEABLE:

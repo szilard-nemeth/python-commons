@@ -14,6 +14,17 @@ GITHUB_PULLS_LIST_API_QUERY_PAGE = "page"
 GITHUB_PULLS_LIST_API_QUERY_PER_PAGE = "per_page"
 
 
+class GitHubListPRsField(Enum):
+    MERGEABLE = "mergeable"
+    BASE = "base"
+    HEAD = "head"
+    NUMBER = "number"
+
+
+class GitHubPRSrcDestField(Enum):
+    REF = "ref"
+
+
 @dataclass(frozen=True, eq=True)
 class GitHubRepoIdentifier:
     owner: str
@@ -68,19 +79,32 @@ class GitHubUtils:
 
     @staticmethod
     def is_pull_request_of_jira_mergeable(
-        gh_repo_id: GitHubRepoIdentifier, jira_id: str, use_cache=True
-    ) -> GithubPRMergeStatus:
-        found_pr = GitHubUtils.find_pull_request(gh_repo_id, jira_id, use_cache=use_cache)
-        if not found_pr:
-            return GithubPRMergeStatus.PR_NOT_FOUND
-        return GitHubUtils._is_pull_request_mergeable(gh_repo_id, int(found_pr["number"]))
+        gh_repo_id: GitHubRepoIdentifier, jira_id: str, branches: List[str], use_cache=True
+    ) -> Dict[str, GithubPRMergeStatus]:
+        found_prs = GitHubUtils.find_pull_requests(gh_repo_id, jira_id, use_cache=use_cache)
+        if not found_prs:
+            return {br: GithubPRMergeStatus.PR_NOT_FOUND for br in branches}
+
+        d = {}
+        branches_set = set(branches)
+        for pr in found_prs:
+            pr_id = int(pr[GitHubListPRsField.NUMBER.value])
+            target_branch_of_pr = pr[GitHubListPRsField.BASE.value][GitHubPRSrcDestField.REF.value]
+            mergeable = GitHubUtils._is_pull_request_mergeable(gh_repo_id, pr_id)
+            d[target_branch_of_pr] = mergeable
+            branches_set.remove(target_branch_of_pr)
+
+        # Loop through remaining branches and add PR_NOT_FOUND
+        for br in branches_set:
+            d[br] = GithubPRMergeStatus.PR_NOT_FOUND
+        return d
 
     @staticmethod
     def _is_pull_request_mergeable(gh_repo_id: GitHubRepoIdentifier, pr_id: int) -> GithubPRMergeStatus:
         pr_url = GitHubUtils._get_pull_request_url(gh_repo_id, pr_id)
         pr_json = requests.get(pr_url).json()
-        if "mergeable" in pr_json:
-            if pr_json["mergeable"]:
+        if GitHubListPRsField.MERGEABLE.value in pr_json:
+            if pr_json[GitHubListPRsField.MERGEABLE.value]:
                 return GithubPRMergeStatus.MERGEABLE
             else:
                 return GithubPRMergeStatus.NOT_MERGEABLE
@@ -91,7 +115,7 @@ class GitHubUtils:
         return gh_repo_id.as_pulls_api().replace("$PR_ID", str(pr_id))
 
     @classmethod
-    def find_pull_request(cls, gh_repo_id: GitHubRepoIdentifier, jira_id: str, use_cache=True):
+    def find_pull_requests(cls, gh_repo_id: GitHubRepoIdentifier, jira_id: str, use_cache=True) -> List[Any]:
         """
         With GitHub's pulls API, we can't get the number of PR results or the number of pages.
         However, we can get the PRs by specifying the page=<number> query parameter.
@@ -107,14 +131,12 @@ class GitHubUtils:
         return cls.find_in_all_pull_requests(all_pr_by_title, jira_id)
 
     @classmethod
-    def find_in_all_pull_requests(cls, all_prs_by_title, jira_id):
-        found_pr = None
+    def find_in_all_pull_requests(cls, all_prs_by_title, jira_id) -> List[Any]:
+        found_prs = []
         for title, pr_dict in all_prs_by_title.items():
             if title.startswith(jira_id):
-                found_pr = pr_dict
-                # TODO Handle multiple PRs, e.g. https://issues.apache.org/jira/browse/YARN-11014
-                break
-        return found_pr
+                found_prs.append(pr_dict)
+        return found_prs
 
     @classmethod
     def _find_all_pull_requests(cls, gh_repo_id: GitHubRepoIdentifier, use_cache=True):
