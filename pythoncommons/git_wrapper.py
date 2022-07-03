@@ -458,6 +458,7 @@ class GitWrapper:
         as_string_message=False,
         follow=False,
         all=False,
+        grep_first_line_only=False,
     ):
         # TODO Raise error if any of oneline_with_date, oneline_with_date_and_author, oneline_with_date_author_committer
         # are True at the same time
@@ -502,6 +503,9 @@ class GitWrapper:
         if not self.is_enabled_git_cmd_logging:
             LOG.info("Running git log with arguments, args: %s, kwargs: %s", args, kwargs)
         log_result = self.repo.git.log(*args, **kwargs).splitlines()
+
+        if grep and grep_first_line_only and grep not in log_result:
+            log_result = []
 
         if return_hashes:
             return [result.split(COMMIT_FIELD_SEPARATOR)[0] for result in log_result]
