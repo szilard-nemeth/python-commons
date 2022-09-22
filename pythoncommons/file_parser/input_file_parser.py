@@ -121,7 +121,7 @@ class GenericLineByLineParser:
                     line = line.rstrip()
                 else:
                     LOG.debug("Field with name '%s' on line '%s' with regex '%s' not found!", field_name, line, regex)
-
+        LOG.debug("Final matches: %s", matches)
         return line_to_obj_parser_func(matches)
 
     @staticmethod

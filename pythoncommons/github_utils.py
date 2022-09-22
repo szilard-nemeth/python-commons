@@ -127,6 +127,7 @@ class GitHubUtils:
         :param jira_id:
         :return:
         """
+        # TODO This does not find PRs that are closed / merged
         all_pr_by_title = cls._find_all_pull_requests(gh_repo_id, use_cache=use_cache)
         return cls.find_in_all_pull_requests(all_pr_by_title, jira_id)
 
