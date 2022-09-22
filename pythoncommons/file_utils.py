@@ -345,7 +345,7 @@ class FileUtils:
             return all(f in files and FileUtils.is_file(FileUtils.join_path(d, f)) for f in files_to_search)
 
         if not files_to_search:
-            files_to_search = ["setup.py", "requirements.txt"]
+            files_to_search = ["pyproject.toml"]
 
         orig_path = os.path.realpath(curr_file)
         path = orig_path

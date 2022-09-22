@@ -1,27 +1,6 @@
-google-api-python-client==1.7.9
-google-auth-httplib2==0.0.3
-google-auth-oauthlib==0.4.0
-oauth2client
-
-gspread
-humanize
-bs4
-requests
-gitpython
-tabulate
-docker
-sh~=1.14.1
-colr~=0.9.1
-jira
-
-
-
 flake8
 pytest~=6.2.3
 pytest-cov
 setuptools
 pre-commit
 dataclasses-json
-
-# Python 2
-pathlib
