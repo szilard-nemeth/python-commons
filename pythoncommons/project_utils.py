@@ -334,12 +334,19 @@ class ProjectUtils:
 
     @classmethod
     def get_output_basedir(
-        cls, basedir_name: str, ensure_created=True, allow_python_commons_as_project=False, basedir=PROJECTS_BASEDIR
+        cls,
+        basedir_name: str,
+        ensure_created=True,
+        allow_python_commons_as_project=False,
+        basedir=PROJECTS_BASEDIR,
+        project_name_hint=None,
     ):
         if not basedir_name:
             raise ValueError("Basedir name should be specified!")
 
-        project_name = cls.verify_caller_filename_valid(allow_python_commons_as_project=allow_python_commons_as_project)
+        project_name = cls.verify_caller_filename_valid(
+            allow_python_commons_as_project=allow_python_commons_as_project, project_name_hint=project_name_hint
+        )
         proj_basedir = FileUtils.join_path(basedir, basedir_name)
         if project_name in cls.PROJECT_BASEDIR_DICT:
             old_basedir = cls.PROJECT_BASEDIR_DICT[project_name]
