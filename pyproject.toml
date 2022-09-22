@@ -16,7 +16,7 @@ exclude = '''
 '''
 
 [tool.poetry]
-name = "python-commons"
+name = "python-common-utils"
 version = "0.1.0"
 description = ""
 authors = ["Szilard Nemeth <szilard.nemeth88@gmail.com>"]
