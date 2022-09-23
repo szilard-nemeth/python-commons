@@ -30,6 +30,10 @@ class DockerWrapper:
     @classmethod
     def create_image_from_dockerfile(cls, dockerfile_name, tag=None, build_args=None):
         dockerfile_parent_dir_path = os.path.dirname(dockerfile_name)
+
+        # Example: dockerfile_name = "Dockerfile" --> Path would be empty
+        if not dockerfile_parent_dir_path:
+            dockerfile_parent_dir_path = os.getcwd()
         dockerfile_name = os.path.basename(dockerfile_name)
         cls._build_image_internal(
             dockerfile_parent_dir_path, dockerfile_name=dockerfile_name, tag=tag, build_args=build_args
