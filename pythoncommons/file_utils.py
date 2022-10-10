@@ -197,6 +197,13 @@ class FileUtils:
         file.close()
 
     @classmethod
+    def prepend_to_file(cls, file, line):
+        with open(file, "r+") as f:
+            content = f.read()
+            f.seek(0, 0)
+            f.write(line.rstrip("\r\n") + "\n" + content)
+
+    @classmethod
     def append_data_to_file(cls, path, data):
         dirname = os.path.dirname(path)
         if not os.path.exists(dirname):
