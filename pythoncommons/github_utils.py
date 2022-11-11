@@ -92,7 +92,9 @@ class GitHubUtils:
             target_branch_of_pr = pr[GitHubListPRsField.BASE.value][GitHubPRSrcDestField.REF.value]
             mergeable = GitHubUtils._is_pull_request_mergeable(gh_repo_id, pr_id)
             d[target_branch_of_pr] = mergeable
-            branches_set.remove(target_branch_of_pr)
+
+            if target_branch_of_pr:
+                branches_set.remove(target_branch_of_pr)
 
         # Loop through remaining branches and add PR_NOT_FOUND
         for br in branches_set:
