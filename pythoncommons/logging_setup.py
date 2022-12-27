@@ -63,6 +63,7 @@ class SimpleLoggingSetupInputConfig:
     project_name: str
     logger_name_prefix: str
     debug: bool = False
+    trace: bool = False
     console_debug: bool = False
     format_str: str = None
     file_postfix: str = None
@@ -89,6 +90,7 @@ class SimpleLoggingSetup:
         logger_name_prefix: str,
         execution_mode: ExecutionMode,
         console_debug=False,
+        trace=False,
         postfix: str = None,
         repos=None,
         verbose_git_log=False,
@@ -109,6 +111,7 @@ class SimpleLoggingSetup:
             project_name=project_name,
             logger_name_prefix=logger_name_prefix,
             debug=True,
+            trace=trace,
             console_debug=console_debug,
             format_str=final_format_str,
             file_postfix=postfix,
@@ -137,6 +140,7 @@ class SimpleLoggingSetup:
         project_name: str,
         logger_name_prefix: str,
         debug: bool = False,
+        trace: bool = False,
         console_debug: bool = False,
         format_str: str = None,
         file_postfix: str = None,
@@ -152,6 +156,7 @@ class SimpleLoggingSetup:
             project_name,
             logger_name_prefix,
             debug,
+            trace,
             console_debug,
             format_str,
             file_postfix,
@@ -162,17 +167,18 @@ class SimpleLoggingSetup:
             enable_logging_setup_debug_details,
             with_trace_level,
         )
-
+        if trace:
+            conf.with_trace_level = True
         if conf.with_trace_level:
             SimpleLoggingSetup.add_logging_level("TRACE", logging.DEBUG - 5)
 
         conf.specified_file_log_level = logging.DEBUG if debug else DEFAULT_LOG_LEVEL
+        conf.specified_file_log_level = logging.TRACE if trace else conf.specified_file_log_level
         specified_file_log_level_name: str = logging.getLevelName(conf.specified_file_log_level)
         default_file_log_level_name: str = logging.getLevelName(DEFAULT_LOG_LEVEL)
+        console_log_level = DEFAULT_LOG_LEVEL
         console_log_level: int = logging.DEBUG if debug else DEFAULT_LOG_LEVEL
-
-        if not console_debug:
-            console_log_level = DEFAULT_LOG_LEVEL
+        console_log_level: int = logging.TRACE if trace else console_log_level
 
         final_format_str, formatter = SimpleLoggingSetup._determine_formatter(format_str)
 
