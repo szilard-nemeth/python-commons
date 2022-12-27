@@ -1,6 +1,7 @@
 import datetime
 import logging
 import time
+from typing import List
 
 LOG = logging.getLogger(__name__)
 
@@ -133,3 +134,17 @@ class DateUtils:
     @classmethod
     def reset_to_midnight(cls, dt: datetime.datetime):
         return datetime.datetime.combine(dt, datetime.datetime.min.time())
+
+    @classmethod
+    def get_missing_dates(cls, dates: List[datetime.date]):
+        # https://stackoverflow.com/a/2315279/1106893
+        all_dates = sorted(dates)
+        start = all_dates[0]
+        end = all_dates[-1]
+
+        if end <= start:
+            raise ValueError("End date '{}' must be after start date '{}'".format(end, start))
+
+        date_set = set(all_dates[0] + datetime.timedelta(x) for x in range((end - start).days))
+        missing = sorted(date_set - set(all_dates))
+        return missing
