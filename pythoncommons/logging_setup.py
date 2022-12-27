@@ -71,6 +71,7 @@ class SimpleLoggingSetupInputConfig:
     remove_existing_handlers: bool = True
     disable_propagation: bool = True
     enable_logging_setup_debug_details: bool = False
+    with_trace_level: bool = True
 
     # Dynamic fields
     specified_file_log_level: int or None = None
@@ -94,6 +95,7 @@ class SimpleLoggingSetup:
         format_str=None,
         sanity_check_number_of_handlers=True,
         enable_logging_setup_debug_details: bool = False,
+        with_trace_level: bool = True,
     ) -> SimpleLoggingSetupConfig:
         if not project_name:
             raise ValueError("Project name must be specified!")
@@ -113,6 +115,7 @@ class SimpleLoggingSetup:
             execution_mode=execution_mode,
             sanity_check_number_of_handlers=sanity_check_number_of_handlers,
             enable_logging_setup_debug_details=enable_logging_setup_debug_details,
+            with_trace_level=with_trace_level,
         )
         SimpleLoggingSetup._setup_gitpython_log(repos, verbose_git_log)
         return logging_config
@@ -143,6 +146,7 @@ class SimpleLoggingSetup:
         sanity_check_number_of_handlers: bool = True,
         disable_propagation: bool = True,
         enable_logging_setup_debug_details: bool = False,
+        with_trace_level: bool = True,
     ) -> SimpleLoggingSetupConfig:
         conf = SimpleLoggingSetupInputConfig(
             project_name,
@@ -156,7 +160,12 @@ class SimpleLoggingSetup:
             remove_existing_handlers,
             disable_propagation,
             enable_logging_setup_debug_details,
+            with_trace_level,
         )
+
+        if conf.with_trace_level:
+            SimpleLoggingSetup.add_logging_level("TRACE", logging.DEBUG - 5)
+
         conf.specified_file_log_level = logging.DEBUG if debug else DEFAULT_LOG_LEVEL
         specified_file_log_level_name: str = logging.getLevelName(conf.specified_file_log_level)
         default_file_log_level_name: str = logging.getLevelName(DEFAULT_LOG_LEVEL)
@@ -262,6 +271,58 @@ class SimpleLoggingSetup:
         for h in handlers:
             h.setFormatter(formatter)
         return console_handler, handlers, log_file_paths
+
+    @staticmethod
+    def add_logging_level(level_name, level_num, method_name=None):
+        """
+        Comprehensively adds a new logging level to the `logging` module and the
+        currently configured logging class.
+
+        `levelName` becomes an attribute of the `logging` module with the value
+        `levelNum`. `methodName` becomes a convenience method for both `logging`
+        itself and the class returned by `logging.getLoggerClass()` (usually just
+        `logging.Logger`). If `methodName` is not specified, `levelName.lower()` is
+        used.
+
+        To avoid accidental clobberings of existing attributes, this method will
+        raise an `AttributeError` if the level name is already an attribute of the
+        `logging` module or if the method name is already present
+
+        Example
+        -------
+        >>> SimpleLoggingSetup.add_logging_level('TRACE', logging.DEBUG - 5)
+        >>> logging.getLogger(__name__).setLevel("TRACE")
+        >>> logging.getLogger(__name__).trace('that worked')
+        >>> logging.trace('so did this')
+        >>> logging.TRACE
+        5
+
+        Source: https://stackoverflow.com/a/35804945/1106893
+        """
+        if not method_name:
+            method_name = level_name.lower()
+
+        if hasattr(logging, level_name):
+            raise AttributeError("{} already defined in logging module".format(level_name))
+        if hasattr(logging, method_name):
+            raise AttributeError("{} already defined in logging module".format(method_name))
+        if hasattr(logging.getLoggerClass(), method_name):
+            raise AttributeError("{} already defined in logger class".format(method_name))
+
+        # This method was inspired by the answers to Stack Overflow post
+        # http://stackoverflow.com/q/2183233/2988730, especially
+        # http://stackoverflow.com/a/13638084/2988730
+        def logForLevel(self, message, *args, **kwargs):
+            if self.isEnabledFor(level_num):
+                self._log(level_num, message, args, **kwargs)
+
+        def logToRoot(message, *args, **kwargs):
+            logging.log(level_num, message, *args, **kwargs)
+
+        logging.addLevelName(level_num, level_name)
+        setattr(logging, level_name, level_num)
+        setattr(logging.getLoggerClass(), method_name, logForLevel)
+        setattr(logging, method_name, logToRoot)
 
     @staticmethod
     def _determine_formatter(format_str):
