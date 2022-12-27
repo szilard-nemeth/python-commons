@@ -1,18 +1,21 @@
 import logging
+import re
 from urllib.parse import urlparse
-
 import requests
 
 LOG = logging.getLogger(__name__)
 
 
 class UrlUtils:
+    @staticmethod
+    def extract_from_str(s):
+        return re.search("(?P<url>https?://[^\s]+)", s).group("url")
 
     @staticmethod
     def get_hostname_from_url(url):
         # from urlparse import urlparse  # Python 2
         parsed_uri = urlparse(url)
-        return '{uri.scheme}://{uri.netloc}/'.format(uri=parsed_uri)
+        return "{uri.scheme}://{uri.netloc}/".format(uri=parsed_uri)
 
     @staticmethod
     def get_url_components(url):
