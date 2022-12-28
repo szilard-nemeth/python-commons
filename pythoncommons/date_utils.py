@@ -13,7 +13,7 @@ def timeit(method):
     def timed(*args, **kw):
         def print_time(method_name, time_value):
             pretty_time = TimeUtilities.prettify_time(time_value)
-            LOG.info("Method runtime: %s: %s", method_name, pretty_time)
+            LOG.debug("Method runtime: %s: %s", method_name, pretty_time)
 
         ts = time.time()
         result = method(*args, **kw)

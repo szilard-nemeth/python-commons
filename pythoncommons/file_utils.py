@@ -852,13 +852,13 @@ class JsonFileUtils:
         if not os.path.isdir(dirname):
             raise ValueError("Should have a dir in path, not a file: {}".format(dirname))
 
-        LOG.info("Starting to write to file: %s", path)
+        LOG.trace("Starting to write to file: %s", path)
         with open(path, "w") as file:
             kwargs = {"sort_keys": True}
             if pretty:
                 kwargs["indent"] = 4
             json.dump(data, file, **kwargs)
-        LOG.info("Finished writing to file: %s", path)
+        LOG.trace("Finished writing to file: %s", path)
 
     @classmethod
     def load_data_from_json_file(
