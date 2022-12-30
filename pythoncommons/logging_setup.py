@@ -170,7 +170,7 @@ class SimpleLoggingSetup:
         if trace:
             conf.with_trace_level = True
         if conf.with_trace_level:
-            SimpleLoggingSetup.add_logging_level("TRACE", logging.DEBUG - 5)
+            SimpleLoggingSetup.add_logging_level("TRACE", logging.DEBUG - 5, strict=False)
 
         conf.specified_file_log_level = logging.DEBUG if debug else DEFAULT_LOG_LEVEL
         conf.specified_file_log_level = logging.TRACE if trace else conf.specified_file_log_level
@@ -279,7 +279,7 @@ class SimpleLoggingSetup:
         return console_handler, handlers, log_file_paths
 
     @staticmethod
-    def add_logging_level(level_name, level_num, method_name=None):
+    def add_logging_level(level_name, level_num, method_name=None, strict=True):
         """
         Comprehensively adds a new logging level to the `logging` module and the
         currently configured logging class.
@@ -308,12 +308,13 @@ class SimpleLoggingSetup:
         if not method_name:
             method_name = level_name.lower()
 
-        if hasattr(logging, level_name):
-            raise AttributeError("{} already defined in logging module".format(level_name))
-        if hasattr(logging, method_name):
-            raise AttributeError("{} already defined in logging module".format(method_name))
-        if hasattr(logging.getLoggerClass(), method_name):
-            raise AttributeError("{} already defined in logger class".format(method_name))
+        if strict:
+            if hasattr(logging, level_name):
+                raise AttributeError("{} already defined in logging module".format(level_name))
+            if hasattr(logging, method_name):
+                raise AttributeError("{} already defined in logging module".format(method_name))
+            if hasattr(logging.getLoggerClass(), method_name):
+                raise AttributeError("{} already defined in logger class".format(method_name))
 
         # This method was inspired by the answers to Stack Overflow post
         # http://stackoverflow.com/q/2183233/2988730, especially
