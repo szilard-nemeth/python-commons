@@ -269,6 +269,18 @@ class StringUtils:
             yield start
             start += len(expr)  # use start += 1 to find overlapping matches
 
+    @staticmethod
+    def format_bytes(size):
+        # https://stackoverflow.com/a/49361727/1106893
+        # 2**10 = 1024
+        power = 2**10
+        n = 0
+        power_labels = {0: "", 1: "kilo", 2: "mega", 3: "giga", 4: "tera"}
+        while size > power:
+            size /= power
+            n += 1
+        return size, power_labels[n] + "bytes"
+
 
 class RegexUtils:
     @staticmethod
