@@ -3,6 +3,7 @@ import fnmatch
 import hashlib
 import logging
 import os
+import platform
 import re
 import shutil
 import tempfile
@@ -548,6 +549,25 @@ class FileUtils:
         return result
 
     @classmethod
+    def get_creation_time(cls, file_path):
+        """
+        Try to get the date that a file was created, falling back to when it was
+        last modified if that isn't possible.
+        See http://stackoverflow.com/a/39501288/1709587 for explanation.
+        Answer: https://stackoverflow.com/a/39501288/1106893
+        """
+        if platform.system() == "Windows":
+            return os.path.getctime(file_path)
+        else:
+            stat = os.stat(file_path)
+            try:
+                return stat.st_birthtime
+            except AttributeError:
+                # We're probably on Linux. No easy way to get creation dates here,
+                # so we'll settle for when its content was last modified.
+                return stat.st_mtime
+
+    @classmethod
     def get_file_sizes_with_mod_dates_in_dir(cls, dir):
         return cls._get_files_with_attrs_in_dir(dir, [ST_SIZE, ST_MTIME])
 
@@ -838,6 +858,17 @@ class FileUtils:
             kwargs["prefix"] = prefix
         tmp = tempfile.NamedTemporaryFile(**kwargs)
         return tmp.name
+
+    @classmethod
+    def write_bytesio_to_file(cls, filename, bytesio):
+        """
+        Write the contents of the given BytesIO to a file.
+        Creates the file or overwrites the file if it does
+        not exist yet.
+        """
+        with open(filename, "wb") as outfile:
+            # Copy the BytesIO stream to the output file
+            outfile.write(bytesio.getbuffer())
 
 
 class JsonFileUtils:
