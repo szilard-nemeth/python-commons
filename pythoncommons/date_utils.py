@@ -6,6 +6,7 @@ from typing import List
 LOG = logging.getLogger(__name__)
 
 DATEFORMAT_DASH_COLON = "%Y-%m-%d %H:%M:%S"
+DATEFORMAT_GOOGLE_DRIVE = "%Y-%m-%dT%H:%M:%S.%f%z"
 
 
 # https://medium.com/pythonhive/python-decorator-to-measure-the-execution-time-of-methods-fa04cb6bb36d
@@ -116,6 +117,10 @@ class DateUtils:
     @classmethod
     def convert_datetime_to_str(cls, datetime_obj, fmt):
         return datetime_obj.strftime(fmt)
+
+    @classmethod
+    def convert_to_datetime_from_isoformat(cls, date_string):
+        return datetime.datetime.fromisoformat(date_string)
 
     @classmethod
     def get_datetime(cls, y, m, d):
