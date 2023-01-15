@@ -46,3 +46,20 @@ class UrlUtils:
             LOG.exception("Failed to connect to URL: {}".format(url), exc_info=print_exc_info)
             return False
         return r.status_code == 200
+
+    @staticmethod
+    def sanitize_url(url: str):
+        is_http = url.startswith("http://")
+        is_https = url.startswith("https://")
+        if not is_http and not is_https:
+            raise ValueError("Unexpected URL: " + url)
+
+        prefix = ""
+        if is_http:
+            prefix = "http://"
+        elif is_https:
+            prefix = "https://"
+
+        parts = url.split(prefix)
+        fixed = parts[1].replace("//", "/")
+        return prefix + fixed
