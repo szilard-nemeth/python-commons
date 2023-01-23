@@ -31,8 +31,11 @@ class EmailConfig:
 
 
 class EmailService:
-    def __init__(self, email_config: EmailConfig):
+    def __init__(self, email_config: EmailConfig, batch_mode: bool = False):
         self.conf = email_config
+        self.batch_mode = batch_mode
+        self.logged_in = False
+        self.conn = None
 
     def send_mail(
         self,
@@ -108,33 +111,57 @@ class EmailService:
         retry_count: int = 3,
         log_exception_when_retried: bool = True,
     ):
-        server = smtplib.SMTP_SSL(self.conf.smtp_server, self.conf.smtp_port)
-        if with_retries:
-            all_try_count: int = retry_count + 1
-        else:
-            all_try_count: int = 1
+        if not self.is_connected():
+            self.conn = smtplib.SMTP_SSL(self.conf.smtp_server, self.conf.smtp_port)
+            self.logged_in = False
 
-        for i in range(all_try_count):
+        if with_retries:
+            attempts_count: int = retry_count + 1
+        else:
+            attempts_count: int = 1
+
+        for i in range(attempts_count):
             attempt = i + 1
             LOG.info(
                 "[Attempt: %d / %d] Sending mail to recipients: %s with subject '%s'",
                 attempt,
-                all_try_count,
+                attempts_count,
                 recipients_comma_separated,
                 email_msg["Subject"],
             )
             try:
-                server.ehlo()
-                server.login(self.conf.email_account.user, self.conf.email_account.password)
-                server.sendmail(sender, recipients, email_msg.as_string())
-                server.quit()
+                if not self.logged_in or not self.batch_mode:
+                    self.conn.ehlo()
+                    LOG.debug("SMPTP login")
+                    self.conn.login(self.conf.email_account.user, self.conf.email_account.password)
+                    self.logged_in = True
+
+                self.conn.sendmail(sender, recipients, email_msg.as_string())
+
+                if not self.batch_mode:
+                    self.conn.quit()
                 return
             except smtplib.SMTPServerDisconnected as e:
-                if attempt == all_try_count:
+                # Try to reconnect
+                self._reconnect()
+                if attempt == attempts_count:
                     # Raise if we reached max retries or we just tried once without retries and it failed
                     raise e
                 elif log_exception_when_retried:
                     LOG.exception("Failed to send email.", exc_info=True)
+
+    def _reconnect(self):
+        code, msg = self.conn.connect(self.conf.smtp_server, self.conf.smtp_port)
+        LOG.info("Code: %s, msg: %s", code, msg)
+
+    def is_connected(self):
+        if not self.conn:
+            return False
+        try:
+            status = self.conn.noop()[0]
+        except smtplib.SMTPServerDisconnected:
+            status = -1
+        return True if status == 250 else False
 
     @staticmethod
     def _create_attachment(file_path: str, attachment_name: str = None):
