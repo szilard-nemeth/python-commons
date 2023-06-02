@@ -128,6 +128,11 @@ class CollectionUtils:
         a = iter(iterable)
         return zip(a, a)
 
+    @staticmethod
+    def merge_dicts_sum_values(d1: Dict[Any, int], d2: Dict[Any, int]):
+        merged = {key: d1.get(key, 0) + d2.get(key, 0) for key in set(d1) | set(d2)}
+        return merged
+
 
 class PickleUtils:
     @staticmethod
