@@ -281,6 +281,14 @@ class StringUtils:
             n += 1
         return size, power_labels[n] + "bytes"
 
+    @staticmethod
+    def md5_hash(input):
+        # https://stackoverflow.com/a/2511075/1106893
+        import hashlib
+
+        encoded_input = input.encode("utf-8")
+        return int(hashlib.md5(encoded_input).hexdigest(), 16)
+
 
 class RegexUtils:
     @staticmethod
