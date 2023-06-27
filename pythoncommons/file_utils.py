@@ -10,7 +10,7 @@ import tempfile
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from stat import ST_SIZE
 from stat import ST_MTIME
 
@@ -136,6 +136,7 @@ class FileFinder:
             elif find_type == FindResultType.DIRS:
                 result_files.extend(cls._find_dirs(root, dirs, find_criteria))
             if single_level:
+                # TODO bug: if single level = True, ensure_number_of_results validation won't be executed
                 return result_files
         cls.debug = cls.old_debug
 
@@ -883,35 +884,40 @@ class JsonFileUtils:
         if not os.path.isdir(dirname):
             raise ValueError("Should have a dir in path, not a file: {}".format(dirname))
 
+        bytes_written = -1
         LOG.trace("Starting to write to file: %s", path)
         with open(path, "w") as file:
             kwargs = {"sort_keys": True}
             if pretty:
                 kwargs["indent"] = 4
             json.dump(data, file, **kwargs)
+            bytes_written = file.tell()
         LOG.trace("Finished writing to file: %s", path)
+        return bytes_written
 
     @classmethod
     def load_data_from_json_file(
         cls, file, create_if_not_exists=False, swallow_file_not_found=False, swallow_value_error=False
-    ):
+    ) -> Tuple[Any, int]:
         import json
 
         try:
             with open(file, "r") as f:
-                return json.load(f)
+                data = json.load(f)
+                bytes_read = f.tell()
+                return data, bytes_read
         except FileNotFoundError as e:
             LOG.exception("Error while opening file: %s", file)
             if create_if_not_exists:
                 LOG.info("Creating new empty file: %s", file)
                 FileUtils.create_new_empty_file(file)
             if swallow_file_not_found:
-                return None
+                return None, 0
             raise e
         except ValueError as e:
             LOG.exception("Error while reading file: %s", file)
             if swallow_value_error:
-                return None
+                return None, 0
             raise e
 
 
