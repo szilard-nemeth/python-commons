@@ -282,6 +282,11 @@ class StringUtils:
         return size, power_labels[n] + "bytes"
 
     @staticmethod
+    def format_bytes_as_str(bytes):
+        tup = StringUtils.format_bytes(bytes)
+        return " ".join([str(s) for s in tup])
+
+    @staticmethod
     def md5_hash(input):
         # https://stackoverflow.com/a/2511075/1106893
         import hashlib
