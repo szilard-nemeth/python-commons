@@ -10,7 +10,7 @@ import tempfile
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Iterable
 from stat import ST_SIZE
 from stat import ST_MTIME
 
@@ -923,20 +923,32 @@ class JsonFileUtils:
 
 class CsvFileUtils:
     @classmethod
-    def append_row_to_csv_file(cls, path, data, header=None):
-        parent_dir = FileUtils.get_parent_dir_name(path)
-        if not FileUtils.is_dir(parent_dir, throw_ex=False):
-            FileUtils.create_new_dir(parent_dir)
+    def append_rows_to_csv_file(cls, file_path, data: List[Iterable[Any]], header=None):
+        import csv
 
+        # Validation
         if not isinstance(data, list):
             raise ValueError("Expected list of data for CSV row!")
+        if len(data) > 0 and not all([isinstance(item, str) for item in data]):
+            raise ValueError("Expected list of str items for CSV row!")
 
-        new_file = True if not os.path.exists(path) else False
-
-        with open(path, "a", newline="") as csvfile:
-            import csv
-
+        new_file = cls._ensure_parent_dir_exists(file_path)
+        with open(file_path, "a", newline="") as csvfile:
             csv_writer = csv.writer(csvfile, delimiter=";", quotechar="|", quoting=csv.QUOTE_MINIMAL)
             if new_file and header:
                 csv_writer.writerow(header)
-            csv_writer.writerow(data)
+            for row in data:
+                csv_writer.writerow(row)
+
+    @classmethod
+    def append_row_to_csv_file(cls, file_path, data: List[str], header=None):
+        data = [data]
+        CsvFileUtils.append_rows_to_csv_file(file_path, data, header=header)
+
+    @classmethod
+    def _ensure_parent_dir_exists(cls, path):
+        parent_dir = FileUtils.get_parent_dir_name(path)
+        if not FileUtils.is_dir(parent_dir, throw_ex=False):
+            FileUtils.create_new_dir(parent_dir)
+        new_file = False if os.path.exists(path) else True
+        return new_file
