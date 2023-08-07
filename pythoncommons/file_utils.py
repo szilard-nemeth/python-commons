@@ -929,7 +929,7 @@ class CsvFileUtils:
         # Validation
         if not isinstance(data, list):
             raise ValueError("Expected list of data for CSV row!")
-        if len(data) > 0 and not all([isinstance(item, str) for item in data]):
+        if len(data) > 0 and not all([isinstance(cell, str) for row in data for cell in row]):
             raise ValueError("Expected list of str items for CSV row!")
 
         new_file = cls._ensure_parent_dir_exists(file_path)
