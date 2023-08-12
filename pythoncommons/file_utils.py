@@ -630,6 +630,13 @@ class FileUtils:
         return size_on_disk == int(size)
 
     @classmethod
+    def filter_files_less_than_size(cls, size, file_paths):
+        LOG.debug("Filtering original file list: %s", file_paths)
+        filtered_files = list(filter(lambda fp: cls.check_size_less(size, fp), file_paths))
+        LOG.debug("Filtered file list: %s", filtered_files)
+        return filtered_files
+
+    @classmethod
     def check_size_less(cls, size, filepath):
         size_on_disk = FileUtils._get_file_size(filepath)
         return int(size) < size_on_disk
