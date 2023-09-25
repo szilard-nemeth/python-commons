@@ -18,7 +18,18 @@ LOG = logging.getLogger(__name__)
 
 
 class DockerWrapper:
-    client = APIClient(base_url="unix://var/run/docker.sock")
+    try:
+        client = APIClient(base_url="unix://var/run/docker.sock")
+        # TODO Smarter way to detect this?
+        # alternative path:
+        #  client = APIClient(base_url="unix:///Users/snemeth/.docker/run/docker.sock")
+    except Exception:
+        LOG.exception(
+            "Cannot connect to Docker daemon! "
+            "This article might help: https://stackoverflow.com/a/74175227/1106893 "
+            "Verify docker contexts with: docker context ls"
+        )
+        raise
 
     def __init__(self):
         pass
