@@ -7,6 +7,7 @@ from enum import Enum
 from os.path import expanduser
 import inspect
 from typing import Dict, List
+from typing import Optional
 
 from pythoncommons.constants import PROJECT_NAME
 from pythoncommons.date_utils import DateUtils
@@ -58,12 +59,13 @@ def get_stack_human_readable(stack):
 class SimpleProjectUtils:
     @classmethod
     def get_project_dir(
-        cls,
-        basedir: str,
-        parent_dir: str,
-        dir_to_find: str,
-        find_result_type: FindResultType,
-        exclude_dirs: List[str] = None,
+            cls,
+            basedir: str,
+            parent_dir: str,
+            dir_to_find: str,
+            find_result_type: FindResultType,
+            exclude_dirs: List[str] = None,
+            exact_dirname_match: Optional[bool] = None
     ):
         found_dirs = FileUtils.find_files(
             basedir,
@@ -74,6 +76,22 @@ class SimpleProjectUtils:
             single_level=False,
             full_path_result=True,
         )
+
+        if exact_dirname_match:
+            exact_found = []
+            for dir_path in found_dirs:
+                if dir_to_find == os.path.basename(os.path.normpath(dir_path)):
+                    exact_found.append(dir_path)
+
+            if len(exact_found) != 1:
+                raise ValueError(
+                    f"Expected to find 1 dir with name {dir_to_find} "
+                    f"and parent dir '{parent_dir}'. "
+                    f"Actual results: {found_dirs}"
+                    f"Mode: Exact dirname match"
+                )
+            return exact_found[0]
+
         if len(found_dirs) != 1:
             raise ValueError(
                 f"Expected to find 1 dir with name {dir_to_find} "
@@ -84,10 +102,10 @@ class SimpleProjectUtils:
 
     @classmethod
     def get_project_file(
-        cls,
-        basedir: str,
-        file_to_find: str,
-        find_result_type: FindResultType,
+            cls,
+            basedir: str,
+            file_to_find: str,
+            find_result_type: FindResultType,
     ):
         found_files = FileUtils.find_files(
             basedir,
@@ -193,7 +211,7 @@ class RepositoryDirStrategy(StrategyBase):
             "Trying to determine project name with repository dir strategy. "
             f"Current sys.path: \n{get_sys_path_human_readable()}"
         )
-        filename = file_of_caller[len(REPOS_DIR) :]
+        filename = file_of_caller[len(REPOS_DIR):]
         # We should return the first dir name of the path
         # Cut leading slashes, if any as split would return empty string for 0th component
         filename = StringUtils.strip_leading_os_sep(filename)
@@ -326,20 +344,20 @@ class ProjectUtils:
             return cls.STRATEGIES[strat]
         strategy: StrategyBase = cls.STRATEGIES[cls.project_root_determine_strategy]
         if (
-            REPOS_DIR in file_of_caller
-            and cls.project_root_determine_strategy == cls.default_project_determine_strategy
+                REPOS_DIR in file_of_caller
+                and cls.project_root_determine_strategy == cls.default_project_determine_strategy
         ):
             strategy = cls.STRATEGIES[ProjectRootDeterminationStrategy.REPOSITORY_DIR]
         return strategy
 
     @classmethod
     def get_output_basedir(
-        cls,
-        basedir_name: str,
-        ensure_created=True,
-        allow_python_commons_as_project=False,
-        basedir=PROJECTS_BASEDIR,
-        project_name_hint=None,
+            cls,
+            basedir_name: str,
+            ensure_created=True,
+            allow_python_commons_as_project=False,
+            basedir=PROJECTS_BASEDIR,
+            project_name_hint=None,
     ):
         if not basedir_name:
             raise ValueError("Basedir name should be specified!")
@@ -409,7 +427,7 @@ class ProjectUtils:
 
     @classmethod
     def get_test_output_child_dir(
-        cls, dir_name: str, ensure_created=True, special_parent_dir=None, project_name_hint=None
+            cls, dir_name: str, ensure_created=True, special_parent_dir=None, project_name_hint=None
     ):
         if not dir_name:
             raise ValueError("Dir name should be specified!")
@@ -527,7 +545,7 @@ class ProjectUtils:
 
     @classmethod
     def _get_log_filename_internal(
-        cls, project_name: str, postfix: str = None, level_name: str = None, prod: bool = True
+            cls, project_name: str, postfix: str = None, level_name: str = None, prod: bool = True
     ):
         if postfix:
             postfix = "-" + postfix
