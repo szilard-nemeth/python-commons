@@ -73,6 +73,7 @@ class SimpleLoggingSetupInputConfig:
     disable_propagation: bool = True
     enable_logging_setup_debug_details: bool = False
     with_trace_level: bool = True
+    add_console_handler: bool = True
 
     # Dynamic fields
     specified_file_log_level: int or None = None
@@ -98,6 +99,7 @@ class SimpleLoggingSetup:
         sanity_check_number_of_handlers=True,
         enable_logging_setup_debug_details: bool = False,
         with_trace_level: bool = True,
+        add_console_handler: bool = True
     ) -> SimpleLoggingSetupConfig:
         if not project_name:
             raise ValueError("Project name must be specified!")
@@ -119,6 +121,7 @@ class SimpleLoggingSetup:
             sanity_check_number_of_handlers=sanity_check_number_of_handlers,
             enable_logging_setup_debug_details=enable_logging_setup_debug_details,
             with_trace_level=with_trace_level,
+            add_console_handler=add_console_handler
         )
         SimpleLoggingSetup._setup_gitpython_log(repos, verbose_git_log)
         return logging_config
@@ -151,6 +154,7 @@ class SimpleLoggingSetup:
         disable_propagation: bool = True,
         enable_logging_setup_debug_details: bool = False,
         with_trace_level: bool = True,
+        add_console_handler: bool = True
     ) -> SimpleLoggingSetupConfig:
         conf = SimpleLoggingSetupInputConfig(
             project_name,
@@ -166,6 +170,7 @@ class SimpleLoggingSetup:
             disable_propagation,
             enable_logging_setup_debug_details,
             with_trace_level,
+            add_console_handler
         )
         if trace:
             conf.with_trace_level = True
@@ -191,7 +196,7 @@ class SimpleLoggingSetup:
         log_file_path_for_specified_level = SimpleLoggingSetup._determine_log_file_path(
             specified_file_log_level_name, file_postfix, execution_mode, project_name
         )
-        console_handler, conf.handlers, log_file_paths = SimpleLoggingSetup._determine_handlers(
+        console_handler, conf.handlers, log_file_paths = SimpleLoggingSetup._determine_handlers(conf,
             console_log_level,
             log_file_path_for_default_level,
             log_file_path_for_specified_level,
@@ -229,6 +234,7 @@ class SimpleLoggingSetup:
 
     @staticmethod
     def _determine_handlers(
+        conf: SimpleLoggingSetupInputConfig,
         console_log_level,
         log_file_path_for_default_level,
         log_file_path_for_specified_level,
@@ -258,11 +264,14 @@ class SimpleLoggingSetup:
                 raise ValueError("Console handler not found among PyTest's handlers: {}".format(root_logger_handlers))
             handlers = [*root_logger_handlers, file_handler]
         else:
-            console_handler = SimpleLoggingSetup._create_console_handler(console_log_level)
             handlers = [
-                console_handler,
                 file_handler,
             ]
+            if conf.add_console_handler:
+                console_handler = SimpleLoggingSetup._create_console_handler(console_log_level)
+                handlers.append(console_handler)
+            else:
+                console_handler = None
 
         # Only add a second file handler if default logging level is different from specified.
         # Example: Default is logging.INFO, specified is logging.DEBUG
@@ -514,9 +523,10 @@ class SimpleLoggingSetup:
                     SimpleLoggingSetup._add_handlers_to_logger(main_logger, logger, conf.handlers)
                 else:
                     SimpleLoggingSetup._remove_handlers_from_logger(main_logger, logger, type=HandlerType.CONSOLE)
-                    SimpleLoggingSetup._add_handlers_to_logger(
-                        main_logger, logger, conf.handlers, type=HandlerType.CONSOLE
-                    )
+                    if conf.add_console_handler:
+                        SimpleLoggingSetup._add_handlers_to_logger(
+                            main_logger, logger, conf.handlers, type=HandlerType.CONSOLE
+                        )
                     SimpleLoggingSetup._remove_handlers_from_logger(main_logger, logger, type=HandlerType.FILE)
                     SimpleLoggingSetup._add_handlers_to_logger(
                         main_logger, logger, conf.handlers, type=HandlerType.FILE
