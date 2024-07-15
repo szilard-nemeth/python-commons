@@ -17,7 +17,7 @@ exclude = '''
 
 [tool.poetry]
 name = "python-common-lib"
-version = "1.0.9"
+version = "1.0.10"
 description = ""
 authors = ["Szilard Nemeth <szilard.nemeth88@gmail.com>"]
 readme = "README.md"
