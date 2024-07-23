@@ -1,6 +1,6 @@
 import io
 from dataclasses import dataclass
-from typing import Callable, Any, List
+from typing import Callable, Any, List, Optional
 from subprocess import Popen
 import sh
 import logging
@@ -17,38 +17,77 @@ from pythoncommons.file_utils import FileUtils
 from pythoncommons.string_utils import auto_str, StringUtils
 
 
+class CommandOutput:
+    def __init__(self, single_result):
+        self._output = []
+        self._single_result = single_result
+
+    def append(self, line):
+        self._output.append(line)
+
+    def get(self):
+        return " ".join(self._output)
+
+    def get_sanitized(self):
+        output = [line.rstrip() for line in self._output]
+        if len(output) == 1 and self._single_result:
+            output = output[0]
+        return output
+
+
 # TODO consolidate methods
 class CommandRunner:
     def __init__(self, log):
         self.LOG = log
 
     def run_sync(
-        self,
-        cmd: str,
-        fail_on_error: bool = False,
-        single_result=True,
-        _out: str = None,
-        _err: str = None,
-        _tee: bool = False,
+            self,
+            cmd: str,
+            fail_on_error: bool = False,
+            single_result=True,
+            _out: str = None,
+            _err: str = None,
+            _tee: bool = False,
+            _err_to_out: bool = False,
+            add_out_callback: bool = False
     ):
+        if add_out_callback and _out:
+            raise ValueError("Invalid input parameters! Cannot specify '_out' and 'add_out_callback' at the same time!")
+
         def _prepare_kwargs(_err, _out, _tee):
             kwargs = {}
             if _out:
                 kwargs["_out"] = _out
+            if add_out_callback:
+                kwargs["_out"] = stdout_callback
             if _err:
                 kwargs["_err"] = _err
             if _tee:
                 kwargs["_tee"] = True
+            if _err_to_out:
+                kwargs["_err_to_out"] = True
             return kwargs
 
+        output = CommandOutput(single_result)
+
+        def stdout_callback(line: str):
+            """
+            Documentation for kwargs '_out':
+            https://sh.readthedocs.io/en/latest/sections/redirection.html#function-callback
+            https://sh.readthedocs.io/en/latest/sections/asynchronous_execution.html#callbacks
+            :param self:
+            :param line:
+            :return:
+            """
+            # self.stdout.append(res.replace('\n', ''))
+            output.append(line)
+
         self.LOG.info("Running command: {}".format(cmd))
-        output = []
         exit_code = None
         try:
             kwargs = _prepare_kwargs(_err, _out, _tee)
             if "_out" not in kwargs:
-                # TODO There were problems passing this lambda from _prepare_kwargs
-                process = sh.bash("-c", cmd, **kwargs, _out=lambda line: output.append(line))
+                process = sh.bash("-c", cmd, **kwargs, _out=stdout_callback)
             else:
                 process = sh.bash("-c", cmd, **kwargs)
             process.wait()
@@ -60,16 +99,14 @@ class CommandRunner:
         except Exception as e:
             self.LOG.error("Error while executing command {}:\n {}".format(cmd, str(e)))
 
-        self.LOG.info(" ".join(output))
+        self.LOG.info(output.get())
         # Remove trailing newlines from each line
-        output = [line.rstrip() for line in output]
-        if len(output) == 1 and single_result:
-            output = output[0]
+        output = output.get_sanitized()
 
         return output, exit_code
 
     def run_async(
-        self, cmd: str, stdout_callback: Callable[[str], str] = None, stderr_callback: Callable[[str], str] = None
+            self, cmd: str, stdout_callback: Callable[[str], str] = None, stderr_callback: Callable[[str], str] = None
     ) -> Popen:
         self.LOG.info("Running command async: {}".format(cmd))
 
@@ -104,13 +141,13 @@ class CommandRunner:
 
     @staticmethod
     def egrep_with_cli(
-        git_log_result: List[str],
-        file: str,
-        grep_for: str,
-        escape_single_quotes=True,
-        escape_double_quotes=True,
-        fail_on_empty_output=True,
-        fail_on_error=True,
+            git_log_result: List[str],
+            file: str,
+            grep_for: str,
+            escape_single_quotes=True,
+            escape_double_quotes=True,
+            fail_on_empty_output=True,
+            fail_on_error=True,
     ):
         FileUtils.save_to_file(file, StringUtils.list_to_multiline_string(git_log_result))
         if escape_single_quotes or escape_double_quotes:
@@ -171,16 +208,16 @@ class RegularCommandResult:
 class SubprocessCommandRunner:
     @classmethod
     def run(
-        cls,
-        command,
-        working_dir=None,
-        log_stdout=False,
-        log_stderr=False,
-        log_command_result=False,
-        fail_on_error=False,
-        fail_message="",
-        wait_after=0,
-        wait_message="",
+            cls,
+            command,
+            working_dir=None,
+            log_stdout=False,
+            log_stderr=False,
+            log_command_result=False,
+            fail_on_error=False,
+            fail_message="",
+            wait_after=0,
+            wait_message="",
     ):
         if working_dir:
             FileUtils.change_cwd(working_dir)
@@ -211,7 +248,11 @@ class SubprocessCommandRunner:
 
     @classmethod
     def run_and_follow_stdout_stderr(
-        cls, cmd, log_file=FileUtils.get_temp_file_name(), stdout_logger=None, exit_on_nonzero_exitcode=False
+            cls,
+            cmd,
+            log_file=FileUtils.get_temp_file_name(),
+            stdout_logger: Optional[logging.Logger] = None,
+            exit_on_nonzero_exitcode=False
     ):
         # TODO stderr is not logged at all
         if not stdout_logger:
