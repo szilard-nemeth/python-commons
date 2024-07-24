@@ -19,17 +19,31 @@ from pythoncommons.string_utils import auto_str, StringUtils
 
 class CommandOutput:
     def __init__(self, single_result):
-        self._output = []
+        self._stdout = []
+        self._stderr = []
         self._single_result = single_result
 
-    def append(self, line):
-        self._output.append(line)
+    def append_stdout(self, line):
+        self._stdout.append(line)
 
-    def get(self):
-        return " ".join(self._output)
+    def append_stderr(self, line):
+        self._stderr.append(line)
 
-    def get_sanitized(self):
-        output = [line.rstrip() for line in self._output]
+    def get_stdout(self):
+        return " ".join(self._stdout)
+
+    def get_stderr(self):
+        return " ".join(self._stderr)
+
+    def get_sanitized_stdout(self):
+        return self._get_sanitized_output(self._stdout)
+
+    def get_sanitized_stderr(self):
+        output = self._get_sanitized_output(self._stderr)
+        return output
+
+    def _get_sanitized_output(self, stream):
+        output = [line.rstrip() for line in stream]
         if len(output) == 1 and self._single_result:
             output = output[0]
         return output
@@ -49,26 +63,29 @@ class CommandRunner:
             _err: str = None,
             _tee: bool = False,
             _err_to_out: bool = False,
-            add_out_callback: bool = False
+            add_stdout_callback: bool = False,
+            add_stderr_callback: bool = False
     ):
-        if add_out_callback and _out:
-            raise ValueError("Invalid input parameters! Cannot specify '_out' and 'add_out_callback' at the same time!")
+        if add_stdout_callback and _out:
+            raise ValueError("Invalid input parameters! Cannot specify '_out' and 'add_stdout_callback' at the same time!")
+        if add_stderr_callback and _err:
+            raise ValueError("Invalid input parameters! Cannot specify '_err' and 'add_stderr_callback' at the same time!")
 
         def _prepare_kwargs(_err, _out, _tee):
-            kwargs = {}
-            if _out:
-                kwargs["_out"] = _out
-            if add_out_callback:
+            # _out and _err should be always added as explicit None values also matter
+            # e.g. if _out=None, err=None is specified, we want to override sh's default parameters with explicit disabling stdout and stderr
+            kwargs = {"_out": _out, "_err": _err}
+            if add_stdout_callback:
                 kwargs["_out"] = stdout_callback
-            if _err:
-                kwargs["_err"] = _err
+            if add_stderr_callback:
+                kwargs["_err"] = stderr_callback
             if _tee:
                 kwargs["_tee"] = True
             if _err_to_out:
                 kwargs["_err_to_out"] = True
             return kwargs
 
-        output = CommandOutput(single_result)
+        cmd_output = CommandOutput(single_result)
 
         def stdout_callback(line: str):
             """
@@ -79,17 +96,16 @@ class CommandRunner:
             :param line:
             :return:
             """
-            # self.stdout.append(res.replace('\n', ''))
-            output.append(line)
+            cmd_output.append_stdout(line)
+
+        def stderr_callback(line: str):
+            cmd_output.append_stderr(line)
 
         self.LOG.info("Running command: {}".format(cmd))
         exit_code = None
         try:
             kwargs = _prepare_kwargs(_err, _out, _tee)
-            if "_out" not in kwargs:
-                process = sh.bash("-c", cmd, **kwargs, _out=stdout_callback)
-            else:
-                process = sh.bash("-c", cmd, **kwargs)
+            process = sh.bash("-c", cmd, **kwargs)
             process.wait()
             exit_code = process.exit_code
         except sh.ErrorReturnCode as e:
@@ -99,11 +115,12 @@ class CommandRunner:
         except Exception as e:
             self.LOG.error("Error while executing command {}:\n {}".format(cmd, str(e)))
 
-        self.LOG.info(output.get())
+        # self.LOG.info(cmd_output.get_stdout())
         # Remove trailing newlines from each line
-        output = output.get_sanitized()
+        stdout = cmd_output.get_sanitized_stdout()
+        stderr = cmd_output.get_sanitized_stderr()
 
-        return output, exit_code
+        return exit_code, stdout, stderr
 
     def run_async(
             self, cmd: str, stdout_callback: Callable[[str], str] = None, stderr_callback: Callable[[str], str] = None

@@ -1,8 +1,11 @@
+import io
 import logging
 import os
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout, redirect_stderr
+from copy import copy
 from datetime import datetime
 from typing import List
 
@@ -17,6 +20,8 @@ SCRIPT_WITH_ARGS_SH = "script_with_args.sh"
 SCRIPT_THAT_FAILS_SH = "script_that_fails.sh"
 UTILS_SH = "utils.sh"
 SLEEPING_LOOP_SH = "sleeping_loop.sh"
+import logging
+LOG = logging.getLogger(__name__)
 
 
 class ProcessTests(unittest.TestCase):
@@ -161,9 +166,117 @@ class ProcessTests(unittest.TestCase):
                           commit_messages)
             self.assertIn("32431d25aed9 - HADOOP-7469 backporting to 0.23; moving in CHANGES.TXT",
                           commit_messages)
-            print(commit_messages)
+            LOG.info(commit_messages)
 
     def test_subprocessrunner_run_script_fails(self):
         script_path = ProcessTests.find_script(SCRIPT_THAT_FAILS_SH)
         with self.assertRaises(ValueError):
             SubprocessCommandRunner.run(script_path, fail_on_error=True, fail_message="Failed to run script")
+
+    def test_command_runner_run_sync_stdout_and_stderr_specified(self):
+        with (tempfile.TemporaryDirectory() as tmpdirname,
+              redirect_stdout(io.StringIO()) as stdout,
+              redirect_stderr(io.StringIO()) as stderr):
+            test_dir = self.get_test_dir(tmpdirname)
+            CMD_LOG = SimpleLoggingSetup.create_command_logger(__name__)
+            cmd_runner = CommandRunner(CMD_LOG)
+
+            cmd = f". {TEST_SCRIPTS_DIR}/download.sh; download-random-jars {test_dir}"
+            exit_code, cmd_stdout, cmd_stderr = cmd_runner.run_sync(cmd, _out=sys.stdout, _err=sys.stderr)
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(len(cmd_stdout), 0)
+            self.assertEqual(len(cmd_stderr), 0)
+            self.assertTrue(len(stdout.getvalue().splitlines()) > 1)
+            self.assertTrue(len(stderr.getvalue().splitlines()) > 50)
+
+    def test_command_runner_run_sync_stdout_callback_and_stderr_callback(self):
+        with (tempfile.TemporaryDirectory() as tmpdirname,
+              redirect_stdout(io.StringIO()) as stdout,
+              redirect_stderr(io.StringIO()) as stderr):
+            test_dir = self.get_test_dir(tmpdirname)
+            CMD_LOG = SimpleLoggingSetup.create_command_logger(__name__)
+            cmd_runner = CommandRunner(CMD_LOG)
+
+            cmd = f". {TEST_SCRIPTS_DIR}/download.sh; download-random-jars {test_dir}"
+            exit_code, cmd_stdout, cmd_stderr = cmd_runner.run_sync(cmd,
+                                                                    add_stdout_callback=True,
+                                                                    add_stderr_callback=True,
+                                                                    _out=None, _err=None)
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(len(cmd_stdout) > 50)
+            self.assertTrue(len(cmd_stderr) > 50)
+            self._assert_empty_stdout(stdout, cmd)
+            self.assertEqual(len(stderr.getvalue()), 0)
+
+    def test_command_runner_run_sync_stdout_callback_stderr_specified(self):
+        with (tempfile.TemporaryDirectory() as tmpdirname,
+              redirect_stdout(io.StringIO()) as stdout,
+              redirect_stderr(io.StringIO()) as stderr):
+            test_dir = self.get_test_dir(tmpdirname)
+            CMD_LOG = SimpleLoggingSetup.create_command_logger(__name__)
+            cmd_runner = CommandRunner(CMD_LOG)
+
+            cmd = f". {TEST_SCRIPTS_DIR}/download.sh; download-random-jars {test_dir}"
+            exit_code, cmd_stdout, cmd_stderr = cmd_runner.run_sync(cmd, add_stdout_callback=True, _out=None, _err=sys.stderr)
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(len(cmd_stdout) > 50)
+            self.assertEqual(len(cmd_stderr), 0)
+            self._assert_empty_stdout(stdout, cmd)
+            self.assertTrue(len(stderr.getvalue()) > 1000)
+
+    def test_command_runner_run_sync_stdrr_callback_stdout_specified(self):
+        with (tempfile.TemporaryDirectory() as tmpdirname,
+              redirect_stdout(io.StringIO()) as stdout,
+              redirect_stderr(io.StringIO()) as stderr):
+            test_dir = self.get_test_dir(tmpdirname)
+            CMD_LOG = SimpleLoggingSetup.create_command_logger(__name__)
+            cmd_runner = CommandRunner(CMD_LOG)
+
+            cmd = f". {TEST_SCRIPTS_DIR}/download.sh; download-random-jars {test_dir}"
+            exit_code, cmd_stdout, cmd_stderr = cmd_runner.run_sync(cmd, add_stderr_callback=True, _out=sys.stdout)
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(len(cmd_stdout), 0)
+            self.assertTrue(len(cmd_stderr) > 50)
+            self.assertTrue(len(stdout.getvalue()) > 50)
+            self.assertEqual(len(stderr.getvalue()), 0)
+
+    def test_command_runner_run_sync_stdout_stderr_both_unspecified(self):
+        with (tempfile.TemporaryDirectory() as tmpdirname,
+              redirect_stdout(io.StringIO()) as stdout,
+              redirect_stderr(io.StringIO()) as stderr):
+            test_dir = self.get_test_dir(tmpdirname)
+            CMD_LOG = SimpleLoggingSetup.create_command_logger(__name__)
+            cmd_runner = CommandRunner(CMD_LOG)
+
+            cmd = f". {TEST_SCRIPTS_DIR}/download.sh; download-random-jars {test_dir}"
+            exit_code, cmd_stdout, cmd_stderr = cmd_runner.run_sync(cmd, _out=None, _err=None)
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(len(cmd_stdout), 0)
+            self.assertEqual(len(cmd_stderr), 0)
+            self._assert_empty_stdout(stdout, cmd)
+            self.assertEqual(len(stderr.getvalue()), 0)
+
+    def test_command_runner_run_sync_stdout_stderr_both_unspecified_without_capturing(self):
+        with (tempfile.TemporaryDirectory() as tmpdirname):
+            test_dir = self.get_test_dir(tmpdirname)
+            CMD_LOG = SimpleLoggingSetup.create_command_logger(__name__)
+            cmd_runner = CommandRunner(CMD_LOG)
+
+            cmd = f". {TEST_SCRIPTS_DIR}/download.sh; download-random-jars {test_dir}"
+            exit_code, cmd_stdout, cmd_stderr = cmd_runner.run_sync(cmd, _out=None, _err=None)
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(len(cmd_stdout), 0)
+            self.assertEqual(len(cmd_stderr), 0)
+
+    def _assert_empty_stdout(self, stdout, cmd):
+        orig_lines = stdout.getvalue().splitlines()
+        LOG.info("**Lines from stdout: %s", orig_lines)
+
+        lines = copy(orig_lines)
+        lines.remove(f"Running command: {cmd}")
+        remaining_lines = copy(lines)
+        # Remove empty line
+        for line in lines:
+            if line == "":
+                remaining_lines.remove(line)
+        self.assertEqual(len(remaining_lines), 0)
