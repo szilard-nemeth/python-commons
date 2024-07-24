@@ -18,16 +18,23 @@ from pythoncommons.string_utils import auto_str, StringUtils
 
 
 class CommandOutput:
-    def __init__(self, single_result):
+    def __init__(self, logger, single_result, log_stdout_to_logger, log_stderr_to_logger):
+        self._logger = logger
+        self._log_stdout = log_stdout_to_logger
+        self._log_stderr = log_stderr_to_logger
         self._stdout = []
         self._stderr = []
         self._single_result = single_result
 
     def append_stdout(self, line):
         self._stdout.append(line)
+        if self._log_stdout:
+            self._logger.info(line)
 
     def append_stderr(self, line):
         self._stderr.append(line)
+        if self._log_stderr:
+            self._logger.info(line)
 
     def get_stdout(self):
         return " ".join(self._stdout)
@@ -64,7 +71,9 @@ class CommandRunner:
             _tee: bool = False,
             _err_to_out: bool = False,
             add_stdout_callback: bool = False,
-            add_stderr_callback: bool = False
+            add_stderr_callback: bool = False,
+            log_stdout_to_logger: bool = False,
+            log_stderr_to_logger: bool = False
     ):
         if add_stdout_callback and _out:
             raise ValueError("Invalid input parameters! Cannot specify '_out' and 'add_stdout_callback' at the same time!")
@@ -85,8 +94,6 @@ class CommandRunner:
                 kwargs["_err_to_out"] = True
             return kwargs
 
-        cmd_output = CommandOutput(single_result)
-
         def stdout_callback(line: str):
             """
             Documentation for kwargs '_out':
@@ -97,6 +104,8 @@ class CommandRunner:
             :return:
             """
             cmd_output.append_stdout(line)
+
+        cmd_output = CommandOutput(self.LOG, single_result, log_stdout_to_logger, log_stderr_to_logger)
 
         def stderr_callback(line: str):
             cmd_output.append_stderr(line)

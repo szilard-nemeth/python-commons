@@ -208,6 +208,28 @@ class ProcessTests(unittest.TestCase):
             self._assert_empty_stdout(stdout, cmd)
             self.assertEqual(len(stderr.getvalue()), 0)
 
+    def test_command_runner_run_sync_stdout_callback_and_stderr_callback_log_both(self):
+        with (tempfile.TemporaryDirectory() as tmpdirname,
+              redirect_stdout(io.StringIO()) as stdout,
+              redirect_stderr(io.StringIO()) as stderr):
+            test_dir = self.get_test_dir(tmpdirname)
+            CMD_LOG = SimpleLoggingSetup.create_command_logger(__name__)
+            cmd_runner = CommandRunner(CMD_LOG)
+
+            cmd = f". {TEST_SCRIPTS_DIR}/download.sh; download-random-jars {test_dir}"
+            exit_code, cmd_stdout, cmd_stderr = cmd_runner.run_sync(cmd,
+                                                                    add_stdout_callback=True,
+                                                                    add_stderr_callback=True,
+                                                                    _out=None, _err=None,
+                                                                    log_stdout_to_logger=True,
+                                                                    log_stderr_to_logger=True)
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(len(cmd_stdout) > 50)
+            self.assertTrue(len(cmd_stderr) > 50)
+            # stdout holds all logs, stderr is empty as logger logs all records to console (stdout)
+            self.assertTrue(len(stdout.getvalue().splitlines()) > 1)
+            self.assertEqual(len(stderr.getvalue()), 0)
+
     def test_command_runner_run_sync_stdout_callback_stderr_specified(self):
         with (tempfile.TemporaryDirectory() as tmpdirname,
               redirect_stdout(io.StringIO()) as stdout,
@@ -257,7 +279,9 @@ class ProcessTests(unittest.TestCase):
             self.assertEqual(len(stderr.getvalue()), 0)
 
     def test_command_runner_run_sync_stdout_stderr_both_unspecified_without_capturing(self):
-        with (tempfile.TemporaryDirectory() as tmpdirname):
+        with (tempfile.TemporaryDirectory() as tmpdirname,
+              redirect_stdout(io.StringIO()) as stdout,
+              redirect_stderr(io.StringIO()) as stderr):
             test_dir = self.get_test_dir(tmpdirname)
             CMD_LOG = SimpleLoggingSetup.create_command_logger(__name__)
             cmd_runner = CommandRunner(CMD_LOG)
@@ -267,6 +291,8 @@ class ProcessTests(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             self.assertEqual(len(cmd_stdout), 0)
             self.assertEqual(len(cmd_stderr), 0)
+            self._assert_empty_stdout(stdout, cmd)
+            self.assertEqual(len(stderr.getvalue()), 0)
 
     def _assert_empty_stdout(self, stdout, cmd):
         orig_lines = stdout.getvalue().splitlines()
