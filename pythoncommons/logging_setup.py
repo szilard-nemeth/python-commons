@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from logging.handlers import TimedRotatingFileHandler
 import logging.config
-from typing import List, Dict, Callable
+from typing import List, Dict, Callable, Set, Type
 
 from _pytest.logging import _LiveLoggingStreamHandler
 from _pytest.terminal import TerminalReporter
@@ -612,6 +612,40 @@ class SimpleLoggingSetup:
         cmd_log_handler.setFormatter(logging.Formatter("%(message)s"))
         return cmd_logger
 
+    @staticmethod
+    def create_command_logger_without_new_handler(name: str):
+        formatter = logging.Formatter("%(message)s")
+        cmd_logger = logging.getLogger(name)
+        for h in cmd_logger.handlers:
+            h.setFormatter(formatter)
+        cmd_logger.propagate = False
+        return cmd_logger
+
     @classmethod
     def get_all_log_files(cls):
         return cls._ALL_LOG_FILES
+
+    @staticmethod
+    def copy_handlers_from(from_logger: logging.Logger, logger_name: str, types: Set[Type[logging.Handler]],
+                           remove_handlers=True):
+        src_handlers = from_logger.handlers
+        result_handlers = []
+
+        for h in src_handlers:
+            ht = type(h)
+            found = any([issubclass(ht, t) for t in types])
+            if found:
+                if not isinstance(ht, logging.StreamHandler):
+                    result_handlers.append(h)
+                elif h.stream in (sys.stdout, sys.stderr):
+                    result_handlers.append(h)
+
+        logger = logging.getLogger(logger_name)
+        if remove_handlers:
+            for h in logger.handlers:
+                logger.removeHandler(h)
+
+        for h in result_handlers:
+            logger.addHandler(h)
+
+        return logger
