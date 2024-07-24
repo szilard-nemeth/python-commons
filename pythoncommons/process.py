@@ -110,7 +110,6 @@ class CommandRunner:
         def stderr_callback(line: str):
             cmd_output.append_stderr(line)
 
-        self.LOG.info("Running command: {}".format(cmd))
         exit_code = None
         try:
             kwargs = _prepare_kwargs(_err, _out, _tee)
