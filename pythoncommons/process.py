@@ -111,7 +111,7 @@ class CommandRunner:
         except sh.ErrorReturnCode as e:
             if fail_on_error:
                 raise e
-            return e.stdout, e.exit_code
+            return e.exit_code, e.stdout, e.stderr
         except Exception as e:
             self.LOG.error("Error while executing command {}:\n {}".format(cmd, str(e)))
 
