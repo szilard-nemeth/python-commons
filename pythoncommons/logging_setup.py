@@ -508,8 +508,8 @@ class SimpleLoggingSetup:
 
         # If we are in TEST mode and the handler is a FileHandler, don't replace it
         callback = (
-            lambda handler: conf.execution_mode == ExecutionMode.TEST
-            and not SimpleLoggingSetup._is_file_handler(handler)
+            lambda handler: not (conf.execution_mode == ExecutionMode.TEST and
+                                 SimpleLoggingSetup._is_file_handler(handler))
         )
 
         if conf.remove_existing_handlers:
