@@ -8,9 +8,13 @@ from typing import List, Tuple, Dict
 import docker
 from docker import APIClient
 import json
+
+from docker.errors import ImageNotFound
+
 from pythoncommons.file_utils import FileUtils
 from pythoncommons.process import SubprocessCommandRunner
 from pythoncommons.string_utils import auto_str
+from rich.progress import Progress
 
 DEFAULT_DOCKERFILE_NAME = "Dockerfile"
 
@@ -190,6 +194,30 @@ class CreatePathMode(Enum):
     PARENT_PATH = "PARENT_PATH"
 
 
+class DockerPullProgress:
+    def __init__(self):
+        self._tasks = {}
+        self._progress = Progress()
+
+    def show_progress(self, line):
+        if line['status'] == 'Downloading':
+            id = f'[red][Download {line["id"]}]'
+        elif line['status'] == 'Extracting':
+            id = f'[green][Extract  {line["id"]}]'
+        else:
+            # skip other statuses
+            return
+
+        if id not in self._tasks.keys():
+            self._tasks[id] = self._progress.add_task(f"{id}", total=line['progressDetail']['total'])
+        else:
+            self._progress.update(self._tasks[id], completed=line['progressDetail']['current'])
+
+    def rich_progress(self):
+        return self._progress
+
+
+
 class DockerTestSetup:
     def __init__(self, image_name, create_image=False, dockerfile_parent_dir_path=None, dockerfile=None, logger=None):
         self.image_name = image_name
@@ -242,11 +270,24 @@ class DockerTestSetup:
             elif diag.phase == DockerDiagnosticPhase.POST:
                 self.post_diagnostics.append(diag)
 
-    def run_container(self, commands_to_run: List[str] = None, sleep=300):
+    def run_container(self, commands_to_run: List[str] = None, sleep=300, capture_progress=False):
         if not commands_to_run:
             commands_to_run = []
 
         volumes_dict = self._create_volumes_dict()
+
+        if capture_progress:
+            client = docker.client.from_env()
+            try:
+                container = client.containers.create(image=self.image_name, command="sleep 1", detach=True)
+            except ImageNotFound:
+                resp = client.api.pull(self.image_name, stream=True, decode=True)
+                progress = DockerPullProgress()
+                for line in resp:
+                    progress.show_progress(line)
+                    self.CMD_LOG.info(f"[{self.image_name}] {line}")
+
+
         LOG.info(f"Starting container from image '{self.image_name}' with volumes: '{volumes_dict}'")
         self.container = DockerWrapper.run_container(image=self.image_name, volumes=volumes_dict, sleep=sleep)
 
