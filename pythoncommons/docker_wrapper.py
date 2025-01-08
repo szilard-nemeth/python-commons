@@ -202,8 +202,10 @@ class DockerPullProgress:
     def show_progress(self, line):
         if line['status'] == 'Downloading':
             id = f'[red][Download {line["id"]}]'
+        elif line['status'] == 'Pulling':
+            id = f'[red][Download {line["id"]}]'
         elif line['status'] == 'Extracting':
-            id = f'[green][Extract  {line["id"]}]'
+            id = f'[green][Extract {line["id"]}]'
         else:
             # skip other statuses
             return
