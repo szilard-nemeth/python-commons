@@ -272,9 +272,15 @@ class DockerTestSetup:
             elif diag.phase == DockerDiagnosticPhase.POST:
                 self.post_diagnostics.append(diag)
 
-    def run_container(self, commands_to_run: List[str] = None, sleep=300, capture_progress=False, print_progress=False):
+    def run_container(self, commands_to_run: List[str] = None,
+                      sleep=300,
+                      capture_progress=False,
+                      print_progress=False,
+                      progress: Progress=None):
         if not commands_to_run:
             commands_to_run = []
+        if not capture_progress and progress:
+            capture_progress = True
 
         volumes_dict = self._create_volumes_dict()
 
@@ -284,7 +290,7 @@ class DockerTestSetup:
                 container = client.containers.create(image=self.image_name, command="sleep 1", detach=True)
             except ImageNotFound:
                 resp = client.api.pull(self.image_name, stream=True, decode=True)
-                progress = DockerPullProgress()
+                progress = progress if progress else DockerPullProgress()
                 for line in resp:
                     progress.capture_progress(line)
                     if print_progress:
