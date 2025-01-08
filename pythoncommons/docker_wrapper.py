@@ -195,9 +195,9 @@ class CreatePathMode(Enum):
 
 
 class DockerPullProgress:
-    def __init__(self):
+    def __init__(self, progress: Progress=None):
         self._tasks = {}
-        self._progress = Progress()
+        self._progress = progress if progress else Progress()
 
     def capture_progress(self, line):
         if line['status'] == 'Downloading':
@@ -290,7 +290,7 @@ class DockerTestSetup:
                 container = client.containers.create(image=self.image_name, command="sleep 1", detach=True)
             except ImageNotFound:
                 resp = client.api.pull(self.image_name, stream=True, decode=True)
-                progress = progress if progress else DockerPullProgress()
+                progress = DockerPullProgress(progress) if progress else DockerPullProgress()
                 for line in resp:
                     progress.capture_progress(line)
                     if print_progress:
