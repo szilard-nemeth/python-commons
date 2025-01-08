@@ -56,7 +56,7 @@ class DockerWrapper:
 
     @classmethod
     def _build_image_internal(
-        cls, dockerfile_parent_dir_path, dockerfile_name=DEFAULT_DOCKERFILE_NAME, tag=None, build_args=None
+            cls, dockerfile_parent_dir_path, dockerfile_name=DEFAULT_DOCKERFILE_NAME, tag=None, build_args=None
     ):
         if not build_args:
             build_args = {}
@@ -149,14 +149,14 @@ class DockerDiagnosticPhase(Enum):
 @auto_str
 class DockerDiagnosticCommand:
     def __init__(
-        self,
-        mode,
-        phase,
-        command,
-        expected_exit_code=0,
-        expected_output=None,
-        expected_output_fragments=None,
-        strip=False,
+            self,
+            mode,
+            phase,
+            command,
+            expected_exit_code=0,
+            expected_output=None,
+            expected_output_fragments=None,
+            strip=False,
     ):
         self.phase = phase
         self.mode = mode
@@ -272,7 +272,7 @@ class DockerTestSetup:
             elif diag.phase == DockerDiagnosticPhase.POST:
                 self.post_diagnostics.append(diag)
 
-    def run_container(self, commands_to_run: List[str] = None, sleep=300, capture_progress=False):
+    def run_container(self, commands_to_run: List[str] = None, sleep=300, capture_progress=False, print_progress=False):
         if not commands_to_run:
             commands_to_run = []
 
@@ -355,8 +355,8 @@ class DockerTestSetup:
             self.test_instance.assertTrue(
                 fragment in stdout,
                 msg="Cannot find expected fragment in stdout. "
-                f"Fragment: {fragment}, stdout: {stdout}, Command details: '{diag}'",
-            )
+                    f"Fragment: {fragment}, stdout: {stdout}, Command details: '{diag}'",
+                )
 
     def generate_dummy_text_files_in_container_dirs(self, dir_and_no_of_files: List[Tuple[str, int]]):
         for dir_files in dir_and_no_of_files:
@@ -377,18 +377,18 @@ class DockerTestSetup:
             self.exec_cmd_in_container(["sh", "-c", cmd])
 
     def exec_cmd_in_container(
-        self,
-        cmd,
-        charset="utf-8",
-        strip=True,
-        fail_on_error=True,
-        stdin=False,
-        tty=False,
-        env: Dict[str, str] = None,
-        detach=False,
-        callback=None,
-        stream=False,
-        strict: bool = True,
+            self,
+            cmd,
+            charset="utf-8",
+            strip=True,
+            fail_on_error=True,
+            stdin=False,
+            tty=False,
+            env: Dict[str, str] = None,
+            detach=False,
+            callback=None,
+            stream=False,
+            strict: bool = True,
     ):
         if not env:
             env = {}
@@ -493,11 +493,11 @@ class DockerTestSetup:
         SubprocessCommandRunner.run_and_follow_stdout_stderr(command)
 
     def docker_cp_to_container(
-        self,
-        container_target_path,
-        local_src_file,
-        create_container_path_mode: CreatePathMode = None,
-        double_check_with_ls: bool = False,
+            self,
+            container_target_path,
+            local_src_file,
+            create_container_path_mode: CreatePathMode = None,
+            double_check_with_ls: bool = False,
     ):
         # run mkdir -p if dir not exist
         self.create_directories_in_container(container_target_path, create_container_path_mode)
