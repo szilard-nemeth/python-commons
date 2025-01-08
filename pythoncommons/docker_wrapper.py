@@ -199,7 +199,7 @@ class DockerPullProgress:
         self._tasks = {}
         self._progress = Progress()
 
-    def show_progress(self, line):
+    def capture_progress(self, line):
         if line['status'] == 'Downloading':
             id = f'[red][Download {line["id"]}]'
         elif line['status'] == 'Pulling':
@@ -286,8 +286,9 @@ class DockerTestSetup:
                 resp = client.api.pull(self.image_name, stream=True, decode=True)
                 progress = DockerPullProgress()
                 for line in resp:
-                    progress.show_progress(line)
-                    self.CMD_LOG.info(f"[{self.image_name}] {line}")
+                    progress.capture_progress(line)
+                    if print_progress:
+                        self.CMD_LOG.info(f"[{self.image_name}] {line}")
 
 
         LOG.info(f"Starting container from image '{self.image_name}' with volumes: '{volumes_dict}'")
