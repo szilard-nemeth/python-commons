@@ -235,7 +235,7 @@ class DockerPullProgress:
         return f'[red]Downloading {self._image_to_short_name[image]}'
 
     def extracting_description(self, image):
-        return f'[green][Extracting {self._image_to_short_name[image]}'
+        return f'[orange]Extracting {self._image_to_short_name[image]}'
 
     def capture_progress(self, image, line):
         """
