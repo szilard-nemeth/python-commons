@@ -276,8 +276,12 @@ class DockerPullProgress:
         elif operation == DockerOperation.EXTRACT:
             description = self.extracting_description(image)
 
-        total = line['progressDetail']['total']
-        current = line['progressDetail']['current']
+        try:
+            total = line["progressDetail"]["total"]
+            current = line["progressDetail"]["current"]
+        except KeyError:
+            LOG.warning("Unexpected line, cannot read progress details. Line was: %s", line)
+            return
         self.store_layer_data(key, operation, layer, current, total)
 
         # If this is a new layer for key (image + operation), we need to increase the total for that image
