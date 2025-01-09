@@ -196,24 +196,75 @@ class CreatePathMode(Enum):
 
 class DockerPullProgress:
     def __init__(self, progress: Progress=None):
-        self._tasks = {}
         self._progress = progress if progress else Progress()
+        self._tasks = {} # key: image, value: rich task id
+        self._image_to_number = {} # key: image, value: number of image
+        self._image_counter = 1
+        self._totals = {} # key: image, value: sum of 'total' counter of all layers of the image
+        self._layer_data = {}
+        self._seen_layers = set()
 
-    def capture_progress(self, line):
-        if line['status'] == 'Downloading':
-            id = f'[red][Download {line["id"]}]'
-        elif line['status'] == 'Pulling':
-            id = f'[red][Download {line["id"]}]'
-        elif line['status'] == 'Extracting':
-            id = f'[green][Extract {line["id"]}]'
+    def store_layer_data(self, image, layer, current, total):
+        if image not in self._layer_data:
+            self._layer_data[image] = {}
+        if layer not in self._layer_data[image]:
+            self._layer_data[image][layer] = {}
+        self._layer_data[image][layer] = {'current': current, 'total': total}
+
+    def get_completed_for_image(self, image):
+        completed = 0
+        for layer, data in self._layer_data[image].items():
+            completed += data["current"]
+        return completed
+
+    def download_or_pull_description(self, image_name):
+        return f'[red]Downloading {self._image_to_number[image_name]}]'
+
+    def extracting_description(self, image_name):
+        return f'[green][Extracting {self._image_to_number[image_name]}]'
+
+    def capture_progress(self, image_name, line):
+        """
+        Message types:
+         {'status': 'Downloading', 'progressDetail': {'current': 77701098, 'total': 693170420}, 'progress': '[=====>]   77.7MB/693.2MB', 'id': '7a9e0db762c8'}
+         {'status': 'Extracting', 'progressDetail': {'current': 557056, 'total': 705917953}, 'progress': '[>        ]  557.1kB/705.9MB', 'id': '4091cbe1d60a'}
+         {'status': 'Pull complete', 'progressDetail': {}, 'id': '6291dc4a3923'}
+         {'status': 'Verifying Checksum', 'progressDetail': {}, 'id': '27cce364b293'}
+         {'status': 'Download complete', 'progressDetail': {}, 'id': '4091cbe1d60a'}
+         # {'status': 'Digest: sha256:2c24487226d01d3400f4e2ac050e2e8b1f23b0faad8c7030d37101be6571d175'}
+        :param image_name:
+        :param line:
+        :return:
+        """
+        if "id" not in line:
+            return
+
+        if not image_name in self._image_to_number:
+            self._image_to_number[image_name] = self._image_counter
+            self._totals[image_name] = 0
+            self._image_counter += 1
+
+        layer = line["id"]
+        status = line['status']
+        if status in ("Downloading", "Pulling"):
+            description = self.download_or_pull_description(image_name)
+        elif status == "Extracting":
+            description = self.extracting_description(image_name)
         else:
             # skip other statuses
             return
 
-        if id not in self._tasks.keys():
-            self._tasks[id] = self._progress.add_task(f"{id}", total=line['progressDetail']['total'])
+        total = line['progressDetail']['total']
+        current = line['progressDetail']['current']
+        self.store_layer_data(image_name, layer, current, total)
+        if layer not in self._seen_layers:
+            self._seen_layers.add(layer)
+            self._totals[image_name] += total
+
+        if image_name not in self._tasks.keys():
+            self._tasks[image_name] = self._progress.add_task(description, total=self._totals[image_name], completed=self.get_completed_for_image(image_name))
         else:
-            self._progress.update(self._tasks[id], completed=line['progressDetail']['current'])
+            self._progress.update(self._tasks[image_name], total=self._totals[image_name], completed=self.get_completed_for_image(image_name))
 
     def rich_progress(self):
         return self._progress
@@ -292,7 +343,7 @@ class DockerTestSetup:
                 resp = client.api.pull(self.image_name, stream=True, decode=True)
                 progress = DockerPullProgress(progress) if progress else DockerPullProgress()
                 for line in resp:
-                    progress.capture_progress(line)
+                    progress.capture_progress(self.image_name, line)
                     if print_progress:
                         self.CMD_LOG.info(f"[{self.image_name}] {line}")
 
