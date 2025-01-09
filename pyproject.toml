@@ -24,7 +24,7 @@ readme = "README.md"
 packages = [{include = "pythoncommons"}]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 gspread = "^5.5.0"
 humanize = "^4.4.0"
 bs4 = "^0.0.1"
@@ -37,6 +37,9 @@ Colr = "^0.9.1"
 jira = "^3.4.1"
 pytest = ">=6.2.3,<6.3.0"
 dataclasses-json = "^0.5.7"
+# TODO Replace with StrEnum when upgraded to Python 3.11
+strenum = "^0.4.15"
+
 
 
 [tool.poetry.group.dev.dependencies]
