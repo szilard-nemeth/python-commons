@@ -376,6 +376,12 @@ class DockerTestSetup:
                 resp = client.api.pull(self.image_name, stream=True, decode=True)
                 progress = DockerPullProgress(progress) if progress else DockerPullProgress()
                 for line in resp:
+                    err_msg = ""
+                    if "error" in line:
+                        err_msg += f"Error while pulling image: {self.image_name}. Error: {line['error']}"
+                        if "errorDetail" in line:
+                            err_msg += f". Error details: {line['errorDetail']}"
+                        raise ValueError(err_msg)
                     progress.capture_progress(self.image_name, line)
                     if print_progress:
                         self.CMD_LOG.info(f"[{self.image_name}] {line}")
