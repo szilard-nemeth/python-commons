@@ -3,11 +3,17 @@ import os
 import re
 import time
 from enum import Enum
+from pydoc import describe
 from typing import List, Tuple, Dict
+from strenum import StrEnum
+
 
 import docker
 from docker import APIClient
 import json
+from strenum import StrEnum
+
+
 
 from docker.errors import ImageNotFound
 
@@ -194,36 +200,44 @@ class CreatePathMode(Enum):
     PARENT_PATH = "PARENT_PATH"
 
 
+class DockerOperation(StrEnum):
+    PULL = "pull"
+    EXTRACT = "extract"
+
+
 class DockerPullProgress:
     def __init__(self, progress: Progress=None):
         self._progress = progress if progress else Progress()
-        self._tasks = {} # key: image, value: rich task id
-        self._image_to_number = {} # key: image, value: number of image
-        self._image_counter = 1
-        self._totals = {} # key: image, value: sum of 'total' counter of all layers of the image
-        self._layer_data = {}
-        self._seen_layers = set()
+        self._tasks = {} # key: image_key, value: rich task id
+        self._image_to_short_name = {} # key: image_key, value: number of image
+        self._totals = {} # key: image_key, value: sum of 'total' counter of all layers of the image
+        self._layer_data = {} # key: image_key, value: dict of: layer to data
+        self._seen_layers = {} # key: image_key, value: set of layer ids
 
-    def store_layer_data(self, image, layer, current, total):
-        if image not in self._layer_data:
-            self._layer_data[image] = {}
-        if layer not in self._layer_data[image]:
-            self._layer_data[image][layer] = {}
-        self._layer_data[image][layer] = {'current': current, 'total': total}
+    @staticmethod
+    def get_key(image, operation: DockerOperation):
+        return f"{image}_{operation}"
 
-    def get_completed_for_image(self, image):
+    def store_layer_data(self, key, operation, layer, current, total):
+        if key not in self._layer_data:
+            self._layer_data[key] = {}
+        if layer not in self._layer_data[key]:
+            self._layer_data[key][layer] = {}
+        self._layer_data[key][layer] = {'current': current, 'total': total}
+
+    def get_completed_for_image(self, key):
         completed = 0
-        for layer, data in self._layer_data[image].items():
+        for layer, data in self._layer_data[key].items():
             completed += data["current"]
         return completed
 
-    def download_or_pull_description(self, image_name):
-        return f'[red]Downloading {self._image_to_number[image_name]}]'
+    def download_or_pull_description(self, image):
+        return f'[red]Downloading {self._image_to_short_name[image]}'
 
-    def extracting_description(self, image_name):
-        return f'[green][Extracting {self._image_to_number[image_name]}]'
+    def extracting_description(self, image):
+        return f'[green][Extracting {self._image_to_short_name[image]}'
 
-    def capture_progress(self, image_name, line):
+    def capture_progress(self, image, line):
         """
         Message types:
          {'status': 'Downloading', 'progressDetail': {'current': 77701098, 'total': 693170420}, 'progress': '[=====>]   77.7MB/693.2MB', 'id': '7a9e0db762c8'}
@@ -231,40 +245,59 @@ class DockerPullProgress:
          {'status': 'Pull complete', 'progressDetail': {}, 'id': '6291dc4a3923'}
          {'status': 'Verifying Checksum', 'progressDetail': {}, 'id': '27cce364b293'}
          {'status': 'Download complete', 'progressDetail': {}, 'id': '4091cbe1d60a'}
-         # {'status': 'Digest: sha256:2c24487226d01d3400f4e2ac050e2e8b1f23b0faad8c7030d37101be6571d175'}
-        :param image_name:
+         {'status': 'Digest: sha256:2c24487226d01d3400f4e2ac050e2e8b1f23b0faad8c7030d37101be6571d175'}
+         {'status': 'Pulling from cloudera/dex/dex-spark-runtime-3.4.1-7.1.8.57', 'id': '1.21.0-b431'}
+         {'status': 'Pulling fs layer', 'id': 'a0c35d82557f', 'progressDetail': {}}
+        :param image:
         :param line:
         :return:
         """
         if "id" not in line:
             return
 
-        if not image_name in self._image_to_number:
-            self._image_to_number[image_name] = self._image_counter
-            self._totals[image_name] = 0
-            self._image_counter += 1
-
         layer = line["id"]
         status = line['status']
+        operation = None
         if status in ("Downloading", "Pulling"):
-            description = self.download_or_pull_description(image_name)
+            operation = DockerOperation.PULL
         elif status == "Extracting":
-            description = self.extracting_description(image_name)
+            operation = DockerOperation.EXTRACT
         else:
             # skip other statuses
             return
 
+        key = self.get_key(image, operation)
+
+        # If this is a new key, store new set for seen_layers and set total to 0
+        if key not in self._seen_layers:
+            self._seen_layers[key] = set()
+            self._totals[key] = 0
+
+        # We only need to store the short name per image
+        if image not in self._image_to_short_name:
+            self._image_to_short_name[image] = image.split("/")[-1]
+
+        # Description must be calculated after self._image_to_short_name is updated
+        description = None
+        if operation == DockerOperation.PULL:
+            description = self.download_or_pull_description(image)
+        elif operation == DockerOperation.EXTRACT:
+            description = self.extracting_description(image)
+
         total = line['progressDetail']['total']
         current = line['progressDetail']['current']
-        self.store_layer_data(image_name, layer, current, total)
-        if layer not in self._seen_layers:
-            self._seen_layers.add(layer)
-            self._totals[image_name] += total
+        self.store_layer_data(key, operation, layer, current, total)
 
-        if image_name not in self._tasks.keys():
-            self._tasks[image_name] = self._progress.add_task(description, total=self._totals[image_name], completed=self.get_completed_for_image(image_name))
+        # If this is a new layer for key (image + operation), we need to increase the total for that image
+        if layer not in self._seen_layers[key]:
+            self._seen_layers[key].add(layer)
+            self._totals[key] += total
+
+        # Create new task with Rich progress or update existing task
+        if key not in self._tasks.keys():
+            self._tasks[key] = self._progress.add_task(description, total=self._totals[key], completed=self.get_completed_for_image(key))
         else:
-            self._progress.update(self._tasks[image_name], total=self._totals[image_name], completed=self.get_completed_for_image(image_name))
+            self._progress.update(self._tasks[key], total=self._totals[key], completed=self.get_completed_for_image(key))
 
     def rich_progress(self):
         return self._progress
