@@ -3,20 +3,12 @@ import os
 import re
 import time
 from enum import Enum
-from pydoc import describe
 from typing import List, Tuple, Dict
-from strenum import StrEnum
-
-
 import docker
 from docker import APIClient
 import json
 from strenum import StrEnum
-
-
-
 from docker.errors import ImageNotFound
-
 from pythoncommons.file_utils import FileUtils
 from pythoncommons.process import SubprocessCommandRunner
 from pythoncommons.string_utils import auto_str
@@ -62,7 +54,7 @@ class DockerWrapper:
 
     @classmethod
     def _build_image_internal(
-            cls, dockerfile_parent_dir_path, dockerfile_name=DEFAULT_DOCKERFILE_NAME, tag=None, build_args=None
+        cls, dockerfile_parent_dir_path, dockerfile_name=DEFAULT_DOCKERFILE_NAME, tag=None, build_args=None
     ):
         if not build_args:
             build_args = {}
@@ -155,14 +147,14 @@ class DockerDiagnosticPhase(Enum):
 @auto_str
 class DockerDiagnosticCommand:
     def __init__(
-            self,
-            mode,
-            phase,
-            command,
-            expected_exit_code=0,
-            expected_output=None,
-            expected_output_fragments=None,
-            strip=False,
+        self,
+        mode,
+        phase,
+        command,
+        expected_exit_code=0,
+        expected_output=None,
+        expected_output_fragments=None,
+        strip=False,
     ):
         self.phase = phase
         self.mode = mode
@@ -206,13 +198,13 @@ class DockerOperation(StrEnum):
 
 
 class DockerPullProgress:
-    def __init__(self, progress: Progress=None):
+    def __init__(self, progress: Progress = None):
         self._progress = progress if progress else Progress()
-        self._tasks = {} # key: image_key, value: rich task id
-        self._image_to_short_name = {} # key: image_key, value: number of image
-        self._totals = {} # key: image_key, value: sum of 'total' counter of all layers of the image
-        self._layer_data = {} # key: image_key, value: dict of: layer to data
-        self._seen_layers = {} # key: image_key, value: set of layer ids
+        self._tasks = {}  # key: image_key, value: rich task id
+        self._image_to_short_name = {}  # key: image_key, value: number of image
+        self._totals = {}  # key: image_key, value: sum of 'total' counter of all layers of the image
+        self._layer_data = {}  # key: image_key, value: dict of: layer to data
+        self._seen_layers = {}  # key: image_key, value: set of layer ids
 
     @staticmethod
     def get_key(image, operation: DockerOperation):
@@ -223,7 +215,7 @@ class DockerPullProgress:
             self._layer_data[key] = {}
         if layer not in self._layer_data[key]:
             self._layer_data[key][layer] = {}
-        self._layer_data[key][layer] = {'current': current, 'total': total}
+        self._layer_data[key][layer] = {"current": current, "total": total}
 
     def get_completed_for_image(self, key):
         completed = 0
@@ -232,10 +224,10 @@ class DockerPullProgress:
         return completed
 
     def download_or_pull_description(self, image):
-        return f'[red]Downloading {self._image_to_short_name[image]}'
+        return f"[red]Downloading {self._image_to_short_name[image]}"
 
     def extracting_description(self, image):
-        return f'[orange]Extracting {self._image_to_short_name[image]}'
+        return f"[orange]Extracting {self._image_to_short_name[image]}"
 
     def capture_progress(self, image, line):
         """
@@ -256,7 +248,7 @@ class DockerPullProgress:
             return
 
         layer = line["id"]
-        status = line['status']
+        status = line["status"]
         operation = None
         if status in ("Downloading", "Pulling"):
             operation = DockerOperation.PULL
@@ -295,13 +287,16 @@ class DockerPullProgress:
 
         # Create new task with Rich progress or update existing task
         if key not in self._tasks.keys():
-            self._tasks[key] = self._progress.add_task(description, total=self._totals[key], completed=self.get_completed_for_image(key))
+            self._tasks[key] = self._progress.add_task(
+                description, total=self._totals[key], completed=self.get_completed_for_image(key)
+            )
         else:
-            self._progress.update(self._tasks[key], total=self._totals[key], completed=self.get_completed_for_image(key))
+            self._progress.update(
+                self._tasks[key], total=self._totals[key], completed=self.get_completed_for_image(key)
+            )
 
     def rich_progress(self):
         return self._progress
-
 
 
 class DockerTestSetup:
@@ -356,11 +351,14 @@ class DockerTestSetup:
             elif diag.phase == DockerDiagnosticPhase.POST:
                 self.post_diagnostics.append(diag)
 
-    def run_container(self, commands_to_run: List[str] = None,
-                      sleep=300,
-                      capture_progress=False,
-                      print_progress=False,
-                      progress: Progress=None):
+    def run_container(
+        self,
+        commands_to_run: List[str] = None,
+        sleep=300,
+        capture_progress=False,
+        print_progress=False,
+        progress: Progress = None,
+    ):
         if not commands_to_run:
             commands_to_run = []
         if not capture_progress and progress:
@@ -371,7 +369,7 @@ class DockerTestSetup:
         if capture_progress:
             client = docker.client.from_env()
             try:
-                container = client.containers.create(image=self.image_name, command="sleep 1", detach=True)
+                _ = client.containers.create(image=self.image_name, command="sleep 1", detach=True)
             except ImageNotFound:
                 resp = client.api.pull(self.image_name, stream=True, decode=True)
                 progress = DockerPullProgress(progress) if progress else DockerPullProgress()
@@ -385,7 +383,6 @@ class DockerTestSetup:
                     progress.capture_progress(self.image_name, line)
                     if print_progress:
                         self.CMD_LOG.info(f"[{self.image_name}] {line}")
-
 
         LOG.info(f"Starting container from image '{self.image_name}' with volumes: '{volumes_dict}'")
         self.container = DockerWrapper.run_container(image=self.image_name, volumes=volumes_dict, sleep=sleep)
@@ -451,8 +448,8 @@ class DockerTestSetup:
             self.test_instance.assertTrue(
                 fragment in stdout,
                 msg="Cannot find expected fragment in stdout. "
-                    f"Fragment: {fragment}, stdout: {stdout}, Command details: '{diag}'",
-                )
+                f"Fragment: {fragment}, stdout: {stdout}, Command details: '{diag}'",
+            )
 
     def generate_dummy_text_files_in_container_dirs(self, dir_and_no_of_files: List[Tuple[str, int]]):
         for dir_files in dir_and_no_of_files:
@@ -473,18 +470,18 @@ class DockerTestSetup:
             self.exec_cmd_in_container(["sh", "-c", cmd])
 
     def exec_cmd_in_container(
-            self,
-            cmd,
-            charset="utf-8",
-            strip=True,
-            fail_on_error=True,
-            stdin=False,
-            tty=False,
-            env: Dict[str, str] = None,
-            detach=False,
-            callback=None,
-            stream=False,
-            strict: bool = True,
+        self,
+        cmd,
+        charset="utf-8",
+        strip=True,
+        fail_on_error=True,
+        stdin=False,
+        tty=False,
+        env: Dict[str, str] = None,
+        detach=False,
+        callback=None,
+        stream=False,
+        strict: bool = True,
     ):
         if not env:
             env = {}
@@ -589,11 +586,11 @@ class DockerTestSetup:
         SubprocessCommandRunner.run_and_follow_stdout_stderr(command)
 
     def docker_cp_to_container(
-            self,
-            container_target_path,
-            local_src_file,
-            create_container_path_mode: CreatePathMode = None,
-            double_check_with_ls: bool = False,
+        self,
+        container_target_path,
+        local_src_file,
+        create_container_path_mode: CreatePathMode = None,
+        double_check_with_ls: bool = False,
     ):
         # run mkdir -p if dir not exist
         self.create_directories_in_container(container_target_path, create_container_path_mode)
