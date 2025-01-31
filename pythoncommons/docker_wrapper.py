@@ -21,21 +21,22 @@ LOG = logging.getLogger(__name__)
 
 
 class DockerWrapper:
-    try:
-        client = APIClient(base_url="unix://var/run/docker.sock")
-        # TODO Smarter way to detect this?
-        # alternative path:
-        #  client = APIClient(base_url="unix:///Users/snemeth/.docker/run/docker.sock")
-    except Exception:
-        LOG.exception(
-            "Cannot connect to Docker daemon! "
-            "This article might help: https://stackoverflow.com/a/74175227/1106893 "
-            "Verify docker contexts with: docker context ls"
-        )
-        raise
+    def __init__(self, fail_fast_if_docker_unavailable: bool = False):
+        self.fail_fast = fail_fast_if_docker_unavailable
+        if self.fail_fast:
+            self.check_if_docker_running()
 
-    def __init__(self):
-        pass
+    @classmethod
+    def check_if_docker_running(cls):
+        try:
+            cls.client = APIClient(base_url="unix://var/run/docker.sock")
+        except Exception:
+            LOG.exception(
+                "Cannot connect to Docker daemon! "
+                "This article might help: https://stackoverflow.com/a/74175227/1106893 "
+                "Verify docker contexts with: docker context ls"
+            )
+        raise
 
     @classmethod
     def create_image_from_dir(cls, dockerfile_parent_dir_path, tag=None, build_args=None):
@@ -55,7 +56,7 @@ class DockerWrapper:
 
     @classmethod
     def _build_image_internal(
-            cls, dockerfile_parent_dir_path, dockerfile_name=DEFAULT_DOCKERFILE_NAME, tag=None, build_args=None
+        cls, dockerfile_parent_dir_path, dockerfile_name=DEFAULT_DOCKERFILE_NAME, tag=None, build_args=None
     ):
         if not build_args:
             build_args = {}
@@ -148,14 +149,14 @@ class DockerDiagnosticPhase(Enum):
 @auto_str
 class DockerDiagnosticCommand:
     def __init__(
-            self,
-            mode,
-            phase,
-            command,
-            expected_exit_code=0,
-            expected_output=None,
-            expected_output_fragments=None,
-            strip=False,
+        self,
+        mode,
+        phase,
+        command,
+        expected_exit_code=0,
+        expected_output=None,
+        expected_output_fragments=None,
+        strip=False,
     ):
         self.phase = phase
         self.mode = mode
@@ -357,14 +358,14 @@ class DockerTestSetup:
                 self.post_diagnostics.append(diag)
 
     def run_container(
-            self,
-            commands_to_run: List[str] = None,
-            sleep=300,
-            capture_progress=False,
-            print_progress=False,
-            progress: Progress = None,
-            image_found_callback: Callable[[bool], None] = None,
-            image_not_found_container_starting_callback: Callable[[], None] = None
+        self,
+        commands_to_run: List[str] = None,
+        sleep=300,
+        capture_progress=False,
+        print_progress=False,
+        progress: Progress = None,
+        image_found_callback: Callable[[bool], None] = None,
+        image_not_found_container_starting_callback: Callable[[], None] = None,
     ):
         if not commands_to_run:
             commands_to_run = []
@@ -464,8 +465,8 @@ class DockerTestSetup:
             self.test_instance.assertTrue(
                 fragment in stdout,
                 msg="Cannot find expected fragment in stdout. "
-                    f"Fragment: {fragment}, stdout: {stdout}, Command details: '{diag}'",
-                )
+                f"Fragment: {fragment}, stdout: {stdout}, Command details: '{diag}'",
+            )
 
     def generate_dummy_text_files_in_container_dirs(self, dir_and_no_of_files: List[Tuple[str, int]]):
         for dir_files in dir_and_no_of_files:
@@ -486,18 +487,18 @@ class DockerTestSetup:
             self.exec_cmd_in_container(["sh", "-c", cmd])
 
     def exec_cmd_in_container(
-            self,
-            cmd,
-            charset="utf-8",
-            strip=True,
-            fail_on_error=True,
-            stdin=False,
-            tty=False,
-            env: Dict[str, str] = None,
-            detach=False,
-            callback=None,
-            stream=False,
-            strict: bool = True,
+        self,
+        cmd,
+        charset="utf-8",
+        strip=True,
+        fail_on_error=True,
+        stdin=False,
+        tty=False,
+        env: Dict[str, str] = None,
+        detach=False,
+        callback=None,
+        stream=False,
+        strict: bool = True,
     ):
         if not env:
             env = {}
@@ -602,11 +603,11 @@ class DockerTestSetup:
         SubprocessCommandRunner.run_and_follow_stdout_stderr(command)
 
     def docker_cp_to_container(
-            self,
-            container_target_path,
-            local_src_file,
-            create_container_path_mode: CreatePathMode = None,
-            double_check_with_ls: bool = False,
+        self,
+        container_target_path,
+        local_src_file,
+        create_container_path_mode: CreatePathMode = None,
+        double_check_with_ls: bool = False,
     ):
         # run mkdir -p if dir not exist
         self.create_directories_in_container(container_target_path, create_container_path_mode)
