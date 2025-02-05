@@ -39,6 +39,8 @@ pytest = ">=6.2.3,<6.3.0"
 dataclasses-json = "^0.5.7"
 # TODO Replace with StrEnum when upgraded to Python 3.11
 strenum = "^0.4.15"
+setuptools = "^75.8.0"
+rich = "^13.7.0"
 
 
 

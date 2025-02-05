@@ -20,30 +20,50 @@ DEFAULT_DOCKERFILE_NAME = "Dockerfile"
 LOG = logging.getLogger(__name__)
 
 
+class DockerInitException(Exception):
+    def __init__(self, message, errors=None):
+        kwargs = {}
+        if errors:
+            kwargs["errors"] = errors
+        super().__init__(message, **kwargs)
+
+
 class DockerWrapper:
+    _client = None
+
     def __init__(self, fail_fast_if_docker_unavailable: bool = False):
         self.fail_fast = fail_fast_if_docker_unavailable
         if self.fail_fast:
-            self.check_if_docker_running()
+            self.ensure_docker_running()
+        DockerWrapper._client = None
 
     @classmethod
-    def check_if_docker_running(cls):
+    def ensure_docker_running(cls):
+        if cls._client:
+            return
         try:
-            cls.client = APIClient(base_url="unix://var/run/docker.sock")
-        except Exception:
+            cls._client = APIClient(base_url="unix://var/run/docker.sock")
+        except Exception as e:
             LOG.exception(
                 "Cannot connect to Docker daemon! "
                 "This article might help: https://stackoverflow.com/a/74175227/1106893 "
                 "Verify docker contexts with: docker context ls"
             )
-        raise
+            raise DockerInitException(e)
+
+    @classmethod
+    def get_client(cls):
+        DockerWrapper.ensure_docker_running()
+        return cls._client
 
     @classmethod
     def create_image_from_dir(cls, dockerfile_parent_dir_path, tag=None, build_args=None):
+        cls.ensure_docker_running()
         cls._build_image_internal(dockerfile_parent_dir_path, tag=tag, build_args=build_args)
 
     @classmethod
     def create_image_from_dockerfile(cls, dockerfile_name, tag=None, build_args=None):
+        DockerWrapper.ensure_docker_running()
         dockerfile_parent_dir_path = os.path.dirname(dockerfile_name)
 
         # Example: dockerfile_name = "Dockerfile" --> Path would be empty
@@ -68,7 +88,7 @@ class DockerWrapper:
         cls._fix_path_for_macos()
         response = [
             line
-            for line in cls.client.build(
+            for line in cls._client.build(
                 path=dockerfile_parent_dir_path,
                 dockerfile=dockerfile_name,
                 rm=True,
@@ -94,12 +114,14 @@ class DockerWrapper:
 
     @classmethod
     def run_container(cls, image, volumes, sleep=300):
+        cls.ensure_docker_running()
         client = docker.client.from_env()
         container = client.containers.run(image, "sleep {}".format(sleep), stderr=True, detach=True, volumes=volumes)
         return container
 
     @classmethod
     def inspect_container(cls, container_id: str):
+        cls.ensure_docker_running()
         return docker.client.inspect_container(container_id)
 
     @classmethod
@@ -306,13 +328,22 @@ class DockerPullProgress:
 
 
 class DockerTestSetup:
-    def __init__(self, image_name, create_image=False, dockerfile_parent_dir_path=None, dockerfile=None, logger=None):
+    def __init__(
+        self,
+        image_name,
+        create_image=False,
+        dockerfile_parent_dir_path=None,
+        dockerfile=None,
+        logger=None,
+        fail_fast_if_docker_unavailable: bool = False,
+    ):
         self.image_name = image_name
+        self._docker_wrapper = DockerWrapper(fail_fast_if_docker_unavailable=fail_fast_if_docker_unavailable)
         if create_image:
             if dockerfile_parent_dir_path:
                 self.create_image(dockerfile_parent_dir_path=dockerfile_parent_dir_path)
             elif dockerfile:
-                DockerWrapper.create_image_from_dockerfile(dockerfile, tag=self.image_name)
+                self._docker_wrapper.create_image_from_dockerfile(dockerfile, tag=self.image_name)
 
         if logger:
             self.CMD_LOG = logger
@@ -339,7 +370,7 @@ class DockerTestSetup:
                 f"Dockerfile location was not specified. "
                 f"Trying to create image from current working directory: {dockerfile_parent_dir_path}"
             )
-        DockerWrapper.create_image_from_dir(dockerfile_parent_dir_path, tag=self.image_name)
+        self._docker_wrapper.create_image_from_dir(dockerfile_parent_dir_path, tag=self.image_name)
 
     def mount_dir(self, host_dir, container_dir, mode=DockerMountMode.READ_WRITE):
         self.mounts.append(DockerMount(host_dir, container_dir, mode=mode))
@@ -367,6 +398,7 @@ class DockerTestSetup:
         image_found_callback: Callable[[bool], None] = None,
         image_not_found_container_starting_callback: Callable[[], None] = None,
     ):
+        self._docker_wrapper.ensure_docker_running()
         if not commands_to_run:
             commands_to_run = []
         if not capture_progress and progress:
@@ -380,10 +412,13 @@ class DockerTestSetup:
             client = docker.client.from_env()
             try:
                 _ = client.containers.create(image=self.image_name, command="sleep 1", detach=True)
-                image_found_callback(True)
+                if image_found_callback:
+                    image_found_callback(True)
             except ImageNotFound:
                 image_found = False
-                image_found_callback(False)
+
+                if image_found_callback:
+                    image_found_callback(False)
                 resp = client.api.pull(self.image_name, stream=True, decode=True)
                 progress = DockerPullProgress(progress) if progress else DockerPullProgress()
                 for line in resp:
@@ -397,10 +432,10 @@ class DockerTestSetup:
                     if print_progress:
                         self.CMD_LOG.info(f"[{self.image_name}] {line}")
 
-        if not image_found:
+        if not image_found and image_not_found_container_starting_callback:
             image_not_found_container_starting_callback()
         LOG.info(f"Starting container from image '{self.image_name}' with volumes: '{volumes_dict}'")
-        self.container = DockerWrapper.run_container(image=self.image_name, volumes=volumes_dict, sleep=sleep)
+        self.container = self._docker_wrapper.run_container(image=self.image_name, volumes=volumes_dict, sleep=sleep)
 
         if self.pre_diagnostics:
             self._run_pre_diagnostic_commands()
@@ -511,8 +546,10 @@ class DockerTestSetup:
         # https://stackoverflow.com/questions/29663459/python-app-does-not-print-anything-when-running-detached-in-docker
         env["PYTHONUNBUFFERED"] = "1"
         LOG.info(f"Running command '{cmd}' in container: '{self.container}'")
-        exec_handler = DockerWrapper.client.exec_create(self.container.id, cmd, environment=env, stdin=stdin, tty=tty)
-        ret = DockerWrapper.client.exec_start(exec_handler, stream=stream, detach=detach)
+        exec_handler = self._docker_wrapper.get_client().exec_create(
+            self.container.id, cmd, environment=env, stdin=stdin, tty=tty
+        )
+        ret = self._docker_wrapper.get_client().exec_start(exec_handler, stream=stream, detach=detach)
 
         # If stream=True, the execution will stay in _get_output_of_cmd until there's data to read from the output.
         # This means that when the loop that reads the output ends, the process is finished.
@@ -570,14 +607,14 @@ class DockerTestSetup:
     @staticmethod
     def _get_exit_code(cmd: str, exec_handler, max_wait_seconds: int = 5):
         """
-        client.exec_inspect(exec_handler["Id"]).get("ExitCode") does not immediately returns the exit code.
+        client.exec_inspect(exec_handler["Id"]).get("ExitCode") does not immediately return the exit code.
         Try to wait for it for some time.
         :param exec_handler:
         :return:
         """
         slept_seconds = 0
         while True:
-            exit_code: int = DockerWrapper.client.exec_inspect(exec_handler["Id"]).get("ExitCode")
+            exit_code: int = DockerWrapper.get_client().exec_inspect(exec_handler["Id"]).get("ExitCode")
             LOG.debug("Command: '%s', exit code: %s", cmd, exit_code)
             if exit_code is not None:
                 return exit_code
@@ -589,7 +626,7 @@ class DockerTestSetup:
                 return None
 
     def inspect_container(self, container_id: str):
-        return DockerWrapper.inspect_container(container_id)
+        return DockerWrapper.get_client().inspect_container(container_id)
 
     def docker_cp_from_container(self, container_path, local_target_path):
         command = f"docker cp {self.container.id}:{container_path} {local_target_path}"
