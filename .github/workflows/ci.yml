@@ -34,7 +34,7 @@ jobs:
       - name: Upload coverage
         uses: codecov/codecov-action@v1
       - name: Upload pytest test results
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: pytest-results-${{ matrix.python-version }}
           # Apparently, default working directory is only used by 'run' actions, see: https://stackoverflow.com/a/58231340/1106893
