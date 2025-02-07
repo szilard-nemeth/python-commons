@@ -5,3 +5,6 @@ venv
 /python_commons.egg-info/
 dist
 __pycache__
+/coverage.xml
+.coverage*
+/junit/test-results-*.xml
