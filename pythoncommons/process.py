@@ -193,6 +193,44 @@ class CommandRunner:
     def execute_script(script: str, args: str, working_dir: str = None, output_file: str = None, use_tee=False):
         cli_command = ""
         if working_dir:
+            # TODO Figure out why this wouldn't work only with GitHub actions:
+            #  cli_command += f"cd {working_dir};{script}"
+            #  without using ./<script-name> it DOES NOT WORK AND FAILS!
+            # Related audit log with fixed run:
+            # 2025-02-07 04:14:55,599 - DEBUG - pythoncommons.tests.test_process - [AUDIT subprocess.Popen]:
+            # subprocess.Popen with args=('/bin/sh', ['/bin/sh', '-c', 'cd /home/runner/work/python-commons/python-commons/pythoncommons/test-scripts;./script_with_args.sh arg1 arg2 arg3 | tee /tmp/tmpt_msgge2/test_commandrunner_execute_script_with_args-20250207_041455/testfile'], None, None)
+            # FAILED RUN
+            #
+            #
+            # =================================== FAILURES ===================================
+            # ___________ ProcessTests.test_commandrunner_execute_script_with_args ___________
+            #
+            # self = <pythoncommons.tests.test_process.ProcessTests testMethod=test_commandrunner_execute_script_with_args>
+            #
+            #     def test_commandrunner_execute_script_with_args(self):
+            #         with tempfile.TemporaryDirectory() as tmpdirname:
+            #             test_dir = self.get_test_dir(tmpdirname)
+            #             output_file = FileUtils.join_path(test_dir, "testfile")
+            #             script_path = ProcessTests.find_script(SCRIPT_WITH_ARGS_SH)
+            #             script_parent_dir = FileUtils.get_parent_dir_name(script_path)
+            #             script_name = os.path.basename(script_path)
+            #
+            #             args = f"arg1 arg2 arg3"
+            #
+            #             cli_cmd, cli_output = CommandRunner.execute_script(
+            #                 script_name, args=args, working_dir=script_parent_dir, output_file=output_file, use_tee=True
+            #             )
+            #             file_contents = FileUtils.read_file(output_file)
+            # >           self.assertEqual('arg: arg1\narg: arg2\narg: arg3', cli_output)
+            # E           AssertionError: 'arg: arg1\narg: arg2\narg: arg3' != '/bin/sh: 1: script_with_args.sh: not found'
+            # E           + /bin/sh: 1: script_with_args.sh: not found- arg: arg1
+            # E           - arg: arg2
+            # E           - arg: arg3
+            #
+            # pythoncommons/tests/test_process.py:166: AssertionError
+            # ------------------------------ Captured log call -------------------------------
+            # 2025-02-07 03:58:37,821 - INFO - pythoncommons.process - Running CLI command: cd /home/runner/work/python-commons/python-commons/pythoncommons/test-scripts;script_with_args.sh arg1 arg2 arg3 | tee /tmp/tmpmw81baze/test_commandrunner_execute_script_with_args-20250207_035837/testfile
+            # 2025-02-07 03:58:37,822 - DEBUG - pythoncommons.tests.test_process - [AUDIT subprocess.Popen]: subprocess.Popen with args=('/bin/sh', ['/bin/sh', '-c', 'cd /home/runner/work/python-commons/python-commons/pythoncommons/test-scripts;script_with_args.sh arg1 arg2 arg3 | tee /tmp/tmpmw81baze/test_commandrunner_execute_script_with_args-20250207_035837/testfile'], None, None)
             cli_command += f"cd {working_dir};./{script}"
         else:
             cli_command += script
