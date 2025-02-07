@@ -158,8 +158,8 @@ class ProcessTests(unittest.TestCase):
                 script_name, args=args, working_dir=script_parent_dir, output_file=output_file, use_tee=True
             )
             file_contents = FileUtils.read_file(output_file)
-            self.assertEqual('arg: arg1\narg: arg2\narg: arg3\n', file_contents)
             self.assertEqual('arg: arg1\narg: arg2\narg: arg3', cli_output)
+            self.assertEqual('arg: arg1\narg: arg2\narg: arg3\n', file_contents)
 
 
     def test_commandrunner_run_cli_command_with_args(self):
