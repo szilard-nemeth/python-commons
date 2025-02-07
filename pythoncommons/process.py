@@ -193,8 +193,9 @@ class CommandRunner:
     def execute_script(script: str, args: str, working_dir: str = None, output_file: str = None, use_tee=False):
         cli_command = ""
         if working_dir:
-            cli_command += f"cd {working_dir};"
-        cli_command += script
+            cli_command += f"cd {working_dir};./{script}"
+        else:
+            cli_command += script
         if args:
             cli_command += " " + args
         if output_file:
