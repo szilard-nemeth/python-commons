@@ -1,4 +1,5 @@
 .idea
+.run
 venv
 .DS_Store
 /build/

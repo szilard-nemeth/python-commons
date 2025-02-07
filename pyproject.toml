@@ -52,6 +52,7 @@ pre-commit = "^2.20.0"
 dataclasses-json = "^0.5.7"
 black = "*"
 autopep8 = "*"
+pytest-html = "*"
 
 [build-system]
 requires = ["poetry-core"]
