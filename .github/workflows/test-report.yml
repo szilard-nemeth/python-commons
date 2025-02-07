@@ -10,7 +10,7 @@ jobs:
     steps:
     - uses: dorny/test-reporter@v1
       with:
-        artifact: pytest-results                    # artifact name
+        artifact: pytest-results-3.9                    # artifact name
         name: Pytest Tests                          # Name of the check run which will be created
         path: 'junit/test-results-3.9.xml'              # Path to test results (inside artifact .zip)
         reporter: java-junit                        # Format of test results
