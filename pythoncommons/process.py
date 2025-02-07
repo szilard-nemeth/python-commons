@@ -53,7 +53,8 @@ class CommandOutput:
         output = [line.rstrip() for line in stream]
         if len(output) == 1 and self._single_result:
             output = output[0]
-        return output
+            return output
+        return "\n".join(output)
 
 
 # TODO consolidate methods
