@@ -5,7 +5,6 @@ LOG = logging.getLogger(__name__)
 
 
 class GitUtils:
-
     @classmethod
     def does_git_repo_dir_exist(cls, project):
         path = os.path.join(project.target_dir, ".git")

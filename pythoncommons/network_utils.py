@@ -13,8 +13,9 @@ class NetworkUtils:
     @staticmethod
     def is_port_in_use(port):
         import socket
+
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            return s.connect_ex(('localhost', port)) == 0
+            return s.connect_ex(("localhost", port)) == 0
 
     @staticmethod
     def get_random_port():
@@ -27,17 +28,17 @@ class NetworkUtils:
             try:
                 # ping google
                 if counter > 0:
-                    LOG.info('Waiting for internet connection, try count: %s', counter)
-                response = request.urlopen('http://google.com', timeout=1)
+                    LOG.info("Waiting for internet connection, try count: %s", counter)
+                _ = request.urlopen("http://google.com", timeout=1)
                 return
             except url_error.URLError:
                 pass
 
     @staticmethod
-    def fetch_json(url, strict=False,
-                   do_not_raise_http_statuses: Set[int] = None,
-                   http_callbacks: Dict[int, Callable] = None):
-        """ Load data from specified url """
+    def fetch_json(
+        url, strict=False, do_not_raise_http_statuses: Set[int] = None, http_callbacks: Dict[int, Callable] = None
+    ):
+        """Load data from specified url"""
         try:
             LOG.debug("Making request to URL: %s", url)
             ourl = urllib.request.urlopen(url)

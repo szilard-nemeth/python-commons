@@ -53,7 +53,8 @@ class CommandOutput:
         output = [line.rstrip() for line in stream]
         if len(output) == 1 and self._single_result:
             output = output[0]
-        return output
+            return output
+        return "\n".join(output)
 
 
 # TODO consolidate methods
@@ -62,23 +63,27 @@ class CommandRunner:
         self.LOG = log
 
     def run_sync(
-            self,
-            cmd: str,
-            fail_on_error: bool = False,
-            single_result=True,
-            _out: str = None,
-            _err: str = None,
-            _tee: bool = False,
-            _err_to_out: bool = False,
-            add_stdout_callback: bool = False,
-            add_stderr_callback: bool = False,
-            log_stdout_to_logger: bool = False,
-            log_stderr_to_logger: bool = False
+        self,
+        cmd: str,
+        fail_on_error: bool = False,
+        single_result=True,
+        _out: str = None,
+        _err: str = None,
+        _tee: bool = False,
+        _err_to_out: bool = False,
+        add_stdout_callback: bool = False,
+        add_stderr_callback: bool = False,
+        log_stdout_to_logger: bool = False,
+        log_stderr_to_logger: bool = False,
     ):
         if add_stdout_callback and _out:
-            raise ValueError("Invalid input parameters! Cannot specify '_out' and 'add_stdout_callback' at the same time!")
+            raise ValueError(
+                "Invalid input parameters! Cannot specify '_out' and 'add_stdout_callback' at the same time!"
+            )
         if add_stderr_callback and _err:
-            raise ValueError("Invalid input parameters! Cannot specify '_err' and 'add_stderr_callback' at the same time!")
+            raise ValueError(
+                "Invalid input parameters! Cannot specify '_err' and 'add_stderr_callback' at the same time!"
+            )
 
         def _prepare_kwargs(_err, _out, _tee):
             # _out and _err should be always added as explicit None values also matter
@@ -131,7 +136,7 @@ class CommandRunner:
         return exit_code, stdout, stderr
 
     def run_async(
-            self, cmd: str, stdout_callback: Callable[[str], str] = None, stderr_callback: Callable[[str], str] = None
+        self, cmd: str, stdout_callback: Callable[[str], str] = None, stderr_callback: Callable[[str], str] = None
     ) -> Popen:
         self.LOG.info("Running command async: {}".format(cmd))
 
@@ -166,13 +171,13 @@ class CommandRunner:
 
     @staticmethod
     def egrep_with_cli(
-            git_log_result: List[str],
-            file: str,
-            grep_for: str,
-            escape_single_quotes=True,
-            escape_double_quotes=True,
-            fail_on_empty_output=True,
-            fail_on_error=True,
+        git_log_result: List[str],
+        file: str,
+        grep_for: str,
+        escape_single_quotes=True,
+        escape_double_quotes=True,
+        fail_on_empty_output=True,
+        fail_on_error=True,
     ):
         FileUtils.save_to_file(file, StringUtils.list_to_multiline_string(git_log_result))
         if escape_single_quotes or escape_double_quotes:
@@ -188,8 +193,47 @@ class CommandRunner:
     def execute_script(script: str, args: str, working_dir: str = None, output_file: str = None, use_tee=False):
         cli_command = ""
         if working_dir:
-            cli_command += f"cd {working_dir};"
-        cli_command += script
+            # TODO Figure out why this wouldn't work only with GitHub actions:
+            #  cli_command += f"cd {working_dir};{script}"
+            #  without using ./<script-name> it DOES NOT WORK AND FAILS!
+            # Related audit log with fixed run:
+            # 2025-02-07 04:14:55,599 - DEBUG - pythoncommons.tests.test_process - [AUDIT subprocess.Popen]:
+            # subprocess.Popen with args=('/bin/sh', ['/bin/sh', '-c', 'cd /home/runner/work/python-commons/python-commons/pythoncommons/test-scripts;./script_with_args.sh arg1 arg2 arg3 | tee /tmp/tmpt_msgge2/test_commandrunner_execute_script_with_args-20250207_041455/testfile'], None, None)
+            # FAILED RUN
+            #
+            #
+            # =================================== FAILURES ===================================
+            # ___________ ProcessTests.test_commandrunner_execute_script_with_args ___________
+            #
+            # self = <pythoncommons.tests.test_process.ProcessTests testMethod=test_commandrunner_execute_script_with_args>
+            #
+            #     def test_commandrunner_execute_script_with_args(self):
+            #         with tempfile.TemporaryDirectory() as tmpdirname:
+            #             test_dir = self.get_test_dir(tmpdirname)
+            #             output_file = FileUtils.join_path(test_dir, "testfile")
+            #             script_path = ProcessTests.find_script(SCRIPT_WITH_ARGS_SH)
+            #             script_parent_dir = FileUtils.get_parent_dir_name(script_path)
+            #             script_name = os.path.basename(script_path)
+            #
+            #             args = f"arg1 arg2 arg3"
+            #
+            #             cli_cmd, cli_output = CommandRunner.execute_script(
+            #                 script_name, args=args, working_dir=script_parent_dir, output_file=output_file, use_tee=True
+            #             )
+            #             file_contents = FileUtils.read_file(output_file)
+            # >           self.assertEqual('arg: arg1\narg: arg2\narg: arg3', cli_output)
+            # E           AssertionError: 'arg: arg1\narg: arg2\narg: arg3' != '/bin/sh: 1: script_with_args.sh: not found'
+            # E           + /bin/sh: 1: script_with_args.sh: not found- arg: arg1
+            # E           - arg: arg2
+            # E           - arg: arg3
+            #
+            # pythoncommons/tests/test_process.py:166: AssertionError
+            # ------------------------------ Captured log call -------------------------------
+            # 2025-02-07 03:58:37,821 - INFO - pythoncommons.process - Running CLI command: cd /home/runner/work/python-commons/python-commons/pythoncommons/test-scripts;script_with_args.sh arg1 arg2 arg3 | tee /tmp/tmpmw81baze/test_commandrunner_execute_script_with_args-20250207_035837/testfile
+            # 2025-02-07 03:58:37,822 - DEBUG - pythoncommons.tests.test_process - [AUDIT subprocess.Popen]: subprocess.Popen with args=('/bin/sh', ['/bin/sh', '-c', 'cd /home/runner/work/python-commons/python-commons/pythoncommons/test-scripts;script_with_args.sh arg1 arg2 arg3 | tee /tmp/tmpmw81baze/test_commandrunner_execute_script_with_args-20250207_035837/testfile'], None, None)
+            cli_command += f"cd {working_dir};./{script}"
+        else:
+            cli_command += script
         if args:
             cli_command += " " + args
         if output_file:
@@ -233,16 +277,16 @@ class RegularCommandResult:
 class SubprocessCommandRunner:
     @classmethod
     def run(
-            cls,
-            command,
-            working_dir=None,
-            log_stdout=False,
-            log_stderr=False,
-            log_command_result=False,
-            fail_on_error=False,
-            fail_message="",
-            wait_after=0,
-            wait_message="",
+        cls,
+        command,
+        working_dir=None,
+        log_stdout=False,
+        log_stderr=False,
+        log_command_result=False,
+        fail_on_error=False,
+        fail_message="",
+        wait_after=0,
+        wait_message="",
     ):
         if working_dir:
             FileUtils.change_cwd(working_dir)
@@ -273,11 +317,11 @@ class SubprocessCommandRunner:
 
     @classmethod
     def run_and_follow_stdout_stderr(
-            cls,
-            cmd,
-            log_file=FileUtils.get_temp_file_name(),
-            stdout_logger: Optional[logging.Logger] = None,
-            exit_on_nonzero_exitcode=False
+        cls,
+        cmd,
+        log_file=FileUtils.get_temp_file_name(),
+        stdout_logger: Optional[logging.Logger] = None,
+        exit_on_nonzero_exitcode=False,
     ):
         # TODO stderr is not logged at all
         if not stdout_logger:

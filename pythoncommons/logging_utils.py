@@ -1,9 +1,16 @@
 import logging
+import os
+import sys
 import types
 from enum import Enum
+from logging.handlers import TimedRotatingFileHandler
+from os.path import expanduser
 from typing import List, Sized, Callable
+from copy import copy
 
-from pythoncommons.logging_setup import SimpleLoggingSetup
+from pythoncommons.constants import ExecutionMode, PROJECT_NAME
+from pythoncommons.logging_setup import SimpleLoggingSetup, DEFAULT_FORMAT, SimpleLoggingSetupConfig
+from pythoncommons.project_utils import ProjectRootDeterminationStrategy, ProjectUtils
 
 LOG = logging.getLogger(__name__)
 
@@ -66,6 +73,72 @@ class LoggingUtils:
                     error_details += f"\nPROJECT SPECIFIC LOGGERS: {project_specific_loggers}"
                 err_message += f"\n{error_details}"
             raise ValueError(err_message)
+
+    @staticmethod
+    def create_file_handler(log_file_dir, level: int, fname: str):
+        log_file_path = os.path.join(log_file_dir, f"{fname}.log")
+        fh = TimedRotatingFileHandler(log_file_path, when="midnight")
+        fh.suffix = "%Y_%m_%d.log"
+        fh.setLevel(level)
+        return fh
+
+    @staticmethod
+    def configure_file_logging(level, session_dir, dry_run=False):
+        root_logger = logging.getLogger()
+        handlers = copy(root_logger.handlers)
+        file_handler = LoggingUtils.create_file_handler(session_dir, level, fname="dexter-session")
+        file_handler.formatter = None
+        LOG.info("Logging to file: %s", file_handler.baseFilename)
+        handlers.append(file_handler)
+
+        fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        if dry_run:
+            fmt = f"[DRY-RUN] {fmt}"
+        logging.basicConfig(force=True, format=fmt, level=level, handlers=handlers)
+
+    @staticmethod
+    def project_setup(execution_mode: ExecutionMode = ExecutionMode.PRODUCTION, dry_run=False):
+        strategy = None
+        if execution_mode == ExecutionMode.PRODUCTION:
+            strategy = ProjectRootDeterminationStrategy.SYS_PATH
+        elif execution_mode == ExecutionMode.TEST:
+            strategy = ProjectRootDeterminationStrategy.SYS_PATH
+        if not strategy:
+            raise ValueError("Unknown project root determination strategy!")
+        LOG.info("Project root determination strategy is: %s", strategy)
+        ProjectUtils.project_root_determine_strategy = strategy
+        ProjectUtils.FORCE_SITE_PACKAGES_IN_PATH_NAME = False
+        ProjectUtils.ALLOW_PYTHON_COMMONS_AS_PROJECT = True
+        _ = ProjectUtils.get_output_basedir(PROJECT_NAME, basedir=expanduser("~"))
+        _ = ProjectUtils.get_test_output_basedir(PROJECT_NAME)
+
+        fmt = DEFAULT_FORMAT
+        if dry_run:
+            fmt = f"[DRY-RUN] {fmt}"
+        logging_config: SimpleLoggingSetupConfig = SimpleLoggingSetup.init_logger(
+            project_name=PROJECT_NAME,
+            logger_name_prefix=PROJECT_NAME,
+            execution_mode=ExecutionMode.TEST,
+            console_debug=True,
+            postfix=None,
+            verbose_git_log=True,
+            format_str=fmt,
+            add_console_handler=False,
+        )
+        _log = logging.getLogger()
+        _log.info("Logging to files: %s", logging_config.log_file_paths)
+        return list(logging_config.log_file_paths.values())
+
+    @staticmethod
+    def remove_console_handler(logger):
+        filtered_handlers = list(
+            filter(
+                lambda h: isinstance(h, logging.StreamHandler) and h.stream in (sys.stdout, sys.stderr), logger.handlers
+            )
+        )
+
+        for handler in filtered_handlers:
+            logger.removeHandler(handler)
 
 
 class LoggerProperties(Enum):

@@ -40,4 +40,4 @@ class FileUtilsTests(unittest.TestCase):
         FileUtils.create_new_empty_file(text_file_path)
         FileUtils.write_to_file(text_file_path, "bla\nbla2\nbla3")
         file_lines_list = FileUtils.read_file_to_list(text_file_path)
-        self.assertEqual(['bla', 'bla2', 'bla3'], file_lines_list)
+        self.assertEqual(["bla", "bla2", "bla3"], file_lines_list)

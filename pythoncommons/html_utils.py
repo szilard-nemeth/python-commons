@@ -61,18 +61,20 @@ table, th, td {
         html_sep += breaks * "<br/>"
         return html_sep
 
-    def append_html_tables(self,
-                           table_tups: List[Tuple[str, str]],
-                           separator=None,
-                           additional_separator_at_beginning=False,
-                           header_type="h1"):
+    def append_html_tables(
+        self,
+        table_tups: List[Tuple[str, str]],
+        separator=None,
+        additional_separator_at_beginning=False,
+        header_type="h1",
+    ):
         if not self.html:
             raise ValueError("Invalid state. Please call 'begin_html_tag' first.")
 
         tables_html = ""
         if not separator:
             separator = ""
-        ht = header_type
+        _ = header_type
 
         if additional_separator_at_beginning:
             tables_html += separator
