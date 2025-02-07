@@ -45,6 +45,11 @@ class ProcessTests(unittest.TestCase):
     def setUpClass(cls):
         log_files = LoggingUtils.project_setup(execution_mode=ExecutionMode.TEST)
 
+        def audit(event, args):
+            if event == 'subprocess.Popen':
+                LOG.debug(f'[AUDIT subprocess.Popen]: {event} with args={args}')
+        sys.addaudithook(audit)
+
     @staticmethod
     def _get_test_name():
         return os.environ.get('PYTEST_CURRENT_TEST').split(':')[-1].split(' ')[0]
