@@ -71,7 +71,10 @@ class PatchUtils:
         else:
             raise ValueError(
                 "Unexpected number of components (separated by '-') of branch name: {}, "
-                "encountered # of components: {}", latest_branch, len(parts))
+                "encountered # of components: {}",
+                latest_branch,
+                len(parts),
+            )
 
     @staticmethod
     def save_diff_to_patch_file(diff, file):

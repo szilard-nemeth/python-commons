@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 import types
 from enum import Enum
 from logging.handlers import TimedRotatingFileHandler
@@ -90,7 +91,7 @@ class LoggingUtils:
         LOG.info("Logging to file: %s", file_handler.baseFilename)
         handlers.append(file_handler)
 
-        fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         if dry_run:
             fmt = f"[DRY-RUN] {fmt}"
         logging.basicConfig(force=True, format=fmt, level=level, handlers=handlers)
@@ -122,7 +123,7 @@ class LoggingUtils:
             postfix=None,
             verbose_git_log=True,
             format_str=fmt,
-            add_console_handler=False
+            add_console_handler=False,
         )
         _log = logging.getLogger()
         _log.info("Logging to files: %s", logging_config.log_file_paths)
@@ -131,8 +132,10 @@ class LoggingUtils:
     @staticmethod
     def remove_console_handler(logger):
         filtered_handlers = list(
-            filter(lambda h: isinstance(h, logging.StreamHandler) and h.stream in (sys.stdout, sys.stderr),
-                   logger.handlers))
+            filter(
+                lambda h: isinstance(h, logging.StreamHandler) and h.stream in (sys.stdout, sys.stderr), logger.handlers
+            )
+        )
 
         for handler in filtered_handlers:
             logger.removeHandler(handler)

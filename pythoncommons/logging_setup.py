@@ -99,7 +99,7 @@ class SimpleLoggingSetup:
         sanity_check_number_of_handlers=True,
         enable_logging_setup_debug_details: bool = False,
         with_trace_level: bool = True,
-        add_console_handler: bool = True
+        add_console_handler: bool = True,
     ) -> SimpleLoggingSetupConfig:
         if not project_name:
             raise ValueError("Project name must be specified!")
@@ -121,7 +121,7 @@ class SimpleLoggingSetup:
             sanity_check_number_of_handlers=sanity_check_number_of_handlers,
             enable_logging_setup_debug_details=enable_logging_setup_debug_details,
             with_trace_level=with_trace_level,
-            add_console_handler=add_console_handler
+            add_console_handler=add_console_handler,
         )
         SimpleLoggingSetup._setup_gitpython_log(repos, verbose_git_log)
         return logging_config
@@ -154,7 +154,7 @@ class SimpleLoggingSetup:
         disable_propagation: bool = True,
         enable_logging_setup_debug_details: bool = False,
         with_trace_level: bool = True,
-        add_console_handler: bool = True
+        add_console_handler: bool = True,
     ) -> SimpleLoggingSetupConfig:
         conf = SimpleLoggingSetupInputConfig(
             project_name,
@@ -170,7 +170,7 @@ class SimpleLoggingSetup:
             disable_propagation,
             enable_logging_setup_debug_details,
             with_trace_level,
-            add_console_handler
+            add_console_handler,
         )
         if trace:
             conf.with_trace_level = True
@@ -196,7 +196,8 @@ class SimpleLoggingSetup:
         log_file_path_for_specified_level = SimpleLoggingSetup._determine_log_file_path(
             specified_file_log_level_name, file_postfix, execution_mode, project_name
         )
-        console_handler, conf.handlers, log_file_paths = SimpleLoggingSetup._determine_handlers(conf,
+        console_handler, conf.handlers, log_file_paths = SimpleLoggingSetup._determine_handlers(
+            conf,
             console_log_level,
             log_file_path_for_default_level,
             log_file_path_for_specified_level,
@@ -507,10 +508,8 @@ class SimpleLoggingSetup:
                 main_logger.setLevel(DEFAULT_LOG_LEVEL)
 
         # If we are in TEST mode and the handler is a FileHandler, don't replace it
-        callback = (
-            lambda handler: not (conf.execution_mode == ExecutionMode.TEST and
-                                 SimpleLoggingSetup._is_file_handler(handler))
-        )
+        def callback(handler):
+            return not (conf.execution_mode == ExecutionMode.TEST and SimpleLoggingSetup._is_file_handler(handler))
 
         if conf.remove_existing_handlers:
             main_logger.debug("Removing existing handlers from logger: %s, handlers: %s", logger, existing_handlers)
@@ -626,8 +625,9 @@ class SimpleLoggingSetup:
         return cls._ALL_LOG_FILES
 
     @staticmethod
-    def copy_handlers_from(from_logger: logging.Logger, logger_name: str, types: Set[Type[logging.Handler]],
-                           remove_handlers=True):
+    def copy_handlers_from(
+        from_logger: logging.Logger, logger_name: str, types: Set[Type[logging.Handler]], remove_handlers=True
+    ):
         src_handlers = from_logger.handlers
         result_handlers = []
 
