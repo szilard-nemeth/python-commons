@@ -59,13 +59,13 @@ def get_stack_human_readable(stack):
 class SimpleProjectUtils:
     @classmethod
     def get_project_dir(
-            cls,
-            basedir: str,
-            parent_dir: str,
-            dir_to_find: str,
-            find_result_type: FindResultType,
-            exclude_dirs: List[str] = None,
-            exact_dirname_match: Optional[bool] = None
+        cls,
+        basedir: str,
+        parent_dir: str,
+        dir_to_find: str,
+        find_result_type: FindResultType,
+        exclude_dirs: List[str] = None,
+        exact_dirname_match: Optional[bool] = None,
     ):
         found_dirs = FileUtils.find_files(
             basedir,
@@ -102,10 +102,10 @@ class SimpleProjectUtils:
 
     @classmethod
     def get_project_file(
-            cls,
-            basedir: str,
-            file_to_find: str,
-            find_result_type: FindResultType,
+        cls,
+        basedir: str,
+        file_to_find: str,
+        find_result_type: FindResultType,
     ):
         found_files = FileUtils.find_files(
             basedir,
@@ -211,7 +211,7 @@ class RepositoryDirStrategy(StrategyBase):
             "Trying to determine project name with repository dir strategy. "
             f"Current sys.path: \n{get_sys_path_human_readable()}"
         )
-        filename = file_of_caller[len(REPOS_DIR):]
+        filename = file_of_caller[len(REPOS_DIR) :]
         # We should return the first dir name of the path
         # Cut leading slashes, if any as split would return empty string for 0th component
         filename = StringUtils.strip_leading_os_sep(filename)
@@ -285,6 +285,13 @@ class ProjectUtils:
     default_project_determine_strategy = ProjectRootDeterminationStrategy.COMMON_FILE
     project_root_determine_strategy = default_project_determine_strategy
     FORCE_SITE_PACKAGES_IN_PATH_NAME = True
+
+    """
+    This is useful and a must for test executions of ProjectUtils (e.g. JiraUtilsTests)
+    as stackframes calling pythoncommons are only the methods of the unittest framework.
+    """
+    ALLOW_PYTHON_COMMONS_AS_PROJECT = False
+
     STRATEGIES: Dict[ProjectRootDeterminationStrategy, StrategyBase] = {
         ProjectRootDeterminationStrategy.COMMON_FILE: CommonPathStrategy(),
         ProjectRootDeterminationStrategy.SYS_PATH: SysPathStrategy(),
@@ -344,27 +351,24 @@ class ProjectUtils:
             return cls.STRATEGIES[strat]
         strategy: StrategyBase = cls.STRATEGIES[cls.project_root_determine_strategy]
         if (
-                REPOS_DIR in file_of_caller
-                and cls.project_root_determine_strategy == cls.default_project_determine_strategy
+            REPOS_DIR in file_of_caller
+            and cls.project_root_determine_strategy == cls.default_project_determine_strategy
         ):
             strategy = cls.STRATEGIES[ProjectRootDeterminationStrategy.REPOSITORY_DIR]
         return strategy
 
     @classmethod
     def get_output_basedir(
-            cls,
-            basedir_name: str,
-            ensure_created=True,
-            allow_python_commons_as_project=False,
-            basedir=PROJECTS_BASEDIR,
-            project_name_hint=None,
+        cls,
+        basedir_name: str,
+        ensure_created=True,
+        basedir=PROJECTS_BASEDIR,
+        project_name_hint=None,
     ):
         if not basedir_name:
             raise ValueError("Basedir name should be specified!")
 
-        project_name = cls.verify_caller_filename_valid(
-            allow_python_commons_as_project=allow_python_commons_as_project, project_name_hint=project_name_hint
-        )
+        project_name = cls.verify_caller_filename_valid(project_name_hint=project_name_hint)
         proj_basedir = FileUtils.join_path(basedir, basedir_name)
         if project_name in cls.PROJECT_BASEDIR_DICT:
             old_basedir = cls.PROJECT_BASEDIR_DICT[project_name]
@@ -383,21 +387,16 @@ class ProjectUtils:
         return proj_basedir
 
     @classmethod
-    def get_test_output_basedir(cls, basedir_name: str, allow_python_commons_as_project=False):
+    def get_test_output_basedir(cls, basedir_name: str):
         """
-
         :param basedir_name:
-        :param allow_python_commons_as_project: This is useful and a must for test executions of ProjectUtils (e.g. JiraUtilsTests)
-        as stackframes calling pythoncommons are only the methods of the unittest framework.
         :return:
         """
         cls.test_execution = True
-        project_name = cls.verify_caller_filename_valid(allow_python_commons_as_project=allow_python_commons_as_project)
+        project_name = cls.verify_caller_filename_valid()
         if project_name not in cls.PROJECT_BASEDIR_DICT:
             # Creating project dir for the first time
-            proj_basedir = cls.get_output_basedir(
-                basedir_name, allow_python_commons_as_project=allow_python_commons_as_project
-            )
+            proj_basedir = cls.get_output_basedir(basedir_name)
         else:
             proj_basedir = cls.PROJECT_BASEDIR_DICT[project_name]
 
@@ -427,7 +426,7 @@ class ProjectUtils:
 
     @classmethod
     def get_test_output_child_dir(
-            cls, dir_name: str, ensure_created=True, special_parent_dir=None, project_name_hint=None
+        cls, dir_name: str, ensure_created=True, special_parent_dir=None, project_name_hint=None
     ):
         if not dir_name:
             raise ValueError("Dir name should be specified!")
@@ -545,7 +544,7 @@ class ProjectUtils:
 
     @classmethod
     def _get_log_filename_internal(
-            cls, project_name: str, postfix: str = None, level_name: str = None, prod: bool = True
+        cls, project_name: str, postfix: str = None, level_name: str = None, prod: bool = True
     ):
         if postfix:
             postfix = "-" + postfix
@@ -576,7 +575,7 @@ class ProjectUtils:
         return cls.get_test_output_child_dir(LOGS_DIR_NAME, project_name_hint=project_name_hint)
 
     @classmethod
-    def verify_caller_filename_valid(cls, allow_python_commons_as_project=False, project_name_hint=None):
+    def verify_caller_filename_valid(cls, project_name_hint=None):
         stack = inspect.stack()
         stack_frame, idx = cls._find_first_non_pythoncommons_stackframe(stack)
         file_of_caller = stack_frame.filename
@@ -586,15 +585,16 @@ class ProjectUtils:
                 f"Detected caller as 'unittest'. Current stack frame: {stack_frame}\n"
                 f"Stack: {get_stack_human_readable(stack)}"
             )
-            if allow_python_commons_as_project:
+            if ProjectUtils.ALLOW_PYTHON_COMMONS_AS_PROJECT:
                 LOG.warning(message)
                 # Get the previous frame which should belong to pythoncommons
                 python_commons_frame = stack[idx - 1]
                 file_of_caller = python_commons_frame.filename
             else:
+                key = "ProjectUtils.ALLOW_PYTHON_COMMONS_AS_PROJECT"
                 message += (
-                    "\n'allow_python_commons_as_project' is set to False. "
-                    "Please set 'allow_python_commons_as_project' to True "
+                    f"\n'{key}' is set to False. "
+                    f"Please set '{key}' to True "
                     "to the ProjectUtils method that initiated the call."
                 )
                 raise ValueError(message)
