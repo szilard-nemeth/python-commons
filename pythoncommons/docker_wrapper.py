@@ -397,6 +397,7 @@ class DockerTestSetup:
         progress: Progress = None,
         image_found_callback: Callable[[bool], None] = None,
         image_not_found_container_starting_callback: Callable[[], None] = None,
+        **kwargs,
     ):
         self._docker_wrapper.ensure_docker_running()
         if not commands_to_run:
@@ -442,7 +443,7 @@ class DockerTestSetup:
 
         cmd_outputs = {}
         for cmd in commands_to_run:
-            exit_code, output = self.exec_cmd_in_container(cmd)
+            exit_code, output = self.exec_cmd_in_container(cmd, **kwargs)
             cmd_outputs[cmd] = output
 
         if self.post_diagnostics:

@@ -16,3 +16,18 @@ class TestDocker(unittest.TestCase):
         except DockerInitException as e:
             # Catch DockerInitException if Docker is not running
             LOG.exception("Docker init exception. ", exc_info=e)
+
+    def test_command_fails_default_behavior(self):
+        dts = DockerTestSetup("busybox", fail_fast_if_docker_unavailable=False)
+        self.assertRaises(
+            ValueError,
+            lambda: dts.run_container(["badcommand"], capture_progress=True, print_progress=False, progress=None),
+        )
+
+    def test_command_does_not_fail_with_fail_on_error_false(self):
+        dts = DockerTestSetup("busybox", fail_fast_if_docker_unavailable=False)
+        container, cmd_outputs = dts.run_container(
+            ["badcommand"], capture_progress=True, print_progress=False, progress=None, fail_on_error=False
+        )
+        container.remove(force=True)
+        LOG.info("Command outputs: %s", cmd_outputs)
