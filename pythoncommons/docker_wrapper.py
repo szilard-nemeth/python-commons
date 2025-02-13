@@ -2,8 +2,9 @@ import logging
 import os
 import re
 import time
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Any
 import docker
 from docker import APIClient
 import json
@@ -18,6 +19,35 @@ from typing import Callable
 DEFAULT_DOCKERFILE_NAME = "Dockerfile"
 
 LOG = logging.getLogger(__name__)
+
+
+@dataclass
+class DockerRunCommandResult:
+    command: str
+    output: str
+    exit_code: int
+
+
+@dataclass
+class DockerRunCommandResults:
+    container: Any
+    _results: Dict[str, DockerRunCommandResult] = field(default_factory=dict)
+
+    def add_result(self, command, output, exit_code):
+        if command in self._results:
+            raise ValueError("Command already added to results: {}".format(command))
+        self._results[command] = DockerRunCommandResult(command, output, exit_code)
+
+    def command_outputs(self):
+        d = {}
+        for r in self._results.values():
+            d[r.command] = r.output
+        return d
+
+    def get_result(self, command: str) -> DockerRunCommandResult:
+        if command not in self._results:
+            raise ValueError("Result not found for command: {}".format(command))
+        return self._results[command]
 
 
 class DockerInitException(Exception):
@@ -397,7 +427,8 @@ class DockerTestSetup:
         progress: Progress = None,
         image_found_callback: Callable[[bool], None] = None,
         image_not_found_container_starting_callback: Callable[[], None] = None,
-    ):
+        **kwargs,
+    ) -> DockerRunCommandResults:
         self._docker_wrapper.ensure_docker_running()
         if not commands_to_run:
             commands_to_run = []
@@ -440,14 +471,14 @@ class DockerTestSetup:
         if self.pre_diagnostics:
             self._run_pre_diagnostic_commands()
 
-        cmd_outputs = {}
+        results = DockerRunCommandResults(self.container)
         for cmd in commands_to_run:
-            exit_code, output = self.exec_cmd_in_container(cmd)
-            cmd_outputs[cmd] = output
+            exit_code, output = self.exec_cmd_in_container(cmd, **kwargs)
+            results.add_result(cmd, output, exit_code)
 
         if self.post_diagnostics:
             self._run_post_diagnostic_commands()
-        return self.container, cmd_outputs
+        return results
 
     def _create_volumes_dict(self):
         # Convert DockerMount objects to volumes dictionary
