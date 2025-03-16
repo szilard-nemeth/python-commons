@@ -930,14 +930,14 @@ class JsonFileUtils:
 
 class CsvFileUtils:
     @classmethod
-    def append_rows_to_csv_file(cls, file_path, data: List[Iterable[Any]], header=None):
+    def append_rows_to_csv_file(cls, file_path, data: List[Iterable[Any]], header=None, validate_rows=True):
         import csv
 
-        # Validation
-        if not isinstance(data, list):
-            raise ValueError("Expected list of data for CSV row!")
-        if len(data) > 0 and not all([isinstance(cell, str) for row in data for cell in row]):
-            raise ValueError("Expected list of str items for CSV row!")
+        if validate_rows:
+            if not isinstance(data, list):
+                raise ValueError("Expected list of data for CSV row!")
+            if len(data) > 0 and not all([isinstance(cell, str) for row in data for cell in row]):
+                raise ValueError("Expected list of str items for CSV row!")
 
         new_file = cls._ensure_parent_dir_exists(file_path)
         with open(file_path, "a", newline="") as csvfile:
