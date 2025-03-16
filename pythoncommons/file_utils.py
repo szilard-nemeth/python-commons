@@ -270,7 +270,7 @@ class FileUtils:
             LOG.info("Trying to open file %s for writing..", file)
         f = open(file, "w")
         if not f.writable():
-            raise ValueError("File {} is not readable".format(file))
+            raise ValueError("File {} is not writable".format(file))
         return file
 
     @classmethod
