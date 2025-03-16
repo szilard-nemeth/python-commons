@@ -940,13 +940,12 @@ class CsvFileUtils:
                 for i, row in enumerate(rows):
                     if not isinstance(row, list):
                         raise ValueError(
-                            "Expected list of values for input row of CSV file. Invalid row index: {}, invalid row: {}".format(
-                                i, row
-                            )
+                            "Expected list of values for input row of CSV file! " + CsvFileUtils._get_row_error(i, row)
                         )
-
-            if len(rows) > 0 and not all([isinstance(cell, str) for row in rows for cell in row]):
-                raise ValueError("Expected list of str items for CSV row!")
+                    if not all([isinstance(field, str) for field in row]):
+                        raise ValueError(
+                            "All fields for input row should be type of str!" + CsvFileUtils._get_row_error(i, row)
+                        )
 
         new_file = cls._ensure_parent_dir_exists(file_path)
         with open(file_path, "a", newline="") as csvfile:
@@ -955,6 +954,10 @@ class CsvFileUtils:
                 csv_writer.writerow(header)
             for row in rows:
                 csv_writer.writerow(row)
+
+    @classmethod
+    def _get_row_error(cls, i, row):
+        return "Invalid row index: {}, invalid row: {}".format(i, row)
 
     @classmethod
     def append_row_to_csv_file(cls, file_path, data: List[str], header=None):
