@@ -256,13 +256,27 @@ class SimpleLoggingSetup:
             # 3 = {LogCaptureHandler} <LogCaptureHandler (DEBUG)>
             # More info here:
             # 1. https://stackoverflow.com/a/51633600/1106893
-            # 2. https://docs.pytest.org/en/latest/how-to/logging.html#live-logs
+            # 2. https://docs.pytest.org/en/latest/how-to/logging.html#live-
+
+            # Example list from GitHub Pytest execution:
+            #  [<StreamHandler <stderr> (NOTSET)>,
+            #  <TimedRotatingFileHandler /grid/0/jenkins/dexter/logs/session-20250424_2111173135/dexter-session.log (INFO)>
+            #  ]
             root_logger_handlers = logging.getLogger().handlers
+
+            console_handler_stream = None
             for rh in root_logger_handlers:
+                if isinstance(rh, logging.StreamHandler):
+                    if rh.stream is sys.stderr or rh.stream is sys.stdout:
+                        console_handler_stream = rh
                 if isinstance(rh, _LiveLoggingStreamHandler) and isinstance(rh.stream, TerminalReporter):
                     console_handler = rh
             if not console_handler:
-                raise ValueError("Console handler not found among PyTest's handlers: {}".format(root_logger_handlers))
+                console_handler = console_handler_stream
+                if not console_handler:
+                    raise ValueError(
+                        "Console handler not found among PyTest's handlers: {}".format(root_logger_handlers)
+                    )
             handlers = [*root_logger_handlers, file_handler]
         else:
             handlers = [
