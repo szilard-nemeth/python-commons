@@ -64,6 +64,7 @@ class SimpleLoggingSetupInputConfig:
     logger_name_prefix: str
     debug: bool = False
     trace: bool = False
+    add_trace_level: bool = False
     console_debug: bool = False
     format_str: str = None
     file_postfix: str = None
@@ -92,6 +93,7 @@ class SimpleLoggingSetup:
         execution_mode: ExecutionMode,
         console_debug=False,
         trace=False,
+        add_trace_level=False,
         postfix: str = None,
         repos=None,
         verbose_git_log=False,
@@ -114,6 +116,7 @@ class SimpleLoggingSetup:
             logger_name_prefix=logger_name_prefix,
             debug=True,
             trace=trace,
+            add_trace_level=add_trace_level,
             console_debug=console_debug,
             format_str=final_format_str,
             file_postfix=postfix,
@@ -144,6 +147,7 @@ class SimpleLoggingSetup:
         logger_name_prefix: str,
         debug: bool = False,
         trace: bool = False,
+        add_trace_level: bool = False,
         console_debug: bool = False,
         format_str: str = None,
         file_postfix: str = None,
@@ -161,6 +165,7 @@ class SimpleLoggingSetup:
             logger_name_prefix,
             debug,
             trace,
+            add_trace_level,
             console_debug,
             format_str,
             file_postfix,
@@ -173,6 +178,8 @@ class SimpleLoggingSetup:
             add_console_handler,
         )
         if trace:
+            add_trace_level = True
+        if add_trace_level:
             conf.with_trace_level = True
         if conf.with_trace_level:
             SimpleLoggingSetup.add_logging_level("TRACE", logging.DEBUG - 5, strict=False)
