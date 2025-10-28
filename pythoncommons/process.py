@@ -263,20 +263,23 @@ class CommandRunner:
             raise ValueError(f"Command failed with exit code {statusoutput[0]}. Command was: {command}")
         return statusoutput[1]
 
-    def _troubleshoot_callbacks(self, kwargs):
+    def _troubleshoot_callbacks(self, kwargs, test_printouts=False, call_callbacks=True, replace_stdout_stderr_with_sys=False):
         stdout_callback = kwargs['_out']
-        stdout_callback("testout")
-
         stderr_callback = kwargs['_err']
-        stderr_callback("testerr")
 
-        sys.stdout.writelines(["linestdout1"])
-        sys.stdout.flush()
-        sys.stderr.writelines(["linestderr1"])
-        sys.stderr.flush()
+        if call_callbacks:
+            stdout_callback("testout")
+            stderr_callback("testerr")
 
-        kwargs["_err"] = sys.stderr
-        kwargs["_out"] = sys.stdout
+        if test_printouts:
+            sys.stdout.writelines(["linestdout1"])
+            sys.stdout.flush()
+            sys.stderr.writelines(["linestderr1"])
+            sys.stderr.flush()
+
+        if replace_stdout_stderr_with_sys:
+            kwargs["_err"] = sys.stderr
+            kwargs["_out"] = sys.stdout
 
 
 LOG = logging.getLogger(__name__)
