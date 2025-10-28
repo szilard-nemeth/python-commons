@@ -107,6 +107,14 @@ class CommandRunner:
             # _out and _err should be always added as explicit None values also matter
             # e.g. if _out=None, err=None is specified, we want to override sh's default parameters with explicit disabling stdout and stderr
             kwargs = {"_out": _out, "_err": _err}
+
+            # This needs to be passed to get the RunningCommand instance instead of str.
+            # See these for more details:
+            # https://github.com/amoffat/sh/blob/ea434f0bafd285bbe5b93d218e62227f2b77f310/docs/source/sections/command_class.rst#runningcommand-class
+            # https://sh.readthedocs.io/en/latest/search.html?q=return_cmd&check_keywords=yes&area=default
+            # https://github.com/amoffat/sh/blob/ea434f0bafd285bbe5b93d218e62227f2b77f310/sh.py#L1272-L1274
+            # https://github.com/amoffat/sh/blob/ea434f0bafd285bbe5b93d218e62227f2b77f310/sh.py#L1512-L1513
+            kwargs["_return_cmd"] = True
             if add_stdout_callback:
                 kwargs["_out"] = stdout_callback
             if add_stderr_callback:
