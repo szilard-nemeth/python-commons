@@ -98,13 +98,10 @@ class CommandRunner:
             :return:
             """
             cmd_output.append_stdout(line)
-            sys.stdout.writelines([line])
-            sys.stdout.flush()
+
 
         def stderr_callback(line: str):
             cmd_output.append_stderr(line)
-            sys.stdout.writelines([line])
-            sys.stdout.flush()
 
         def _prepare_kwargs(_err, _out, _tee):
             # _out and _err should be always added as explicit None values also matter
