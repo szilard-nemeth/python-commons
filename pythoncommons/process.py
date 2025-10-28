@@ -267,10 +267,10 @@ class CommandRunner:
         return statusoutput[1]
 
     def _troubleshoot_callbacks(self, kwargs):
-        stdout_callback = kwargs['out']
+        stdout_callback = kwargs['_out']
         stdout_callback("testout")
 
-        stderr_callback = kwargs['err']
+        stderr_callback = kwargs['_err']
         stderr_callback("testerr")
 
         sys.stdout.writelines(["linestdout1"])
