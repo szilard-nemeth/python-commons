@@ -122,7 +122,6 @@ class CommandRunner:
             kwargs = _prepare_kwargs(_err, _out, _tee)
             # self._troubleshoot_callbacks(kwargs)
             process = sh.bash("-c", cmd, **kwargs)
-            process.wait()
             exit_code = process.exit_code
         except sh.ErrorReturnCode as e:
             if fail_on_error:
