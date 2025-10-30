@@ -1,6 +1,6 @@
 import io
 from dataclasses import dataclass
-from typing import Callable, Any, List, Optional
+from typing import Callable, Any, List, Optional, Dict
 from subprocess import Popen
 import sh
 import logging
@@ -75,6 +75,7 @@ class CommandRunner:
             add_stderr_callback: bool = False,
             log_stdout_to_logger: bool = False,
             log_stderr_to_logger: bool = False,
+            debugging: bool = False
     ):
         if add_stdout_callback and _out:
             raise ValueError(
@@ -128,6 +129,8 @@ class CommandRunner:
         exit_code = None
         try:
             kwargs = _prepare_kwargs(_err, _out, _tee)
+            if debugging:
+                kwargs = self._modify_run_sync_debug_kwargs(kwargs)
             # self._troubleshoot_callbacks(kwargs)
             process = sh.bash("-c", cmd, **kwargs)
             exit_code = process.exit_code
@@ -287,6 +290,21 @@ class CommandRunner:
         if replace_stdout_stderr_with_sys:
             kwargs["_err"] = sys.stderr
             kwargs["_out"] = sys.stdout
+
+    def _modify_run_sync_debug_kwargs(self, kwargs: Dict[str, Any]):
+        """
+        The only feasible way to not hang the sh.bash() call while debugging is to discard stdout and stderr by redirecting them to /dev/null explicitly.
+        :param kwargs:
+        :return:
+        """
+        import os
+        DEVNULL = open(os.devnull, 'wb')
+
+        self.LOG.info("Overriding run_sync kwargs with debugging-compatible parameters")
+        kwargs['_out'] = DEVNULL  # Redirect stdout to /dev/null
+        kwargs['_err'] = DEVNULL  # Redirect stderr to /dev/null
+        return kwargs
+
 
 
 LOG = logging.getLogger(__name__)

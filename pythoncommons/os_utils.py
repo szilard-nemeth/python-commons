@@ -87,6 +87,15 @@ class OsUtils:
         else:
             return full_command
 
+class DebuggingUtils:
+    @staticmethod
+    def is_debugging():
+        import sys
+        """
+        Checks if the current Python process is being debugged.
+        """
+        return hasattr(sys, 'gettrace') and sys.gettrace() is not None
+
 
 class EnvironmentValidator:
     @staticmethod
