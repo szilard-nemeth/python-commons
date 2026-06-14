@@ -17,7 +17,7 @@ exclude = '''
 
 [tool.poetry]
 name = "python-common-lib"
-version = "1.0.22"
+version = "1.0.23"
 description = ""
 authors = ["Szilard Nemeth <szilard.nemeth88@gmail.com>"]
 readme = "README.md"
@@ -26,7 +26,7 @@ packages = [{ include = "pythoncommons" }]
 [tool.poetry.dependencies]
 python = "^3.9"
 
-gspread = "^5.5.0"
+gspread = ">=6.0.0,<7.0.0"
 humanize = "^4.4.0"
 beautifulsoup4 = "^4.12.0"
 requests = "^2.28.1"

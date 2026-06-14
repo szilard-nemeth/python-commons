@@ -541,14 +541,14 @@ tool = ["click (>=6.0.0)"]
 
 [[package]]
 name = "gspread"
-version = "5.12.4"
+version = "6.2.1"
 description = "Google Spreadsheets Python API"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "gspread-5.12.4-py3-none-any.whl", hash = "sha256:1e453d87e0fde23bc5546e33eb684cf8b8c26540615f2f1ae004a9084a29051d"},
-    {file = "gspread-5.12.4.tar.gz", hash = "sha256:3fcef90183f15d3c9233b4caa021a83682f2b2ee678340c42d7ca7d8be98c6d1"},
+    {file = "gspread-6.2.1-py3-none-any.whl", hash = "sha256:6d4ec9f1c23ae3c704a9219026dac01f2b328ac70b96f1495055d453c4c184db"},
+    {file = "gspread-6.2.1.tar.gz", hash = "sha256:2c7c99f7c32ebea6ec0d36f2d5cbe8a2be5e8f2a48bde87ad1ea203eff32bd03"},
 ]
 
 [package.dependencies]
@@ -1559,4 +1559,4 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.9"
-content-hash = "4e0a76543bdf0d2a202d02ef76bd2a61c81f8bf83003083b81d6077c454d745e"
+content-hash = "cd5257b4e2a99fbc2cf1af3f62141b8f4d5cdab9c9b6ae3c9cc201e14572a917"
